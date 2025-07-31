@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, createContext } from 'react'; // useContext dihapus dari sini
+import React, { useState, useEffect, useCallback, createContext } from 'react';
 import { createClient, Session } from '@supabase/supabase-js';
 import LoginPage from './components/LoginPage';
 import DashboardLayout from './components/DashboardLayout';
@@ -26,6 +26,8 @@ export interface AppContextType {
     setPage: React.Dispatch<React.SetStateAction<string>>;
     theme: string;
     setTheme: React.Dispatch<React.SetStateAction<string>>;
+    isMenuOpen: boolean;
+    setIsMenuOpen: React.Dispatch<React.SetStateAction<boolean>>;
     handleLogout: () => void;
 }
 
