@@ -48,8 +48,7 @@ export default function App() {
         loading: true,
     });
 
-    const fetchData = useCallback(async () => {
-        if (!session) return;
+    const fetchData = useCallback(async (currentSession: Session) => {
         setData(prev => ({ ...prev, loading: true }));
         try {
             const { data: hosts, error: hostsError } = await supabase.from('hosts').select('*');
@@ -62,7 +61,7 @@ export default function App() {
             if (rekapError) throw rekapError;
 
             let users: any[] = [];
-            if (session.user.user_metadata?.role === 'superadmin') {
+            if (currentSession.user.user_metadata?.role === 'superadmin') {
                 const { data: usersResponse, error: usersError } = await supabase.functions.invoke('list-all-users');
                 if (usersError) throw usersError;
                 if (Array.isArray(usersResponse)) {
@@ -75,7 +74,7 @@ export default function App() {
             console.error("Error fetching data:", error);
             setData(prev => ({ ...prev, loading: false }));
         }
-    }, [session]);
+    }, []);
 
     useEffect(() => {
         if (theme === 'dark') {
@@ -89,33 +88,41 @@ export default function App() {
     useEffect(() => {
         supabase.auth.getSession().then(({ data: { session } }) => {
             setSession(session);
+            if (session) {
+                fetchData(session);
+            } else {
+                setData(prev => ({ ...prev, loading: false }));
+            }
         });
 
         const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
             setSession(session);
+            if (session) {
+                fetchData(session);
+            } else {
+                setData(prev => ({ ...prev, loading: false, users: [] }));
+            }
         });
 
         return () => subscription.unsubscribe();
-    }, []);
-
-    useEffect(() => {
-        if (session) {
-            fetchData();
-        }
-    }, [session, fetchData]);
+    }, [fetchData]);
 
     const handleLogout = async () => {
         await supabase.auth.signOut();
     };
 
     const value = {
-        session, data, fetchData, page, setPage, theme, setTheme, isMenuOpen, setIsMenuOpen, handleLogout
+        session, data, fetchData: () => session && fetchData(session), page, setPage, theme, setTheme, isMenuOpen, setIsMenuOpen, handleLogout
     };
+
+    if (data.loading) {
+        return <div className="flex items-center justify-center min-h-screen"></div>; // Tampilan loading awal
+    }
 
     return (
         <AppContext.Provider value={value}>
             <div className="bg-stone-50 text-stone-800 dark:bg-stone-900 dark:text-stone-200 min-h-screen font-sans">
-                {data.loading && !session ? <div></div> : (session ? <DashboardLayout /> : <LoginPage />)}
+                {session ? <DashboardLayout /> : <LoginPage />}
             </div>
         </AppContext.Provider>
     );
