@@ -1,4 +1,4 @@
-import React, { useContext, useState, useEffect } from 'react';
+import React, { useContext, useState, useEffect, useCallback } from 'react';
 import { AppContext, AppContextType, supabase } from '../App';
 import { Download, Trash2 } from 'lucide-react';
 
@@ -62,7 +62,29 @@ export default function ProfilePage() {
             </div>
             <div className="bg-white dark:bg-stone-800 p-6 rounded-xl shadow-sm border border-stone-100 dark:border-stone-700">
                 <form onSubmit={handleSubmit} className="space-y-6 max-w-lg">
-                    {/* ... (Isi formulir seperti di bawah) ... */}
+                    <div>
+                        <label htmlFor="profile-nama" className="block mb-2 text-sm font-medium text-stone-900 dark:text-stone-300">Nama Lengkap</label>
+                        <input type="text" id="profile-nama" value={formData.nama_host} onChange={handleInputChange} className="bg-stone-50 border border-stone-300 text-stone-900 text-sm rounded-lg focus:ring-purple-500 focus:border-purple-500 block w-full p-2.5 dark:bg-stone-700 dark:border-stone-600 dark:placeholder-stone-400 dark:text-white" required />
+                    </div>
+                    <div>
+                        <label htmlFor="profile-telepon" className="block mb-2 text-sm font-medium text-stone-900 dark:text-stone-300">Nomor Telepon</label>
+                        <input type="tel" id="profile-telepon" value={formData.nomor_telepon} onChange={handleInputChange} className="bg-stone-50 border border-stone-300 text-stone-900 text-sm rounded-lg focus:ring-purple-500 focus:border-purple-500 block w-full p-2.5 dark:bg-stone-700 dark:border-stone-600 dark:placeholder-stone-400 dark:text-white" placeholder="08..." />
+                    </div>
+                    <div>
+                        <label htmlFor="profile-alamat" className="block mb-2 text-sm font-medium text-stone-900 dark:text-stone-300">Alamat</label>
+                        <textarea id="profile-alamat" value={formData.alamat} onChange={handleInputChange} rows={3} className="bg-stone-50 border border-stone-300 text-stone-900 text-sm rounded-lg focus:ring-purple-500 focus:border-purple-500 block w-full p-2.5 dark:bg-stone-700 dark:border-stone-600 dark:placeholder-stone-400 dark:text-white" placeholder="Alamat lengkap..."></textarea>
+                    </div>
+                    <div className="border-t border-stone-200 dark:border-stone-700 pt-6">
+                         <h3 className="text-lg font-medium text-stone-900 dark:text-stone-200">Informasi Bank</h3>
+                    </div>
+                    <div>
+                        <label htmlFor="profile-bank" className="block mb-2 text-sm font-medium text-stone-900 dark:text-stone-300">Nama Bank</label>
+                        <input type="text" id="profile-bank" value={formData.nama_bank} onChange={handleInputChange} className="bg-stone-50 border border-stone-300 text-stone-900 text-sm rounded-lg focus:ring-purple-500 focus:border-purple-500 block w-full p-2.5 dark:bg-stone-700 dark:border-stone-600 dark:placeholder-stone-400 dark:text-white" placeholder="Contoh: BCA, Mandiri" />
+                    </div>
+                    <div>
+                        <label htmlFor="profile-rekening" className="block mb-2 text-sm font-medium text-stone-900 dark:text-stone-300">Nomor Rekening</label>
+                        <input type="text" id="profile-rekening" value={formData.nomor_rekening} onChange={handleInputChange} className="bg-stone-50 border border-stone-300 text-stone-900 text-sm rounded-lg focus:ring-purple-500 focus:border-purple-500 block w-full p-2.5 dark:bg-stone-700 dark:border-stone-600 dark:placeholder-stone-400 dark:text-white" placeholder="Masukkan nomor rekening" />
+                    </div>
                     <div className="flex justify-end pt-2">
                          <button type="submit" disabled={loading} className="unity-gradient-bg text-white font-semibold px-5 py-2.5 rounded-lg shadow-sm hover:opacity-90 flex items-center justify-center disabled:opacity-75">
                             {loading ? 'Menyimpan...' : 'Simpan Perubahan'}
@@ -77,7 +99,7 @@ export default function ProfilePage() {
 
 // Komponen untuk Manajemen Dokumen
 function DocumentSection() {
-    const { session, fetchData } = useContext(AppContext) as AppContextType;
+    const { session } = useContext(AppContext) as AppContextType;
     const [documents, setDocuments] = useState<any[]>([]);
     const [loading, setLoading] = useState(false);
     const hostId = session!.user.user_metadata.host_id;
@@ -116,14 +138,48 @@ function DocumentSection() {
         }
     };
 
+    const handleDownload = async (fileName: string) => {
+        try {
+            const { data, error } = await supabase.storage.from('host-document').download(`${hostId}/${fileName}`);
+            if (error) throw error;
+            const blob = new Blob([data], { type: data.type });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = fileName;
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            a.remove();
+        } catch (error: any) {
+            alert(`Gagal mengunduh file: ${error.message}`);
+        }
+    };
+
+    const handleDelete = async (fileName: string) => {
+        if (window.confirm(`Apakah Anda yakin ingin menghapus file "${fileName}"?`)) {
+            try {
+                const { error } = await supabase.storage.from('host-document').remove([`${hostId}/${fileName}`]);
+                if (error) throw error;
+                alert('Dokumen berhasil dihapus.');
+                fetchDocuments(); // Refresh daftar dokumen
+            } catch (error: any) {
+                alert(`Gagal menghapus file: ${error.message}`);
+            }
+        }
+    };
+
     return (
         <div className="mt-8 bg-white dark:bg-stone-800 p-6 rounded-xl shadow-sm border border-stone-100 dark:border-stone-700 max-w-lg">
             <h3 className="text-lg font-medium text-stone-900 dark:text-stone-200">Manajemen Dokumen</h3>
             <div className="mt-4 space-y-2">
                 {documents.length > 0 ? documents.map(doc => (
                     <div key={doc.id} className="flex justify-between items-center bg-stone-100 dark:bg-stone-700 p-2 rounded-md">
-                        <span className="text-sm">{doc.name}</span>
-                        {/* Tombol Unduh & Hapus akan ditambahkan di sini */}
+                        <span className="text-sm truncate pr-4">{doc.name}</span>
+                        <div className="flex space-x-2">
+                            <button onClick={() => handleDownload(doc.name)} title="Unduh" className="p-1 text-purple-600 hover:text-purple-800"><Download className="h-4 w-4" /></button>
+                            <button onClick={() => handleDelete(doc.name)} title="Hapus" className="p-1 text-red-600 hover:text-red-800"><Trash2 className="h-4 w-4" /></button>
+                        </div>
                     </div>
                 )) : <p className="text-sm text-stone-500">Belum ada dokumen.</p>}
             </div>
