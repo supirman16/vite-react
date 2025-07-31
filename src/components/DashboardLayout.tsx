@@ -1,11 +1,11 @@
-import { useContext } from 'react';
+import React, { useContext } from 'react';
 import { AppContext, AppContextType } from '../App';
 import Header from './Header';
 import Navigation from './Navigation';
 import DashboardPage from '../pages/DashboardPage';
 import AnalysisPage from '../pages/AnalysisPage';
 import RekapPage from '../pages/RekapPage';
-// Impor halaman-halaman lain akan ditambahkan di sini nanti
+import ProfilePage from '../pages/ProfilePage'; // <-- Impor baru
 
 // Komponen ini bertanggung jawab untuk mengatur layout utama aplikasi setelah login,
 // termasuk Header, Navigasi, dan konten halaman yang aktif.
@@ -22,7 +22,9 @@ export default function DashboardLayout() {
                 return <AnalysisPage />;
             case 'rekap':
                 return <RekapPage />;
-            // Case untuk halaman lain (Profil, dll.) akan ditambahkan di sini.
+            case 'profile':
+                return <ProfilePage />; // <-- Case baru ditambahkan
+            // Case untuk halaman lain akan ditambahkan di sini.
             default:
                 return <DashboardPage />;
         }
