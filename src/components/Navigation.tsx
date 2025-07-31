@@ -1,4 +1,4 @@
-import React, { useContext } from 'react';
+import { useContext } from 'react';
 import { AppContext, AppContextType } from '../App';
 import { 
     LayoutDashboard, BarChart2, FileText, User, DollarSign, Settings, 
