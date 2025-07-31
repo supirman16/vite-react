@@ -1,6 +1,17 @@
-import React, { useContext, useState, useMemo } from 'react';
+import React, { useContext, useState, useMemo, useEffect } from 'react';
 import { AppContext, AppContextType } from '../App';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
+
+// Tipe data untuk hasil kalkulasi performa
+interface PerformanceData {
+    workDays: number;
+    totalHours: number;
+    hourBalance: number;
+    offDayEntitlement: number;
+    remainingOffDays: number;
+    totalDiamonds: number;
+    revenuePerDay: number;
+}
 
 // Komponen ini adalah halaman Analisis Kinerja.
 // Ia menampilkan KPI bulanan dan kalender kinerja.
@@ -9,20 +20,19 @@ export default function AnalysisPage() {
     const [currentDate, setCurrentDate] = useState(new Date());
     
     const isSuperAdmin = session!.user.user_metadata?.role === 'superadmin';
-    // Set initial selected host correctly
     const initialHostId = isSuperAdmin ? (data.hosts[0]?.id.toString() || '') : session!.user.user_metadata.host_id.toString();
     const [selectedHostId, setSelectedHostId] = useState(initialHostId);
 
-    // Update selectedHostId if the initial one was empty and data loads
+    // Efek ini memastikan bahwa saat data host selesai dimuat,
+    // dropdown untuk superadmin akan memilih host pertama secara default.
     useEffect(() => {
         if (isSuperAdmin && !selectedHostId && data.hosts.length > 0) {
             setSelectedHostId(data.hosts[0].id.toString());
         }
     }, [data.hosts, isSuperAdmin, selectedHostId]);
 
-
-    const performance = useMemo(() => {
-        if (!selectedHostId) return {};
+    const performance: PerformanceData = useMemo(() => {
+        if (!selectedHostId) return { workDays: 0, totalHours: 0, hourBalance: 0, offDayEntitlement: 0, remainingOffDays: 0, totalDiamonds: 0, revenuePerDay: 0 };
         return calculateMonthlyPerformance(parseInt(selectedHostId), currentDate.getFullYear(), currentDate.getMonth(), data.rekapLive);
     }, [selectedHostId, currentDate, data.rekapLive]);
 
@@ -31,10 +41,10 @@ export default function AnalysisPage() {
         { title: 'Target Hari Kerja', value: 26 },
         { title: 'Jatah Libur Sebulan', value: performance.offDayEntitlement },
         { title: 'Sisa Jatah Libur', value: performance.remainingOffDays },
-        { title: 'Total Jam Live', value: `${performance.totalHours?.toFixed(1) || 0} jam` },
-        { title: 'Keseimbangan Jam', value: `${performance.hourBalance?.toFixed(1) || 0} jam` },
-        { title: 'Total Diamond Bulan Ini', value: `${new Intl.NumberFormat().format(performance.totalDiamonds || 0)} 💎` },
-        { title: 'Diamond per Hari (Efisiensi)', value: `${new Intl.NumberFormat().format(performance.revenuePerDay || 0)} 💎/hari` },
+        { title: 'Total Jam Live', value: `${performance.totalHours.toFixed(1)} jam` },
+        { title: 'Keseimbangan Jam', value: `${performance.hourBalance.toFixed(1)} jam` },
+        { title: 'Total Diamond Bulan Ini', value: `${new Intl.NumberFormat().format(performance.totalDiamonds)} 💎` },
+        { title: 'Diamond per Hari (Efisiensi)', value: `${new Intl.NumberFormat().format(performance.revenuePerDay)} 💎/hari` },
     ];
 
     const handlePrevMonth = () => {
@@ -160,7 +170,7 @@ function Calendar({ currentDate, selectedHostId }: { currentDate: Date, selected
 }
 
 // Fungsi kalkulasi, sekarang berada di dalam file AnalysisPage
-function calculateMonthlyPerformance(hostId: number, year: number, month: number, rekapLive: any[]) {
+function calculateMonthlyPerformance(hostId: number, year: number, month: number, rekapLive: any[]): PerformanceData {
     const targetWorkDays = 26;
     const dailyTargetHours = 6;
     const minWorkMinutes = 120;
@@ -181,7 +191,7 @@ function calculateMonthlyPerformance(hostId: number, year: number, month: number
     }, {} as { [key: string]: { minutes: number, revenue: number } });
 
     let achievedWorkDays = 0;
-    Object.values(dailyData).forEach(daySummary => {
+    Object.values(dailyData).forEach((daySummary: { minutes: number, revenue: number }) => {
         if (daySummary.minutes >= minWorkMinutes) {
             achievedWorkDays++;
         }
