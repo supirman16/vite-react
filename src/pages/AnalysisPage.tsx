@@ -202,7 +202,7 @@ function calculateMonthlyPerformance(hostId: number, year: number, month: number
     }, {} as DailyData);
 
     let achievedWorkDays = 0;
-    Object.values(dailyData).forEach((daySummary) => {
+    Object.values(dailyData).forEach((daySummary: DailySummary) => {
         if (daySummary.minutes >= minWorkMinutes) {
             achievedWorkDays++;
         }
