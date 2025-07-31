@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, createContext, useContext } from 'react';
+import React, { useState, useEffect, useCallback, createContext } from 'react'; // useContext dihapus dari sini
 import { createClient, Session } from '@supabase/supabase-js';
 import LoginPage from './components/LoginPage';
 import DashboardLayout from './components/DashboardLayout';
@@ -37,6 +37,7 @@ export default function App() {
     const [session, setSession] = useState<Session | null>(null);
     const [page, setPage] = useState('dashboard');
     const [theme, setTheme] = useState(() => localStorage.getItem('theme') || 'light');
+    const [isMenuOpen, setIsMenuOpen] = useState(false);
     const [data, setData] = useState<AppData>({
         hosts: [],
         tiktokAccounts: [],
@@ -106,7 +107,7 @@ export default function App() {
     };
 
     const value = {
-        session, data, fetchData, page, setPage, theme, setTheme, handleLogout
+        session, data, fetchData, page, setPage, theme, setTheme, isMenuOpen, setIsMenuOpen, handleLogout
     };
 
     return (
