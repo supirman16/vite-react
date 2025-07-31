@@ -13,6 +13,16 @@ interface PerformanceData {
     revenuePerDay: number;
 }
 
+// Tipe data untuk data harian
+interface DailySummary {
+    minutes: number;
+    revenue: number;
+}
+interface DailyData {
+    [key: string]: DailySummary;
+}
+
+
 // Komponen ini adalah halaman Analisis Kinerja.
 // Ia menampilkan KPI bulanan dan kalender kinerja.
 export default function AnalysisPage() {
@@ -30,6 +40,7 @@ export default function AnalysisPage() {
             setSelectedHostId(data.hosts[0].id.toString());
         }
     }, [data.hosts, isSuperAdmin, selectedHostId]);
+
 
     const performance: PerformanceData = useMemo(() => {
         if (!selectedHostId) return { workDays: 0, totalHours: 0, hourBalance: 0, offDayEntitlement: 0, remainingOffDays: 0, totalDiamonds: 0, revenuePerDay: 0 };
@@ -188,10 +199,10 @@ function calculateMonthlyPerformance(hostId: number, year: number, month: number
         acc[dateKey].minutes += r.durasi_menit;
         acc[dateKey].revenue += r.pendapatan;
         return acc;
-    }, {} as { [key: string]: { minutes: number, revenue: number } });
+    }, {} as DailyData);
 
     let achievedWorkDays = 0;
-    Object.values(dailyData).forEach((daySummary: { minutes: number; revenue: number; }) => {
+    Object.values(dailyData).forEach((daySummary) => {
         if (daySummary.minutes >= minWorkMinutes) {
             achievedWorkDays++;
         }
