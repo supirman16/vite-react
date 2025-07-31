@@ -4,6 +4,7 @@ import Header from './Header';
 import Navigation from './Navigation';
 import DashboardPage from '../pages/DashboardPage';
 import AnalysisPage from '../pages/AnalysisPage';
+import RekapPage from '../pages/RekapPage';
 // Impor halaman-halaman lain akan ditambahkan di sini nanti
 
 // Komponen ini bertanggung jawab untuk mengatur layout utama aplikasi setelah login,
@@ -19,7 +20,9 @@ export default function DashboardLayout() {
                 return <DashboardPage />;
             case 'analysis':
                 return <AnalysisPage />;
-            // Case untuk halaman lain (Rekap, Profil, dll.) akan ditambahkan di sini.
+            case 'rekap':
+                return <RekapPage />;
+            // Case untuk halaman lain (Profil, dll.) akan ditambahkan di sini.
             default:
                 return <DashboardPage />;
         }
