@@ -20,7 +20,8 @@ interface AppData {
 }
 export interface AppContextType {
     session: Session | null;
-    data: AppData;
+    data: AppData;    
+    setData: React.Dispatch<React.SetStateAction<AppData>>; // <-- Ditambahkan
     fetchData: () => void;
     page: string;
     setPage: React.Dispatch<React.SetStateAction<string>>;
@@ -126,7 +127,7 @@ export default function App() {
     };
 
     const value: AppContextType = {
-        session, data, fetchData: () => session && fetchData(session), page, setPage, theme, setTheme, isMenuOpen, setIsMenuOpen, handleLogout, showNotification
+        session, data, setData, fetchData: () => session && fetchData(session), page, setPage, theme, setTheme, isMenuOpen, setIsMenuOpen, handleLogout, showNotification
     };
 
     if (data.loading) {
