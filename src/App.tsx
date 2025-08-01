@@ -116,14 +116,12 @@ export default function App() {
     };
 
     if (data.loading) {
-        return <div className="flex items-center justify-center min-h-screen"></div>; // Tampilan loading awal
+        return <div className="flex items-center justify-center min-h-screen"></div>;
     }
 
     return (
         <AppContext.Provider value={value}>
-            <div className="bg-stone-50 text-stone-800 dark:bg-stone-900 dark:text-stone-200 min-h-screen font-sans">
-                {session ? <DashboardLayout /> : <LoginPage />}
-            </div>
+            {session ? <DashboardLayout /> : <LoginPage />}
         </AppContext.Provider>
     );
 }
