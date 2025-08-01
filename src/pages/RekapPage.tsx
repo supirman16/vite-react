@@ -144,7 +144,6 @@ function RekapDetailModal({ isOpen, onClose, rekap }: { isOpen: boolean, onClose
             const { error } = await supabase.from('rekap_live').update({ status: newStatus }).eq('id', rekap.id);
             if (error) throw error;
             
-            // Perbarui state lokal, bukan fetch ulang
             setData(prevData => ({
                 ...prevData,
                 rekapLive: prevData.rekapLive.map(r => 
@@ -165,7 +164,6 @@ function RekapDetailModal({ isOpen, onClose, rekap }: { isOpen: boolean, onClose
                 const { error } = await supabase.from('rekap_live').delete().eq('id', rekap.id);
                 if (error) throw error;
 
-                // Perbarui state lokal, bukan fetch ulang
                 setData(prevData => ({
                     ...prevData,
                     rekapLive: prevData.rekapLive.filter(r => r.id !== rekap.id)
