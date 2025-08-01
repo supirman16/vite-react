@@ -9,7 +9,8 @@ import ProfilePage from '../pages/ProfilePage';
 import MySalaryPage from '../pages/MySalaryPage';
 import SettingsPage from '../pages/SettingsPage';
 import PayrollPage from '../pages/PayrollPage';
-import HostsPage from '../pages/HostsPage'; // <-- Impor baru
+import HostsPage from '../pages/HostsPage';
+import TiktokPage from '../pages/TiktokPage'; // <-- Impor baru
 
 // Komponen ini bertanggung jawab untuk mengatur layout utama aplikasi setelah login,
 // termasuk Header, Navigasi, dan konten halaman yang aktif.
@@ -35,7 +36,9 @@ export default function DashboardLayout() {
             case 'payroll':
                 return <PayrollPage />;
             case 'hosts':
-                return <HostsPage />; // <-- Case baru ditambahkan
+                return <HostsPage />;
+            case 'tiktok':
+                return <TiktokPage />; // <-- Case baru ditambahkan
             // Case untuk halaman lain akan ditambahkan di sini.
             default:
                 return <DashboardPage />;
