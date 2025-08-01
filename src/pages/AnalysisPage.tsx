@@ -202,8 +202,7 @@ function calculateMonthlyPerformance(hostId: number, year: number, month: number
     }, {} as DailyData);
 
     let achievedWorkDays = 0;
-    const dailySummaries: DailySummary[] = Object.values(dailyData);
-    dailySummaries.forEach((daySummary) => {
+    Object.values(dailyData).forEach((daySummary: DailySummary) => {
         if (daySummary.minutes >= minWorkMinutes) {
             achievedWorkDays++;
         }
@@ -241,5 +240,66 @@ function calculateMonthlyPerformance(hostId: number, year: number, month: number
         remainingOffDays: remainingOffDays,
         totalDiamonds: totalDiamonds,
         revenuePerDay: revenuePerDay
+    };
+}
+
+export function calculatePayroll(hostId: number, year: number, month: number, hosts: any[], rekapLive: any[]) {
+    const host = hosts.find(h => h.id === hostId);
+    if (!host) {
+        return null;
+    }
+
+    const hostRekaps = rekapLive.filter(r => {
+        const recDate = new Date(r.tanggal_live);
+        return r.host_id === hostId && recDate.getFullYear() === year && recDate.getMonth() === month && r.status === 'approved';
+    });
+
+    const totalDiamonds = hostRekaps.reduce((sum, r) => sum + r.pendapatan, 0);
+    const totalMinutes = hostRekaps.reduce((sum, r) => sum + r.durasi_menit, 0);
+    const totalHours = totalMinutes / 60;
+    
+    const workDays = new Set(hostRekaps.map(r => r.tanggal_live)).size;
+
+    // Hitung Bonus berdasarkan target diamond
+    let bonus = 0;
+    if (totalDiamonds >= 300000) bonus = 5000000;
+    else if (totalDiamonds >= 250000) bonus = 4000000;
+    else if (totalDiamonds >= 200000) bonus = 3000000;
+    else if (totalDiamonds >= 150000) bonus = 2000000;
+    else if (totalDiamonds >= 100000) bonus = 1000000;
+    else if (totalDiamonds >= 90000) bonus = 900000;
+    else if (totalDiamonds >= 80000) bonus = 800000;
+    else if (totalDiamonds >= 70000) bonus = 700000;
+    else if (totalDiamonds >= 60000) bonus = 600000;
+    else if (totalDiamonds >= 50000) bonus = 500000;
+
+    // Hitung Potongan Gaji Pokok
+    const targetDays = 26;
+    const targetHours = 156;
+    const baseSalary = host.gaji_pokok || 0;
+    
+    const daysPercentage = Math.min(1, workDays / targetDays);
+    const hoursPercentage = totalHours > 0 ? Math.min(1, totalHours / targetHours) : 0;
+    
+    // Gunakan persentase pencapaian yang lebih rendah untuk menghitung gaji yang disesuaikan
+    const achievementPercentage = Math.min(daysPercentage, hoursPercentage);
+    const adjustedBaseSalary = baseSalary * achievementPercentage;
+    const deduction = baseSalary - adjustedBaseSalary;
+
+    // Hitung Gaji Akhir
+    const finalSalary = adjustedBaseSalary + bonus;
+
+    return {
+        hostName: host.nama_host,
+        totalHours,
+        totalDiamonds,
+        baseSalary,
+        bonus,
+        deduction,
+        adjustedBaseSalary,
+        finalSalary,
+        workDays,
+        targetDays,
+        targetHours,
     };
 }
