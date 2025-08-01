@@ -7,6 +7,7 @@ import AnalysisPage from '../pages/AnalysisPage';
 import RekapPage from '../pages/RekapPage';
 import ProfilePage from '../pages/ProfilePage';
 import MySalaryPage from '../pages/MySalaryPage';
+import SettingsPage from '../pages/SettingsPage'; // <-- Impor baru
 
 // Komponen ini bertanggung jawab untuk mengatur layout utama aplikasi setelah login,
 // termasuk Header, Navigasi, dan konten halaman yang aktif.
@@ -27,6 +28,8 @@ export default function DashboardLayout() {
                 return <ProfilePage />;
             case 'my-salary':
                 return <MySalaryPage />;
+            case 'settings':
+                return <SettingsPage />; // <-- Case baru ditambahkan
             // Case untuk halaman lain akan ditambahkan di sini.
             default:
                 return <DashboardPage />;
