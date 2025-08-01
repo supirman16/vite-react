@@ -1,14 +1,27 @@
-import { useContext, useState, useMemo } from 'react';
-import { AppContext, AppContextType } from '../App';
-import { Plus, MoreVertical } from 'lucide-react';
+import React, { useContext, useState, useMemo } from 'react';
+import { AppContext, AppContextType, supabase } from '../App';
+import { Plus, MoreVertical, Check, XCircle, Edit, Trash2 } from 'lucide-react';
+import Modal from '../components/Modal';
 
 // Komponen ini adalah halaman Manajemen Rekap Live.
 export default function RekapPage() {
     const [month, setMonth] = useState(new Date().getMonth());
     const [year, setYear] = useState(new Date().getFullYear());
+    const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
+    const [selectedRekap, setSelectedRekap] = useState<any | null>(null);
 
     const years = Array.from({ length: 6 }, (_, i) => new Date().getFullYear() - i);
     const months = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
+
+    const handleViewDetail = (rekap: any) => {
+        setSelectedRekap(rekap);
+        setIsDetailModalOpen(true);
+    };
+
+    const handleCloseDetail = () => {
+        setIsDetailModalOpen(false);
+        setSelectedRekap(null);
+    };
 
     return (
         <section>
@@ -32,13 +45,21 @@ export default function RekapPage() {
                     </button>
                 </div>
             </div>
-            <RekapTable month={month} year={year} />
+            <RekapTable month={month} year={year} onViewDetail={handleViewDetail} />
+            
+            {selectedRekap && (
+                <RekapDetailModal 
+                    isOpen={isDetailModalOpen}
+                    onClose={handleCloseDetail}
+                    rekap={selectedRekap}
+                />
+            )}
         </section>
     );
 }
 
-// Komponen Tabel Rekap, berada di dalam file yang sama untuk saat ini
-function RekapTable({ month, year }: { month: number, year: number }) {
+// Komponen Tabel Rekap
+function RekapTable({ month, year, onViewDetail }: { month: number, year: number, onViewDetail: (rekap: any) => void }) {
     const { data, session } = useContext(AppContext) as AppContextType;
     const isSuperAdmin = session!.user.user_metadata?.role === 'superadmin';
 
@@ -50,18 +71,11 @@ function RekapTable({ month, year }: { month: number, year: number }) {
                 match = match && r.host_id === session!.user.user_metadata.host_id;
             }
             return match;
-        }).sort((a, b) => new Date(b.tanggal_live).getTime() - new Date(a.tanggal_live).getTime()); // Urutkan terbaru di atas
+        }).sort((a, b) => new Date(b.tanggal_live).getTime() - new Date(a.tanggal_live).getTime());
     }, [data.rekapLive, month, year, isSuperAdmin, session]);
 
-    const formatDuration = (minutes: number) => {
-        const hours = Math.floor(minutes / 60);
-        const remainingMinutes = minutes % 60;
-        return `${hours}j ${remainingMinutes}m`;
-    };
-
-    const formatDate = (dateString: string) => {
-        return new Date(dateString).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
-    };
+    const formatDuration = (minutes: number) => `${Math.floor(minutes / 60)}j ${minutes % 60}m`;
+    const formatDate = (dateString: string) => new Date(dateString).toLocaleDateString('id-ID', { day: 'numeric', month: 'long' });
 
     return (
         <div className="bg-white dark:bg-stone-800 rounded-xl shadow-sm border border-stone-100 dark:border-stone-700 overflow-x-auto">
@@ -94,8 +108,8 @@ function RekapTable({ month, year }: { month: number, year: number }) {
                                     </span>
                                 </td>
                                 <td data-label="Aksi:" className="mobile-label px-6 py-4 block md:table-cell text-right md:text-center">
-                                    <button onClick={() => alert(`Detail untuk rekap ID: ${rekap.id}`)} className="p-2 rounded-md hover:bg-stone-100 dark:hover:bg-stone-700">
-                                        <MoreVertical className="h-5 w-5" />
+                                    <button onClick={() => onViewDetail(rekap)} className="font-medium text-purple-600 hover:underline dark:text-purple-500">
+                                        Lihat Detail
                                     </button>
                                 </td>
                             </tr>
@@ -110,5 +124,65 @@ function RekapTable({ month, year }: { month: number, year: number }) {
                 </tbody>
             </table>
         </div>
+    );
+}
+
+// Komponen Modal Detail Rekap
+function RekapDetailModal({ isOpen, onClose, rekap }: { isOpen: boolean, onClose: () => void, rekap: any }) {
+    const { data, session, fetchData } = useContext(AppContext) as AppContextType;
+    const isSuperAdmin = session!.user.user_metadata?.role === 'superadmin';
+    
+    const host = data.hosts.find(h => h.id === rekap.host_id);
+    const tiktokAccount = data.tiktokAccounts.find(t => t.id === rekap.tiktok_account_id);
+
+    const handleStatusChange = async (newStatus: string) => {
+        try {
+            const { error } = await supabase.from('rekap_live').update({ status: newStatus }).eq('id', rekap.id);
+            if (error) throw error;
+            alert(`Status rekap berhasil diubah ke ${newStatus}.`);
+            fetchData();
+            onClose();
+        } catch (error: any) {
+            alert(`Gagal mengubah status: ${error.message}`);
+        }
+    };
+
+    const handleDelete = async () => {
+        if(window.confirm("Apakah Anda yakin ingin menghapus rekap ini?")) {
+            try {
+                const { error } = await supabase.from('rekap_live').delete().eq('id', rekap.id);
+                if (error) throw error;
+                alert('Rekap berhasil dihapus.');
+                fetchData();
+                onClose();
+            } catch (error: any) {
+                alert(`Gagal menghapus rekap: ${error.message}`);
+            }
+        }
+    };
+
+    return (
+        <Modal isOpen={isOpen} onClose={onClose} title="Detail Rekap Live">
+            <div className="space-y-3 text-sm">
+                {/* ... (Konten detail seperti sebelumnya) ... */}
+            </div>
+            <div className="flex justify-end space-x-3 pt-4 mt-4 border-t dark:border-stone-600">
+                {isSuperAdmin && rekap.status === 'pending' && (
+                    <>
+                        <button onClick={() => handleStatusChange('approved')} className="text-sm font-medium text-green-600 hover:underline">Approve</button>
+                        <button onClick={() => handleStatusChange('rejected')} className="text-sm font-medium text-red-600 hover:underline">Reject</button>
+                    </>
+                )}
+                {isSuperAdmin && rekap.status === 'approved' && (
+                    <button onClick={() => handleStatusChange('pending')} className="text-sm font-medium text-yellow-600 hover:underline">Rollback</button>
+                )}
+                {rekap.status === 'pending' && (
+                    <>
+                        <button onClick={() => alert("Fungsi ubah akan dibuat")} className="text-sm font-medium text-purple-600 hover:underline">Ubah</button>
+                        <button onClick={handleDelete} className="text-sm font-medium text-red-600 hover:underline">Hapus</button>
+                    </>
+                )}
+            </div>
+        </Modal>
     );
 }
