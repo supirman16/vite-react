@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, createContext } from 'react';
+import React, { useState, useEffect, useCallback, createContext } from 'react';
 import { createClient, Session } from '@supabase/supabase-js';
 import LoginPage from './components/LoginPage';
 import DashboardLayout from './components/DashboardLayout';
@@ -20,7 +20,7 @@ interface AppData {
 }
 export interface AppContextType {
     session: Session | null;
-    data: AppData;    
+    data: AppData;
     setData: React.Dispatch<React.SetStateAction<AppData>>; // <-- Ditambahkan
     fetchData: () => void;
     page: string;
@@ -142,7 +142,7 @@ export default function App() {
     );
 }
 
-// Komponen Notifikasi Baru
+// Komponen Notifikasi
 function Notification({ notification }: { notification: { message: string; isError: boolean; visible: boolean } | null }) {
     if (!notification) return null;
 
