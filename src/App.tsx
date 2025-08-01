@@ -77,10 +77,15 @@ export default function App() {
     }, []);
 
     useEffect(() => {
+        const body = document.body;
         if (theme === 'dark') {
             document.documentElement.classList.add('dark');
+            body.classList.remove('bg-stone-50', 'text-stone-800');
+            body.classList.add('bg-stone-900', 'text-stone-200');
         } else {
             document.documentElement.classList.remove('dark');
+            body.classList.remove('bg-stone-900', 'text-stone-200');
+            body.classList.add('bg-stone-50', 'text-stone-800');
         }
         localStorage.setItem('theme', theme);
     }, [theme]);
