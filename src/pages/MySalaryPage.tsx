@@ -1,6 +1,6 @@
-import React, { useContext, useState, useMemo } from 'react';
+import { useContext, useState, useMemo } from 'react';
 import { AppContext, AppContextType } from '../App';
-import { calculatePayroll } from './AnalysisPage'; // Kita akan meminjam fungsi kalkulasi dari AnalysisPage
+import { calculatePayroll } from './AnalysisPage';
 
 // Komponen ini adalah halaman "Gaji Saya" untuk host.
 export default function MySalaryPage() {
