@@ -1,6 +1,6 @@
 import { useContext, useState, useMemo } from 'react';
 import { AppContext, AppContextType, supabase } from '../App';
-import { Plus, MoreVertical, Check, XCircle, Edit, Trash2 } from 'lucide-react';
+import { Plus, Check, XCircle, Edit, Trash2 } from 'lucide-react'; // MoreVertical dihapus
 import Modal from '../components/Modal';
 
 // Komponen ini adalah halaman Manajemen Rekap Live.
