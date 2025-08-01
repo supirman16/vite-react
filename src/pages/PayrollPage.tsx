@@ -1,4 +1,4 @@
-import React, { useContext, useState, useMemo } from 'react';
+import { useContext, useState, useMemo } from 'react';
 import { AppContext, AppContextType } from '../App';
 import { calculatePayroll } from './AnalysisPage'; // Meminjam fungsi kalkulasi
 
