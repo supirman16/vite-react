@@ -1,14 +1,27 @@
 import { useContext, useState, useMemo } from 'react';
 import { AppContext, AppContextType } from '../App';
 import { calculatePayroll } from './AnalysisPage'; // Meminjam fungsi kalkulasi
+import Modal from '../components/Modal';
 
 // Komponen ini adalah halaman Sistem Gaji untuk superadmin.
 export default function PayrollPage() {
     const [month, setMonth] = useState(new Date().getMonth());
     const [year, setYear] = useState(new Date().getFullYear());
+    const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
+    const [selectedPayroll, setSelectedPayroll] = useState<any | null>(null);
 
     const years = Array.from({ length: 6 }, (_, i) => new Date().getFullYear() - i);
     const months = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
+
+    const handleViewDetail = (payrollData: any) => {
+        setSelectedPayroll(payrollData);
+        setIsDetailModalOpen(true);
+    };
+
+    const handleCloseDetail = () => {
+        setIsDetailModalOpen(false);
+        setSelectedPayroll(null);
+    };
 
     return (
         <section>
@@ -26,13 +39,22 @@ export default function PayrollPage() {
                      </select>
                 </div>
             </div>
-            <PayrollTable month={month} year={year} />
+            <PayrollTable month={month} year={year} onViewDetail={handleViewDetail} />
+
+            {selectedPayroll && (
+                <PayrollDetailModal
+                    isOpen={isDetailModalOpen}
+                    onClose={handleCloseDetail}
+                    payrollData={selectedPayroll}
+                    period={new Date(year, month).toLocaleString('id-ID', { month: 'long', year: 'numeric' })}
+                />
+            )}
         </section>
     );
 }
 
 // Komponen Tabel Penggajian
-function PayrollTable({ month, year }: { month: number, year: number }) {
+function PayrollTable({ month, year, onViewDetail }: { month: number, year: number, onViewDetail: (data: any) => void }) {
     const { data } = useContext(AppContext) as AppContextType;
 
     const payrolls = useMemo(() => {
@@ -44,11 +66,7 @@ function PayrollTable({ month, year }: { month: number, year: number }) {
 
     const formatRupiah = (num: number) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(num);
     const formatDiamond = (num: number) => new Intl.NumberFormat().format(num);
-    const formatDuration = (minutes: number) => {
-        const hours = Math.floor(minutes / 60);
-        const remainingMinutes = minutes % 60;
-        return `${hours}j ${remainingMinutes}m`;
-    };
+    const formatDuration = (minutes: number) => `${Math.floor(minutes / 60)}j ${minutes % 60}m`;
 
     return (
         <div className="bg-white dark:bg-stone-800 rounded-xl shadow-sm border border-stone-100 dark:border-stone-700 overflow-x-auto">
@@ -76,7 +94,7 @@ function PayrollTable({ month, year }: { month: number, year: number }) {
                             <td data-label="Potongan:" className="mobile-label px-6 py-4 block md:table-cell text-red-600 dark:text-red-400">{formatRupiah(p!.deduction)}</td>
                             <td data-label="Gaji Akhir:" className="mobile-label px-6 py-4 block md:table-cell font-bold text-purple-700 dark:text-purple-500">{formatRupiah(p!.finalSalary)}</td>
                             <td data-label="Aksi:" className="mobile-label px-6 py-4 block md:table-cell text-right md:text-center">
-                                <button className="font-medium text-purple-600 hover:underline dark:text-purple-500">Detail</button>
+                                <button onClick={() => onViewDetail(p)} className="font-medium text-purple-600 hover:underline dark:text-purple-500">Detail</button>
                             </td>
                         </tr>
                     )) : (
@@ -89,5 +107,69 @@ function PayrollTable({ month, year }: { month: number, year: number }) {
                 </tbody>
             </table>
         </div>
+    );
+}
+
+// Komponen Modal Detail Gaji
+function PayrollDetailModal({ isOpen, onClose, payrollData, period }: { isOpen: boolean, onClose: () => void, payrollData: any, period: string }) {
+    const formatRupiah = (num: number) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(num);
+    const formatDiamond = (num: number) => new Intl.NumberFormat().format(num);
+
+    return (
+        <Modal isOpen={isOpen} onClose={onClose} title="Rincian Gaji Host">
+            <div className="text-center mb-4">
+                <p className="text-sm text-stone-500 dark:text-stone-400">{payrollData.hostName}</p>
+                <p className="text-sm font-semibold unity-gradient-text">{period}</p>
+            </div>
+            <div className="space-y-4 text-sm">
+                <div className="bg-stone-50 dark:bg-stone-700 p-4 rounded-lg">
+                    <h3 className="font-semibold text-stone-700 dark:text-stone-200 mb-2 border-b dark:border-stone-600 pb-2">Gaji Pokok</h3>
+                    <div className="space-y-2">
+                        <div className="flex justify-between">
+                            <span className="text-stone-500 dark:text-stone-400">Gaji Pokok Awal:</span>
+                            <span className="font-medium text-stone-900 dark:text-white">{formatRupiah(payrollData.baseSalary)}</span>
+                        </div>
+                        <div className="flex justify-between">
+                            <span className="text-stone-500 dark:text-stone-400">Pencapaian Jam:</span>
+                            <span className="font-medium text-stone-900 dark:text-white">{`${payrollData.totalHours.toFixed(2)} jam / ${payrollData.targetHours} jam`}</span>
+                        </div>
+                        <div className="flex justify-between">
+                            <span className="text-stone-500 dark:text-stone-400">Pencapaian Hari:</span>
+                            <span className="font-medium text-stone-900 dark:text-white">{`${payrollData.workDays} hari / ${payrollData.targetDays} hari`}</span>
+                        </div>
+                        <div className="flex justify-between">
+                            <span className="text-stone-500 dark:text-stone-400">Potongan Kinerja:</span>
+                            <span className="font-medium text-red-600 dark:text-red-400">{formatRupiah(payrollData.deduction)}</span>
+                        </div>
+                        <div className="flex justify-between border-t dark:border-stone-600 pt-2">
+                            <span className="font-semibold text-stone-600 dark:text-stone-300">Gaji Pokok Disesuaikan:</span>
+                            <span className="font-bold text-stone-900 dark:text-white">{formatRupiah(payrollData.adjustedBaseSalary)}</span>
+                        </div>
+                    </div>
+                </div>
+                <div className="bg-stone-50 dark:bg-stone-700 p-4 rounded-lg">
+                    <h3 className="font-semibold text-stone-700 dark:text-stone-200 mb-2 border-b dark:border-stone-600 pb-2">Bonus Kinerja</h3>
+                    <div className="space-y-2">
+                        <div className="flex justify-between">
+                            <span className="text-stone-500 dark:text-stone-400">Total Diamond Tercapai:</span>
+                            <span className="font-medium text-stone-900 dark:text-white">{formatDiamond(payrollData.totalDiamonds)}</span>
+                        </div>
+                        <div className="flex justify-between">
+                            <span className="font-semibold text-stone-600 dark:text-stone-300">Bonus Diamond:</span>
+                            <span className="font-bold text-green-600 dark:text-green-400">{formatRupiah(payrollData.bonus)}</span>
+                        </div>
+                    </div>
+                </div>
+                <div className="bg-purple-50 dark:bg-purple-900/50 p-4 rounded-lg mt-6">
+                    <div className="flex justify-between items-center">
+                        <span className="text-lg font-bold text-purple-800 dark:text-purple-300">GAJI AKHIR (Take Home Pay):</span>
+                        <span className="text-xl font-extrabold text-purple-800 dark:text-purple-300">{formatRupiah(payrollData.finalSalary)}</span>
+                    </div>
+                </div>
+            </div>
+            <div className="flex justify-end pt-6">
+                <button type="button" onClick={onClose} className="px-5 py-2.5 text-sm font-medium text-white unity-gradient-bg rounded-lg hover:opacity-90">Tutup</button>
+            </div>
+        </Modal>
     );
 }
