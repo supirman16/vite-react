@@ -1,4 +1,4 @@
-import React, { useContext, useState, useMemo } from 'react';
+import { useContext, useState, useMemo } from 'react';
 import { AppContext, AppContextType, supabase } from '../App';
 import { Plus, MoreVertical, Check, XCircle, Edit, Trash2 } from 'lucide-react';
 import Modal from '../components/Modal';
@@ -135,6 +135,10 @@ function RekapDetailModal({ isOpen, onClose, rekap }: { isOpen: boolean, onClose
     const host = data.hosts.find(h => h.id === rekap.host_id);
     const tiktokAccount = data.tiktokAccounts.find(t => t.id === rekap.tiktok_account_id);
 
+    const formatDuration = (minutes: number) => `${Math.floor(minutes / 60)}j ${minutes % 60}m`;
+    const formatDate = (dateString: string) => new Date(dateString).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
+    const formatDiamond = (num: number) => new Intl.NumberFormat().format(num);
+
     const handleStatusChange = async (newStatus: string) => {
         try {
             const { error } = await supabase.from('rekap_live').update({ status: newStatus }).eq('id', rekap.id);
@@ -164,13 +168,40 @@ function RekapDetailModal({ isOpen, onClose, rekap }: { isOpen: boolean, onClose
     return (
         <Modal isOpen={isOpen} onClose={onClose} title="Detail Rekap Live">
             <div className="space-y-3 text-sm">
-                {/* ... (Konten detail seperti sebelumnya) ... */}
+                <div className="flex justify-between border-b pb-2 dark:border-stone-600">
+                    <span className="font-medium text-stone-500 dark:text-stone-400">Tanggal Live:</span> 
+                    <span className="text-stone-900 dark:text-white font-semibold">{formatDate(rekap.tanggal_live)}</span>
+                </div>
+                <div className="flex justify-between border-b pb-2 dark:border-stone-600">
+                    <span className="font-medium text-stone-500 dark:text-stone-400">Host:</span> 
+                    <span className="text-stone-900 dark:text-white font-semibold">{host?.nama_host || 'N/A'}</span>
+                </div>
+                <div className="flex justify-between border-b pb-2 dark:border-stone-600">
+                    <span className="font-medium text-stone-500 dark:text-stone-400">Akun TikTok:</span> 
+                    <span className="text-stone-900 dark:text-white font-semibold">{tiktokAccount?.username || 'N/A'}</span>
+                </div>
+                <div className="flex justify-between border-b pb-2 dark:border-stone-600">
+                    <span className="font-medium text-stone-500 dark:text-stone-400">Waktu:</span> 
+                    <span className="text-stone-900 dark:text-white font-semibold">{rekap.waktu_mulai} - {rekap.waktu_selesai}</span>
+                </div>
+                <div className="flex justify-between border-b pb-2 dark:border-stone-600">
+                    <span className="font-medium text-stone-500 dark:text-stone-400">Durasi:</span> 
+                    <span className="text-stone-900 dark:text-white font-semibold">{formatDuration(rekap.durasi_menit)}</span>
+                </div>
+                <div className="flex justify-between border-b pb-2 dark:border-stone-600">
+                    <span className="font-medium text-stone-500 dark:text-stone-400">Pendapatan:</span> 
+                    <span className="text-stone-900 dark:text-white font-semibold">{formatDiamond(rekap.pendapatan)} 💎</span>
+                </div>
+                <div className="mt-4">
+                    <p className="font-medium text-stone-500 dark:text-stone-400 mb-1">Catatan:</p>
+                    <p className="text-stone-800 dark:text-stone-200 bg-stone-100 dark:bg-stone-700 p-3 rounded-md min-h-[50px]">{rekap.catatan || 'Tidak ada catatan.'}</p>
+                </div>
             </div>
             <div className="flex justify-end space-x-3 pt-4 mt-4 border-t dark:border-stone-600">
                 {isSuperAdmin && rekap.status === 'pending' && (
                     <>
-                        <button onClick={() => handleStatusChange('approved')} className="text-sm font-medium text-green-600 hover:underline">Approve</button>
-                        <button onClick={() => handleStatusChange('rejected')} className="text-sm font-medium text-red-600 hover:underline">Reject</button>
+                        <button onClick={() => handleStatusChange('approved')} className="text-sm font-medium text-green-600 hover:underline flex items-center"><Check className="h-4 w-4 mr-1"/>Approve</button>
+                        <button onClick={() => handleStatusChange('rejected')} className="text-sm font-medium text-red-600 hover:underline flex items-center"><XCircle className="h-4 w-4 mr-1"/>Reject</button>
                     </>
                 )}
                 {isSuperAdmin && rekap.status === 'approved' && (
@@ -178,8 +209,8 @@ function RekapDetailModal({ isOpen, onClose, rekap }: { isOpen: boolean, onClose
                 )}
                 {rekap.status === 'pending' && (
                     <>
-                        <button onClick={() => alert("Fungsi ubah akan dibuat")} className="text-sm font-medium text-purple-600 hover:underline">Ubah</button>
-                        <button onClick={handleDelete} className="text-sm font-medium text-red-600 hover:underline">Hapus</button>
+                        <button onClick={() => alert("Fungsi ubah akan dibuat")} className="text-sm font-medium text-purple-600 hover:underline flex items-center"><Edit className="h-4 w-4 mr-1"/>Ubah</button>
+                        <button onClick={handleDelete} className="text-sm font-medium text-red-600 hover:underline flex items-center"><Trash2 className="h-4 w-4 mr-1"/>Hapus</button>
                     </>
                 )}
             </div>
