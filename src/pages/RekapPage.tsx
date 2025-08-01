@@ -129,7 +129,7 @@ function RekapTable({ month, year, onViewDetail }: { month: number, year: number
 
 // Komponen Modal Detail Rekap
 function RekapDetailModal({ isOpen, onClose, rekap }: { isOpen: boolean, onClose: () => void, rekap: any }) {
-    const { data, session, fetchData, showNotification } = useContext(AppContext) as AppContextType;
+    const { data, session, setData, showNotification } = useContext(AppContext) as AppContextType;
     const isSuperAdmin = session!.user.user_metadata?.role === 'superadmin';
     
     const host = data.hosts.find(h => h.id === rekap.host_id);
@@ -143,8 +143,16 @@ function RekapDetailModal({ isOpen, onClose, rekap }: { isOpen: boolean, onClose
         try {
             const { error } = await supabase.from('rekap_live').update({ status: newStatus }).eq('id', rekap.id);
             if (error) throw error;
+            
+            // Perbarui state lokal, bukan fetch ulang
+            setData(prevData => ({
+                ...prevData,
+                rekapLive: prevData.rekapLive.map(r => 
+                    r.id === rekap.id ? { ...r, status: newStatus } : r
+                )
+            }));
+
             showNotification(`Status rekap berhasil diubah ke ${newStatus}.`);
-            fetchData();
             onClose();
         } catch (error: any) {
             showNotification(`Gagal mengubah status: ${error.message}`, true);
@@ -156,8 +164,14 @@ function RekapDetailModal({ isOpen, onClose, rekap }: { isOpen: boolean, onClose
             try {
                 const { error } = await supabase.from('rekap_live').delete().eq('id', rekap.id);
                 if (error) throw error;
+
+                // Perbarui state lokal, bukan fetch ulang
+                setData(prevData => ({
+                    ...prevData,
+                    rekapLive: prevData.rekapLive.filter(r => r.id !== rekap.id)
+                }));
+
                 showNotification('Rekap berhasil dihapus.');
-                fetchData();
                 onClose();
             } catch (error: any) {
                 showNotification(`Gagal menghapus rekap: ${error.message}`, true);
