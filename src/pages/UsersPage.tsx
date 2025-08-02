@@ -2,6 +2,7 @@ import { useContext, useState, useMemo, useEffect } from 'react';
 import { AppContext, AppContextType, supabase } from '../App';
 import { Plus, Edit, Trash2, ArrowUpDown } from 'lucide-react';
 import Modal from '../components/Modal';
+import ConfirmationModal from '../components/ConfirmationModal';
 
 // Komponen ini adalah halaman Manajemen Pengguna untuk superadmin.
 export default function UsersPage() {
@@ -140,7 +141,7 @@ function UsersTable({ onEdit, onDelete }: { onEdit: (user: any) => void, onDelet
                                 <td data-label="Host:" className="mobile-label px-6 py-4 block md:table-cell">{host ? host.nama_host : '-'}</td>
                                 <td data-label="Aksi:" className="mobile-label px-6 py-4 block md:table-cell text-right md:text-center space-x-2">
                                     <button onClick={() => onEdit(user)} className="font-medium text-purple-600 hover:underline dark:text-purple-500 p-1"><Edit className="h-4 w-4 inline"/> Ubah</button>
-                                    {session?.user?.id !== user.id && (
+                                    {session!.user.id !== user.id && (
                                         <button onClick={() => onDelete(user)} className="font-medium text-red-600 hover:underline dark:text-red-500 p-1"><Trash2 className="h-4 w-4 inline"/> Hapus</button>
                                     )}
                                 </td>
@@ -243,29 +244,6 @@ function UserModal({ isOpen, onClose, user }: { isOpen: boolean, onClose: () => 
                     </button>
                 </div>
             </form>
-        </Modal>
-    );
-}
-
-// Komponen Modal Konfirmasi
-function ConfirmationModal({ isOpen, onClose, onConfirm, title, message }: { isOpen: boolean, onClose: () => void, onConfirm: () => void, title: string, message: string }) {
-    const [loading, setLoading] = useState(false);
-
-    const handleConfirm = async () => {
-        setLoading(true);
-        await onConfirm();
-        setLoading(false);
-    };
-    
-    return (
-        <Modal isOpen={isOpen} onClose={onClose} title={title}>
-            <p className="text-sm text-stone-600 dark:text-stone-300 mt-2 mb-6">{message}</p>
-            <div className="flex justify-end space-x-4">
-                <button onClick={onClose} className="px-5 py-2.5 text-sm font-medium text-stone-700 bg-stone-100 rounded-lg hover:bg-stone-200 dark:bg-stone-700 dark:text-stone-300 dark:hover:bg-stone-600">Batal</button>
-                <button onClick={handleConfirm} disabled={loading} className="bg-red-600 text-white font-semibold px-5 py-2.5 rounded-lg shadow-sm hover:bg-red-700 flex items-center justify-center disabled:opacity-75">
-                    {loading ? 'Menghapus...' : 'Ya, Hapus'}
-                </button>
-            </div>
         </Modal>
     );
 }

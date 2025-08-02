@@ -2,6 +2,7 @@ import { useContext, useState, useMemo } from 'react';
 import { AppContext, AppContextType, supabase } from '../App';
 import { Plus, Edit, Trash2, ArrowUpDown } from 'lucide-react';
 import Modal from '../components/Modal';
+import ConfirmationModal from '../components/ConfirmationModal';
 
 // Komponen ini adalah halaman Manajemen Akun TikTok untuk superadmin.
 export default function TiktokPage() {
@@ -206,29 +207,6 @@ function TiktokModal({ isOpen, onClose, account }: { isOpen: boolean, onClose: (
                     </button>
                 </div>
             </form>
-        </Modal>
-    );
-}
-
-// Komponen Modal Konfirmasi
-function ConfirmationModal({ isOpen, onClose, onConfirm, title, message }: { isOpen: boolean, onClose: () => void, onConfirm: () => void, title: string, message: string }) {
-    const [loading, setLoading] = useState(false);
-
-    const handleConfirm = async () => {
-        setLoading(true);
-        await onConfirm();
-        setLoading(false);
-    };
-    
-    return (
-        <Modal isOpen={isOpen} onClose={onClose} title={title}>
-            <p className="text-sm text-stone-600 dark:text-stone-300 mt-2 mb-6">{message}</p>
-            <div className="flex justify-end space-x-4">
-                <button onClick={onClose} className="px-5 py-2.5 text-sm font-medium text-stone-700 bg-stone-100 rounded-lg hover:bg-stone-200 dark:bg-stone-700 dark:text-stone-300 dark:hover:bg-stone-600">Batal</button>
-                <button onClick={handleConfirm} disabled={loading} className="bg-red-600 text-white font-semibold px-5 py-2.5 rounded-lg shadow-sm hover:bg-red-700 flex items-center justify-center disabled:opacity-75">
-                    {loading ? 'Menghapus...' : 'Ya, Hapus'}
-                </button>
-            </div>
         </Modal>
     );
 }
