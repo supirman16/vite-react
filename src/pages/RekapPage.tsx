@@ -3,12 +3,20 @@ import { AppContext, AppContextType, supabase } from '../App';
 import { Plus, Check, XCircle, Edit, Trash2 } from 'lucide-react';
 import Modal from '../components/Modal';
 import EmptyState from '../components/EmptyState';
-import Skeleton from '../components/Skeleton'; // <-- Impor baru
 
 // Komponen ini adalah halaman Manajemen Rekap Live.
 export default function RekapPage() {
+    const { data, session } = useContext(AppContext) as AppContextType;
+    const isSuperAdmin = session!.user.user_metadata?.role === 'superadmin';
+
+    // State untuk filter
     const [month, setMonth] = useState(new Date().getMonth());
     const [year, setYear] = useState(new Date().getFullYear());
+    const [selectedHost, setSelectedHost] = useState('all');
+    const [selectedTiktok, setSelectedTiktok] = useState('all');
+    const [selectedStatus, setSelectedStatus] = useState('all');
+
+    // State untuk modal
     const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
     const [isFormModalOpen, setIsFormModalOpen] = useState(false);
     const [selectedRekap, setSelectedRekap] = useState<any | null>(null);
@@ -37,29 +45,58 @@ export default function RekapPage() {
         setIsFormModalOpen(true);
     };
 
+    const StatusButton = ({ status, label }: { status: string, label: string }) => (
+        <button 
+            onClick={() => setSelectedStatus(status)}
+            className={`px-3 py-1 text-sm font-semibold rounded-md transition-colors ${selectedStatus === status ? 'bg-purple-600 text-white' : 'bg-stone-200 dark:bg-stone-700 hover:bg-stone-300 dark:hover:bg-stone-600'}`}
+        >
+            {label}
+        </button>
+    );
+
     return (
         <section>
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4">
                 <div>
                     <h2 className="text-xl font-semibold text-stone-800 dark:text-stone-100">Manajemen Rekap Live</h2>
-                    <p className="text-sm text-stone-500 dark:text-stone-400 mt-1">Tambah, lihat, ubah, dan hapus riwayat sesi live.</p>
+                    <p className="text-sm text-stone-500 dark:text-stone-400 mt-1">Saring, lihat, dan kelola semua riwayat sesi live.</p>
                 </div>
-                <div className="flex items-center space-x-4 mt-4 sm:mt-0">
-                    <div className="flex items-center space-x-2">
-                        <select value={month} onChange={(e) => setMonth(parseInt(e.target.value))} className="bg-stone-50 border border-stone-300 text-stone-900 text-sm rounded-lg focus:ring-purple-500 focus:border-purple-500 block w-full p-2.5 dark:bg-stone-700 dark:border-stone-600 dark:placeholder-stone-400 dark:text-white">
-                            {months.map((m, i) => <option key={i} value={i}>{m}</option>)}
+                <button onClick={handleAdd} className="mt-4 sm:mt-0 unity-gradient-bg font-semibold px-4 py-2.5 rounded-lg shadow-sm hover:opacity-90 flex items-center">
+                    <Plus className="h-5 w-5 mr-2" />
+                    Tambah Rekap
+                </button>
+            </div>
+
+            {/* Filter Lanjutan */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6 p-4 bg-white dark:bg-stone-800/50 rounded-xl border border-stone-200 dark:border-stone-700">
+                <div className="flex items-center space-x-2">
+                    <select value={month} onChange={(e) => setMonth(parseInt(e.target.value))} className="bg-stone-50 border border-stone-300 text-stone-900 text-sm rounded-lg focus:ring-purple-500 focus:border-purple-500 block w-full p-2.5 dark:bg-stone-700 dark:border-stone-600">
+                        {months.map((m, i) => <option key={i} value={i}>{m}</option>)}
+                    </select>
+                    <select value={year} onChange={(e) => setYear(parseInt(e.target.value))} className="bg-stone-50 border border-stone-300 text-stone-900 text-sm rounded-lg focus:ring-purple-500 focus:border-purple-500 block w-full p-2.5 dark:bg-stone-700 dark:border-stone-600">
+                        {years.map(y => <option key={y} value={y}>{y}</option>)}
+                    </select>
+                </div>
+                {isSuperAdmin && (
+                    <>
+                        <select value={selectedHost} onChange={(e) => setSelectedHost(e.target.value)} className="bg-stone-50 border border-stone-300 text-stone-900 text-sm rounded-lg focus:ring-purple-500 focus:border-purple-500 block w-full p-2.5 dark:bg-stone-700 dark:border-stone-600">
+                            <option value="all">Semua Host</option>
+                            {data.hosts.map(h => <option key={h.id} value={h.id}>{h.nama_host}</option>)}
                         </select>
-                        <select value={year} onChange={(e) => setYear(parseInt(e.target.value))} className="bg-stone-50 border border-stone-300 text-stone-900 text-sm rounded-lg focus:ring-purple-500 focus:border-purple-500 block w-full p-2.5 dark:bg-stone-700 dark:border-stone-600 dark:placeholder-stone-400 dark:text-white">
-                            {years.map(y => <option key={y} value={y}>{y}</option>)}
+                        <select value={selectedTiktok} onChange={(e) => setSelectedTiktok(e.target.value)} className="bg-stone-50 border border-stone-300 text-stone-900 text-sm rounded-lg focus:ring-purple-500 focus:border-purple-500 block w-full p-2.5 dark:bg-stone-700 dark:border-stone-600">
+                            <option value="all">Semua Akun</option>
+                            {data.tiktokAccounts.map(acc => <option key={acc.id} value={acc.id}>{acc.username}</option>)}
                         </select>
-                    </div>
-                    <button onClick={handleAdd} className="unity-gradient-bg font-semibold px-4 py-2.5 rounded-lg shadow-sm hover:opacity-90 flex items-center">
-                        <Plus className="h-5 w-5 mr-2" />
-                        Tambah Rekap
-                    </button>
+                    </>
+                )}
+                <div className="flex items-center space-x-2 p-1 bg-stone-100 dark:bg-stone-900 rounded-lg">
+                    <StatusButton status="all" label="Semua" />
+                    <StatusButton status="pending" label="Pending" />
+                    <StatusButton status="approved" label="Approved" />
                 </div>
             </div>
-            <RekapTable month={month} year={year} onViewDetail={handleViewDetail} onAdd={handleAdd} />
+
+            <RekapTable filters={{ month, year, selectedHost, selectedTiktok, selectedStatus }} onViewDetail={handleViewDetail} onAdd={handleAdd} />
             
             {isDetailModalOpen && selectedRekap && (
                 <RekapDetailModal 
@@ -82,20 +119,23 @@ export default function RekapPage() {
 }
 
 // Komponen Tabel Rekap
-function RekapTable({ month, year, onViewDetail, onAdd }: { month: number, year: number, onViewDetail: (rekap: any) => void, onAdd: () => void }) {
+function RekapTable({ filters, onViewDetail, onAdd }: { filters: any, onViewDetail: (rekap: any) => void, onAdd: () => void }) {
     const { data, session } = useContext(AppContext) as AppContextType;
     const isSuperAdmin = session!.user.user_metadata?.role === 'superadmin';
 
     const filteredData = useMemo(() => {
         return data.rekapLive.filter(r => {
             const recDate = new Date(r.tanggal_live);
-            let match = recDate.getFullYear() === year && recDate.getMonth() === month;
-            if (!isSuperAdmin) {
-                match = match && r.host_id === session!.user.user_metadata.host_id;
-            }
-            return match;
+            
+            const monthMatch = recDate.getMonth() === filters.month;
+            const yearMatch = recDate.getFullYear() === filters.year;
+            const hostMatch = isSuperAdmin ? (filters.selectedHost === 'all' || r.host_id === parseInt(filters.selectedHost)) : (r.host_id === session!.user.user_metadata.host_id);
+            const tiktokMatch = filters.selectedTiktok === 'all' || r.tiktok_account_id === parseInt(filters.selectedTiktok);
+            const statusMatch = filters.selectedStatus === 'all' || r.status === filters.selectedStatus;
+
+            return monthMatch && yearMatch && hostMatch && tiktokMatch && statusMatch;
         }).sort((a, b) => new Date(b.tanggal_live).getTime() - new Date(a.tanggal_live).getTime());
-    }, [data.rekapLive, month, year, isSuperAdmin, session]);
+    }, [data.rekapLive, filters, isSuperAdmin, session]);
 
     const formatDuration = (minutes: number) => `${Math.floor(minutes / 60)}j ${minutes % 60}m`;
     const formatDate = (dateString: string) => new Date(dateString).toLocaleDateString('id-ID', { day: 'numeric', month: 'long' });
