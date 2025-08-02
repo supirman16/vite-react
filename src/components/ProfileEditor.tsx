@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useContext } from 'react';
 import { AppContext, AppContextType, supabase } from '../App';
-import { Download, Trash2, Eye } from 'lucide-react';
+import { Download, Trash2, Eye, Check, XCircle } from 'lucide-react';
 import Modal from './Modal';
 
 interface ProfileEditorProps {
@@ -12,6 +12,12 @@ const documentCategories = {
     'KONTRAK': { label: 'Kontrak', color: 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-300' },
     'PAJAK': { label: 'Pajak', color: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300' },
     'LAINNYA': { label: 'Lainnya', color: 'bg-stone-100 text-stone-800 dark:bg-stone-700 dark:text-stone-300' },
+};
+
+const documentStatuses = {
+    'pending': { label: 'Pending', color: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300' },
+    'approved': { label: 'Approved', color: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300' },
+    'rejected': { label: 'Rejected', color: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300' },
 };
 
 // Komponen ini menampilkan formulir profil dan manajemen dokumen untuk host tertentu.
@@ -103,12 +109,13 @@ export default function ProfileEditor({ hostId }: ProfileEditorProps) {
 
 // Komponen untuk Manajemen Dokumen
 function DocumentSection({ hostId }: { hostId: number }) {
+    const { session, showNotification } = useContext(AppContext) as AppContextType;
     const [documents, setDocuments] = useState<any[]>([]);
     const [loading, setLoading] = useState(false);
     const [selectedCategory, setSelectedCategory] = useState(Object.keys(documentCategories)[0]);
-    const { showNotification } = useContext(AppContext) as AppContextType;
     const [isPreviewOpen, setIsPreviewOpen] = useState(false);
     const [fileToPreview, setFileToPreview] = useState<any | null>(null);
+    const isSuperAdmin = session!.user.user_metadata?.role === 'superadmin';
 
     const fetchDocuments = useCallback(async () => {
         if (!hostId) return;
@@ -129,18 +136,35 @@ function DocumentSection({ hostId }: { hostId: number }) {
         if (!file || !hostId) return;
         
         setLoading(true);
-        const filePath = `${hostId}/${selectedCategory}_${file.name}`;
+        const filePath = `${hostId}/${selectedCategory}_pending_${file.name}`;
         try {
             const { error } = await supabase.storage
                 .from('host-document')
                 .upload(filePath, file, { upsert: true });
             if (error) throw error;
-            showNotification('Dokumen berhasil diunggah.');
+            showNotification('Dokumen berhasil diunggah dan menunggu persetujuan.');
             fetchDocuments();
         } catch (error: any) {
             showNotification(`Gagal mengunggah: ${error.message}`, true);
         } finally {
             setLoading(false);
+        }
+    };
+    
+    const handleStatusUpdate = async (fileName: string, newStatus: 'approved' | 'rejected') => {
+        const { category, status, name } = parseFileName(fileName);
+        if (!category || !status || !name) return;
+
+        const oldPath = `${hostId}/${fileName}`;
+        const newPath = `${hostId}/${category.key}_${newStatus}_${name}`;
+
+        try {
+            const { error } = await supabase.storage.from('host-document').move(oldPath, newPath);
+            if (error) throw error;
+            showNotification(`Status dokumen berhasil diubah ke ${newStatus}.`);
+            fetchDocuments();
+        } catch (error: any) {
+            showNotification(`Gagal memperbarui status: ${error.message}`, true);
         }
     };
 
@@ -162,15 +186,22 @@ function DocumentSection({ hostId }: { hostId: number }) {
         setIsPreviewOpen(true);
     };
     
-    const parseFileName = (name: string) => {
-        const parts = name.split('_');
-        if (parts.length > 1 && documentCategories[parts[0] as keyof typeof documentCategories]) {
+    const parseFileName = (fileName: string) => {
+        const parts = fileName.split('_');
+        if (parts.length >= 3) {
             const categoryKey = parts[0];
-            const originalName = parts.slice(1).join('_');
-            const categoryInfo = documentCategories[categoryKey as keyof typeof documentCategories];
-            return { name: originalName, category: categoryInfo };
+            const statusKey = parts[1];
+            const originalName = parts.slice(2).join('_');
+
+            if (documentCategories[categoryKey as keyof typeof documentCategories] && documentStatuses[statusKey as keyof typeof documentStatuses]) {
+                return {
+                    name: originalName,
+                    category: { key: categoryKey, ...documentCategories[categoryKey as keyof typeof documentCategories] },
+                    status: { key: statusKey, ...documentStatuses[statusKey as keyof typeof documentStatuses] },
+                };
+            }
         }
-        return { name, category: documentCategories['LAINNYA'] };
+        return { name: fileName, category: { key: 'LAINNYA', ...documentCategories['LAINNYA'] }, status: null };
     };
 
     return (
@@ -179,14 +210,21 @@ function DocumentSection({ hostId }: { hostId: number }) {
                 <h3 className="text-lg font-medium text-stone-900 dark:text-stone-200">Manajemen Dokumen</h3>
                 <div className="mt-4 space-y-2">
                     {documents.length > 0 ? documents.map(doc => {
-                        const { name, category } = parseFileName(doc.name);
+                        const { name, category, status } = parseFileName(doc.name);
                         return (
                             <div key={doc.id} className="flex justify-between items-center bg-stone-100 dark:bg-stone-700 p-2 rounded-md">
                                 <div className="flex items-center overflow-hidden">
                                     <span className={`px-2 py-1 text-xs font-semibold rounded-md mr-3 ${category.color}`}>{category.label}</span>
+                                    {status && <span className={`px-2 py-1 text-xs font-semibold rounded-md mr-3 ${status.color}`}>{status.label}</span>}
                                     <span className="text-sm truncate">{name}</span>
                                 </div>
-                                <div className="flex space-x-2 flex-shrink-0">
+                                <div className="flex items-center space-x-2 flex-shrink-0">
+                                    {isSuperAdmin && status?.key === 'pending' && (
+                                        <>
+                                            <button onClick={() => handleStatusUpdate(doc.name, 'approved')} title="Setujui" className="p-1 text-green-600 hover:text-green-800"><Check className="h-4 w-4" /></button>
+                                            <button onClick={() => handleStatusUpdate(doc.name, 'rejected')} title="Tolak" className="p-1 text-red-600 hover:text-red-800"><XCircle className="h-4 w-4" /></button>
+                                        </>
+                                    )}
                                     <button onClick={() => handlePreview(doc)} title="Lihat" className="p-1 text-blue-600 hover:text-blue-800"><Eye className="h-4 w-4" /></button>
                                     <button onClick={() => handleDelete(doc.name)} title="Hapus" className="p-1 text-red-600 hover:text-red-800"><Trash2 className="h-4 w-4" /></button>
                                 </div>
@@ -223,6 +261,7 @@ function DocumentSection({ hostId }: { hostId: number }) {
 function DocumentPreviewModal({ isOpen, onClose, file, hostId }: { isOpen: boolean, onClose: () => void, file: any, hostId: number }) {
     const [fileUrl, setFileUrl] = useState<string | null>(null);
     const [loading, setLoading] = useState(true);
+    const { showNotification } = useContext(AppContext) as AppContextType;
 
     useEffect(() => {
         const getFileUrl = async () => {
@@ -233,6 +272,7 @@ function DocumentPreviewModal({ isOpen, onClose, file, hostId }: { isOpen: boole
 
             if (error) {
                 console.error("Error creating signed URL:", error);
+                showNotification("Gagal memuat pratinjau.", true);
             } else {
                 setFileUrl(data.signedUrl);
             }
@@ -241,7 +281,7 @@ function DocumentPreviewModal({ isOpen, onClose, file, hostId }: { isOpen: boole
         if (isOpen) {
             getFileUrl();
         }
-    }, [isOpen, file, hostId]);
+    }, [isOpen, file, hostId, showNotification]);
 
     const isImage = file.metadata.mimetype.startsWith('image/');
 
