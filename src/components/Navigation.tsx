@@ -5,11 +5,9 @@ import {
     Users, Smartphone
 } from 'lucide-react';
 
-// Komponen ini bertanggung jawab untuk merender bilah navigasi utama.
-// Ia akan menampilkan menu yang berbeda tergantung pada peran pengguna.
 export default function Navigation() {
     const { page, setPage, session } = useContext(AppContext) as AppContextType;
-    const isSuperAdmin = session!.user.user_metadata?.role === 'superadmin';
+    const isSuperAdmin = session?.user?.user_metadata?.role === 'superadmin'; // <-- Diperbaiki
 
     const navItems = [
         { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, roles: ['superadmin', 'host'] },
