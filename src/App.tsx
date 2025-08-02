@@ -5,8 +5,8 @@ import DashboardLayout from './components/DashboardLayout';
 import MobileMenu from './components/MobileMenu';
 
 // -- 1. KONFIGURASI & KLIEN SUPABASE --
-const supabaseUrl = 'https://zorudwncbfietuzxrerd.supabase.co'; 
-const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpvcnVkd25jYmZpZXR1enhyZXJkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTI2NzMzNTUsImV4cCI6MjA2ODI0OTM1NX0.d6YJ8qj3Uegmei6ip52fQ0gnjJltqVDlrlbu6VXk7Ks'; 
+const supabaseUrl = 'https://bvlzzhbvnhzvaojuqoqn.supabase.co'; 
+const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJ2bHp6aGJ2bmh6dmFvanVxb3FuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTM1Nzc4NjEsImV4cCI6MjA2OTE1Mzg2MX0.ngr8Zjd5lzsOWhycC_CDb3sOwVBFl21WTWSFt_cK2Hw'; 
 export const supabase = createClient(supabaseUrl, supabaseKey);
 
 // -- 2. TIPE DATA (UNTUK TYPESCRIPT) --
@@ -21,8 +21,8 @@ interface AppData {
 }
 export interface AppContextType {
     session: Session | null;
-    data: any; // Sebaiknya diganti dengan tipe yang lebih spesifik
-    setData: React.Dispatch<React.SetStateAction<any>>;
+    data: AppData;
+    setData: React.Dispatch<React.SetStateAction<AppData>>;
     fetchData: () => void;
     page: string;
     setPage: React.Dispatch<React.SetStateAction<string>>;
@@ -43,7 +43,7 @@ export default function App() {
     const [page, setPage] = useState('dashboard');
     const [theme, setTheme] = useState(() => localStorage.getItem('theme') || 'light');
     const [isMenuOpen, setIsMenuOpen] = useState(false);
-    const [data, setData] = useState({
+    const [data, setData] = useState<AppData>({
         hosts: [],
         tiktokAccounts: [],
         rekapLive: [],
@@ -57,6 +57,10 @@ export default function App() {
         setTimeout(() => {
             setNotification(prev => prev ? { ...prev, visible: false } : null);
         }, 3000);
+    };
+
+    const handleLogout = async () => {
+        await supabase.auth.signOut();
     };
 
     const fetchData = useCallback(async (currentSession: Session) => {
@@ -84,43 +88,64 @@ export default function App() {
         } catch (error) {
             console.error("Error fetching data:", error);
             setData(prev => ({ ...prev, loading: false }));
+            throw error;
         }
     }, []);
 
     useEffect(() => {
+        const body = document.body;
         if (theme === 'dark') {
             document.documentElement.classList.add('dark');
+            body.classList.remove('bg-stone-50', 'text-stone-800');
+            body.classList.add('bg-stone-900', 'text-stone-200');
         } else {
             document.documentElement.classList.remove('dark');
+            body.classList.remove('bg-stone-900', 'text-stone-200');
+            body.classList.add('bg-stone-50', 'text-stone-800');
         }
         localStorage.setItem('theme', theme);
     }, [theme]);
 
     useEffect(() => {
-        supabase.auth.getSession().then(({ data: { session } }) => {
-            setSession(session);
+        const handleSession = async (session: Session | null) => {
             if (session) {
-                fetchData(session);
+                const userRole = session.user.user_metadata?.role;
+                const hostId = session.user.user_metadata?.host_id;
+
+                if (userRole === 'host' && hostId) {
+                    const { data: hostData, error } = await supabase
+                        .from('hosts')
+                        .select('status')
+                        .eq('id', hostId)
+                        .single();
+
+                    if (error || !hostData || hostData.status === 'Tidak Aktif') {
+                        showNotification('Akun Anda telah dinonaktifkan oleh admin.', true);
+                        handleLogout();
+                        setData(prev => ({ ...prev, loading: false }));
+                        return;
+                    }
+                }
+                
+                setSession(session);
+                await fetchData(session);
+
             } else {
-                setData(prev => ({ ...prev, loading: false }));
+                setSession(null);
+                setData(prev => ({ ...prev, loading: false, users: [] }));
             }
+        };
+
+        supabase.auth.getSession().then(({ data: { session } }) => {
+            handleSession(session);
         });
 
         const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-            setSession(session);
-            if (session) {
-                fetchData(session);
-            } else {
-                setData(prev => ({ ...prev, loading: false, users: [] }));
-            }
+            handleSession(session);
         });
 
         return () => subscription.unsubscribe();
     }, [fetchData]);
-
-    const handleLogout = async () => {
-        await supabase.auth.signOut();
-    };
 
     const value: AppContextType = {
         session, data, setData, fetchData: () => session && fetchData(session), page, setPage, theme, setTheme, isMenuOpen, setIsMenuOpen, handleLogout, showNotification
@@ -152,6 +177,4 @@ function Notification({ notification }: { notification: { message: string; isErr
             {notification.message}
         </div>
     );
-
 }
-
