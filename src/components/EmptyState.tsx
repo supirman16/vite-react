@@ -1,8 +1,8 @@
-import React from 'react';
+import { ElementType } from 'react';
 import { FileText, Plus } from 'lucide-react';
 
 interface EmptyStateProps {
-    icon?: React.ElementType;
+    icon?: ElementType;
     title: string;
     message: string;
     actionText?: string;
