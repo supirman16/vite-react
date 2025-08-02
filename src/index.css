@@ -17,3 +17,12 @@
     @apply bg-gradient-to-r from-purple-600 to-blue-500 bg-clip-text text-transparent;
   }
 }
+
+@layer components {
+  .live-badge {
+    @apply relative inline-flex rounded-full h-3 w-3 bg-red-500;
+  }
+  .live-badge-ping {
+    @apply absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75 animate-ping;
+  }
+}
