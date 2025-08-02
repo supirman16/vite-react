@@ -126,8 +126,8 @@ function UsersTable({ onEdit, onDelete, searchQuery }: { onEdit: (user: any) => 
         );
 
         return [...filtered].sort((a, b) => {
-            const valA = a.email; // Sorting by email
-            const valB = b.email;
+            const valA = a[sortKey];
+            const valB = b[sortKey];
             if (valA < valB) return sortDirection === 'asc' ? -1 : 1;
             if (valA > valB) return sortDirection === 'asc' ? 1 : -1;
             return 0;
@@ -162,7 +162,7 @@ function UsersTable({ onEdit, onDelete, searchQuery }: { onEdit: (user: any) => 
                             { label: 'Ubah', icon: Edit, onClick: () => onEdit(user), className: 'text-purple-600 dark:text-purple-400' },
                         ];
 
-                        if (session!.user.id !== user.id) {
+                        if (session?.user?.id !== user.id) { // <-- Diperbaiki
                             actions.push({ label: 'Hapus', icon: Trash2, onClick: () => onDelete(user), className: 'text-red-600 dark:text-red-400' });
                         }
 
