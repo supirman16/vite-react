@@ -52,7 +52,7 @@ export default function RekapPage() {
                             {years.map(y => <option key={y} value={y}>{y}</option>)}
                         </select>
                     </div>
-                    <button onClick={handleAdd} className="unity-gradient-bg text-white font-semibold px-4 py-2.5 rounded-lg shadow-sm hover:opacity-90 flex items-center">
+                    <button onClick={handleAdd} className="unity-gradient-bg font-semibold px-4 py-2.5 rounded-lg shadow-sm hover:opacity-90 flex items-center">
                         <Plus className="h-5 w-5 mr-2" />
                         Tambah Rekap
                     </button>
@@ -313,27 +313,52 @@ function RekapModal({ isOpen, onClose, rekap }: { isOpen: boolean, onClose: () =
         }
     };
 
+    const commonInputClasses = "bg-stone-50 border border-stone-300 text-stone-900 text-sm rounded-lg focus:ring-purple-500 focus:border-purple-500 block w-full p-2.5 dark:bg-stone-700 dark:border-stone-600 dark:placeholder-stone-400 dark:text-white";
+
     return (
         <Modal isOpen={isOpen} onClose={onClose} title={rekap ? 'Ubah Rekap Live' : 'Tambah Rekap Baru'}>
             <form onSubmit={handleSubmit} className="space-y-4">
-                <select id="host_id" value={formData.host_id} onChange={handleChange} disabled={!isSuperAdmin} required>
-                    <option value="">Pilih Host</option>
-                    {data.hosts.map(h => <option key={h.id} value={h.id}>{h.nama_host}</option>)}
-                </select>
-                <select id="tiktok_account_id" value={formData.tiktok_account_id} onChange={handleChange} required>
-                    <option value="">Pilih Akun TikTok</option>
-                    {data.tiktokAccounts.map(acc => <option key={acc.id} value={acc.id}>{acc.username}</option>)}
-                </select>
-                <input id="tanggal_live" type="date" value={formData.tanggal_live} onChange={handleChange} required />
-                <div className="grid grid-cols-2 gap-4">
-                    <input id="waktu_mulai" type="time" value={formData.waktu_mulai} onChange={handleChange} required />
-                    <input id="waktu_selesai" type="time" value={formData.waktu_selesai} onChange={handleChange} required />
+                <div>
+                    <label htmlFor="host_id" className="block mb-2 text-sm font-medium">Pilih Host</label>
+                    <select id="host_id" value={formData.host_id} onChange={handleChange} disabled={!isSuperAdmin} required className={commonInputClasses}>
+                        <option value="">Pilih Host</option>
+                        {data.hosts.map(h => <option key={h.id} value={h.id}>{h.nama_host}</option>)}
+                    </select>
                 </div>
-                <input id="pendapatan" type="number" value={formData.pendapatan} onChange={handleChange} placeholder="Pendapatan (Diamond)" required />
-                <textarea id="catatan" value={formData.catatan} onChange={handleChange} placeholder="Catatan..."></textarea>
+                <div>
+                    <label htmlFor="tiktok_account_id" className="block mb-2 text-sm font-medium">Akun TikTok</label>
+                    <select id="tiktok_account_id" value={formData.tiktok_account_id} onChange={handleChange} required className={commonInputClasses}>
+                        <option value="">Pilih Akun TikTok</option>
+                        {data.tiktokAccounts.map(acc => <option key={acc.id} value={acc.id}>{acc.username}</option>)}
+                    </select>
+                </div>
+                <div>
+                    <label htmlFor="tanggal_live" className="block mb-2 text-sm font-medium">Tanggal Live</label>
+                    <input id="tanggal_live" type="date" value={formData.tanggal_live} onChange={handleChange} required className={commonInputClasses} />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                    <div>
+                        <label htmlFor="waktu_mulai" className="block mb-2 text-sm font-medium">Waktu Mulai</label>
+                        <input id="waktu_mulai" type="time" value={formData.waktu_mulai} onChange={handleChange} required className={commonInputClasses} />
+                    </div>
+                    <div>
+                        <label htmlFor="waktu_selesai" className="block mb-2 text-sm font-medium">Waktu Selesai</label>
+                        <input id="waktu_selesai" type="time" value={formData.waktu_selesai} onChange={handleChange} required className={commonInputClasses} />
+                    </div>
+                </div>
+                <div>
+                    <label htmlFor="pendapatan" className="block mb-2 text-sm font-medium">Pendapatan (Diamond)</label>
+                    <input id="pendapatan" type="number" value={formData.pendapatan} onChange={handleChange} placeholder="Contoh: 5500" required className={commonInputClasses} />
+                </div>
+                <div>
+                    <label htmlFor="catatan" className="block mb-2 text-sm font-medium">Catatan</label>
+                    <textarea id="catatan" value={formData.catatan} onChange={handleChange} placeholder="Topik live, kendala, dll..." rows={3} className={commonInputClasses}></textarea>
+                </div>
                 <div className="flex justify-end space-x-4 pt-4">
-                    <button type="button" onClick={onClose}>Batal</button>
-                    <button type="submit" disabled={loading}>{loading ? 'Menyimpan...' : 'Simpan'}</button>
+                    <button type="button" onClick={onClose} className="px-5 py-2.5 text-sm font-medium text-stone-700 bg-stone-100 rounded-lg hover:bg-stone-200 dark:bg-stone-700 dark:text-stone-300 dark:hover:bg-stone-600">Batal</button>
+                    <button type="submit" disabled={loading} className="unity-gradient-bg font-semibold px-5 py-2.5 rounded-lg shadow-sm hover:opacity-90 flex items-center justify-center disabled:opacity-75">
+                        {loading ? 'Menyimpan...' : 'Simpan'}
+                    </button>
                 </div>
             </form>
         </Modal>
