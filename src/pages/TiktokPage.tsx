@@ -1,10 +1,11 @@
-import { useContext, useState, useMemo } from 'react';
+import { useContext, useState } from 'react';
 import { AppContext, AppContextType, supabase } from '../App';
-import { Plus, Edit, Trash2 } from 'lucide-react';
+import { Plus, Edit, Trash2, ArrowUpDown } from 'lucide-react';
 import Modal from '../components/Modal';
 
 // Komponen ini adalah halaman Manajemen Akun TikTok untuk superadmin.
 export default function TiktokPage() {
+    const { setData, showNotification } = useContext(AppContext) as AppContextType;
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isConfirmOpen, setIsConfirmOpen] = useState(false);
     const [selectedAccount, setSelectedAccount] = useState<any | null>(null);
@@ -31,14 +32,12 @@ export default function TiktokPage() {
             const { error } = await supabase.from('tiktok_accounts').delete().eq('id', accountToDelete.id);
             if (error) throw error;
             
-            const { setData, showNotification } = useContext(AppContext) as AppContextType;
             setData(prev => ({
                 ...prev,
                 tiktokAccounts: prev.tiktokAccounts.filter(acc => acc.id !== accountToDelete.id)
             }));
             showNotification('Akun TikTok berhasil dihapus.');
         } catch (error: any) {
-            const { showNotification } = useContext(AppContext) as AppContextType;
             showNotification(`Gagal menghapus: ${error.message}`, true);
         } finally {
             setIsConfirmOpen(false);
