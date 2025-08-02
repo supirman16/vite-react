@@ -136,7 +136,10 @@ function DocumentSection({ hostId }: { hostId: number }) {
         if (!file || !hostId) return;
         
         setLoading(true);
-        const filePath = `${hostId}/${selectedCategory}_pending_${file.name}`;
+        // Ganti spasi dengan garis bawah untuk nama file yang aman
+        const sanitizedFileName = file.name.replace(/\s+/g, '_');
+        const filePath = `${hostId}/${selectedCategory}_pending_${sanitizedFileName}`;
+        
         try {
             const { error } = await supabase.storage
                 .from('host-document')
@@ -209,7 +212,7 @@ function DocumentSection({ hostId }: { hostId: number }) {
             <div className="mt-8 bg-white dark:bg-stone-800 p-6 rounded-xl shadow-sm border border-stone-100 dark:border-stone-700 max-w-lg">
                 <h3 className="text-lg font-medium text-stone-900 dark:text-stone-200">Manajemen Dokumen</h3>
                 <div className="mt-4 space-y-2">
-                    {documents.length > 0 ? documents.map(doc => {
+                    {documents.map(doc => {
                         const { name, category, status } = parseFileName(doc.name);
                         return (
                             <div key={doc.id} className="flex justify-between items-center bg-stone-100 dark:bg-stone-700 p-2 rounded-md">
@@ -230,7 +233,7 @@ function DocumentSection({ hostId }: { hostId: number }) {
                                 </div>
                             </div>
                         )
-                    }) : <p className="text-sm text-stone-500">Belum ada dokumen.</p>}
+                    })}
                 </div>
                 <div className="mt-4">
                     <label htmlFor="host-document-file" className="block mb-2 text-sm font-medium">Unggah Dokumen Baru</label>
