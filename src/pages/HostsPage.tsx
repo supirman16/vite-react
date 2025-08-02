@@ -1,10 +1,11 @@
-import { useContext, useState, useMemo } from 'react';
+import { useContext, useState, useEffect, useMemo } from 'react';
 import { AppContext, AppContextType, supabase } from '../App';
-import { Plus, Edit, Trash2 } from 'lucide-react';
+import { Plus, Edit, Trash2, ArrowUpDown } from 'lucide-react';
 import Modal from '../components/Modal';
 
 // Komponen ini adalah halaman Manajemen Host untuk superadmin.
 export default function HostsPage() {
+    const { setData, showNotification } = useContext(AppContext) as AppContextType;
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isConfirmOpen, setIsConfirmOpen] = useState(false);
     const [selectedHost, setSelectedHost] = useState<any | null>(null);
@@ -23,6 +24,25 @@ export default function HostsPage() {
     const handleDelete = (host: any) => {
         setHostToDelete(host);
         setIsConfirmOpen(true);
+    };
+
+    const handleConfirmDelete = async () => {
+        if (!hostToDelete) return;
+        try {
+            const { error } = await supabase.from('hosts').delete().eq('id', hostToDelete.id);
+            if (error) throw error;
+            
+            setData(prev => ({
+                ...prev,
+                hosts: prev.hosts.filter(h => h.id !== hostToDelete.id)
+            }));
+            showNotification('Host berhasil dihapus.');
+        } catch (error: any) {
+            showNotification(`Gagal menghapus: ${error.message}`, true);
+        } finally {
+            setIsConfirmOpen(false);
+            setHostToDelete(null);
+        }
     };
 
     return (
@@ -54,10 +74,7 @@ export default function HostsPage() {
                 <ConfirmationModal
                     isOpen={isConfirmOpen}
                     onClose={() => setIsConfirmOpen(false)}
-                    onConfirm={() => {
-                        // Logika hapus akan ditambahkan di sini
-                        setIsConfirmOpen(false);
-                    }}
+                    onConfirm={handleConfirmDelete}
                     title="Konfirmasi Hapus"
                     message={`Apakah Anda yakin ingin menghapus host "${hostToDelete?.nama_host}"?`}
                 />
@@ -69,23 +86,53 @@ export default function HostsPage() {
 // Komponen Tabel Host
 function HostsTable({ onEdit, onDelete }: { onEdit: (host: any) => void, onDelete: (host: any) => void }) {
     const { data } = useContext(AppContext) as AppContextType;
+    const [sortKey, setSortKey] = useState('nama_host');
+    const [sortDirection, setSortDirection] = useState('asc');
+
+    const handleSort = (key: string) => {
+        if (sortKey === key) {
+            setSortDirection(prev => prev === 'asc' ? 'desc' : 'asc');
+        } else {
+            setSortKey(key);
+            setSortDirection('asc');
+        }
+    };
     
+    const sortedData = useMemo(() => {
+        return [...data.hosts].sort((a, b) => {
+            const valA = a[sortKey];
+            const valB = b[sortKey];
+            if (valA < valB) return sortDirection === 'asc' ? -1 : 1;
+            if (valA > valB) return sortDirection === 'asc' ? 1 : -1;
+            return 0;
+        });
+    }, [data.hosts, sortKey, sortDirection]);
+
     const formatDate = (dateString: string) => new Date(dateString).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
+
+    const SortableHeader = ({ tKey, tLabel }: { tKey: string, tLabel: string }) => (
+        <th scope="col" className="px-6 py-3 cursor-pointer hover:bg-stone-200 dark:hover:bg-stone-700" onClick={() => handleSort(tKey)}>
+            <div className="flex items-center">
+                {tLabel}
+                {sortKey === tKey && <ArrowUpDown className="ml-2 h-4 w-4" />}
+            </div>
+        </th>
+    );
 
     return (
         <div className="bg-white dark:bg-stone-800 rounded-xl shadow-sm border border-stone-100 dark:border-stone-700 overflow-x-auto">
             <table className="w-full text-sm text-left text-stone-600 dark:text-stone-300">
                 <thead className="hidden md:table-header-group text-xs text-stone-700 dark:text-stone-400 uppercase bg-stone-100 dark:bg-stone-700">
                     <tr>
-                        <th scope="col" className="px-6 py-3">Nama Host</th>
-                        <th scope="col" className="px-6 py-3">Platform</th>
-                        <th scope="col" className="px-6 py-3">Tgl Bergabung</th>
-                        <th scope="col" className="px-6 py-3">Status</th>
+                        <SortableHeader tKey="nama_host" tLabel="Nama Host" />
+                        <SortableHeader tKey="platform" tLabel="Platform" />
+                        <SortableHeader tKey="tanggal_bergabung" tLabel="Tgl Bergabung" />
+                        <SortableHeader tKey="status" tLabel="Status" />
                         <th scope="col" className="px-6 py-3 text-center">Aksi</th>
                     </tr>
                 </thead>
                 <tbody className="block md:table-row-group">
-                    {data.hosts.map(host => (
+                    {sortedData.map(host => (
                         <tr key={host.id} className="block md:table-row bg-white dark:bg-stone-800 border-b dark:border-stone-700 mb-4 md:mb-0">
                             <td data-label="Nama Host:" className="mobile-label px-6 py-4 block md:table-cell font-medium text-stone-900 dark:text-white">{host.nama_host}</td>
                             <td data-label="Platform:" className="mobile-label px-6 py-4 block md:table-cell">{host.platform}</td>
@@ -149,7 +196,25 @@ function HostModal({ isOpen, onClose, host }: { isOpen: boolean, onClose: () => 
     return (
         <Modal isOpen={isOpen} onClose={onClose} title={host ? 'Ubah Data Host' : 'Tambah Host Baru'}>
             <form onSubmit={handleSubmit} className="space-y-4">
-                {/* ... (Isi formulir seperti di bawah) ... */}
+                <div>
+                    <label htmlFor="nama_host" className="block mb-2 text-sm font-medium">Nama Host</label>
+                    <input id="nama_host" type="text" value={formData.nama_host} onChange={handleChange} className="bg-stone-50 border border-stone-300 text-stone-900 text-sm rounded-lg block w-full p-2.5 dark:bg-stone-700 dark:border-stone-600" required />
+                </div>
+                <div>
+                    <label htmlFor="platform" className="block mb-2 text-sm font-medium">Platform</label>
+                    <input id="platform" type="text" value={formData.platform} onChange={handleChange} className="bg-stone-50 border border-stone-300 text-stone-900 text-sm rounded-lg block w-full p-2.5 dark:bg-stone-700 dark:border-stone-600" required />
+                </div>
+                <div>
+                    <label htmlFor="tanggal_bergabung" className="block mb-2 text-sm font-medium">Tanggal Bergabung</label>
+                    <input id="tanggal_bergabung" type="date" value={formData.tanggal_bergabung} onChange={handleChange} className="bg-stone-50 border border-stone-300 text-stone-900 text-sm rounded-lg block w-full p-2.5 dark:bg-stone-700 dark:border-stone-600" required />
+                </div>
+                <div>
+                    <label htmlFor="status" className="block mb-2 text-sm font-medium">Status</label>
+                    <select id="status" value={formData.status} onChange={handleChange} className="bg-stone-50 border border-stone-300 text-stone-900 text-sm rounded-lg block w-full p-2.5 dark:bg-stone-700 dark:border-stone-600">
+                        <option value="Aktif">Aktif</option>
+                        <option value="Tidak Aktif">Tidak Aktif</option>
+                    </select>
+                </div>
                 <div className="flex justify-end space-x-4 pt-4">
                     <button type="button" onClick={onClose} className="px-5 py-2.5 text-sm font-medium text-stone-700 bg-stone-100 rounded-lg hover:bg-stone-200 dark:bg-stone-700 dark:text-stone-300 dark:hover:bg-stone-600">Batal</button>
                     <button type="submit" disabled={loading} className="unity-gradient-bg text-white font-semibold px-5 py-2.5 rounded-lg shadow-sm hover:opacity-90 flex items-center justify-center disabled:opacity-75">
@@ -164,20 +229,11 @@ function HostModal({ isOpen, onClose, host }: { isOpen: boolean, onClose: () => 
 // Komponen Modal Konfirmasi
 function ConfirmationModal({ isOpen, onClose, onConfirm, title, message }: { isOpen: boolean, onClose: () => void, onConfirm: () => void, title: string, message: string }) {
     const [loading, setLoading] = useState(false);
-    const { setData, showNotification } = useContext(AppContext) as AppContextType;
 
     const handleConfirm = async () => {
         setLoading(true);
-        try {
-            // Logika hapus akan ditambahkan di sini
-            showNotification('Host berhasil dihapus.');
-            onConfirm(); // Ini akan memanggil fungsi yang memperbarui state di komponen induk
-        } catch (error: any) {
-            showNotification(`Gagal menghapus: ${error.message}`, true);
-        } finally {
-            setLoading(false);
-            onClose();
-        }
+        await onConfirm();
+        setLoading(false);
     };
     
     return (

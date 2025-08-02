@@ -1,11 +1,11 @@
-import React, { useContext, useState, useMemo, useEffect } from 'react';
+import { useContext, useState, useMemo } from 'react';
 import { AppContext, AppContextType, supabase } from '../App';
-import { Plus, Edit, Trash2 } from 'lucide-react';
+import { Plus, Edit, Trash2, ArrowUpDown } from 'lucide-react';
 import Modal from '../components/Modal';
 
 // Komponen ini adalah halaman Manajemen Pengguna untuk superadmin.
 export default function UsersPage() {
-    const { showNotification, setData } = useContext(AppContext) as AppContextType;
+    const { setData, showNotification } = useContext(AppContext) as AppContextType;
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isConfirmOpen, setIsConfirmOpen] = useState(false);
     const [selectedUser, setSelectedUser] = useState<any | null>(null);
@@ -88,20 +88,50 @@ export default function UsersPage() {
 // Komponen Tabel Pengguna
 function UsersTable({ onEdit, onDelete }: { onEdit: (user: any) => void, onDelete: (user: any) => void }) {
     const { data, session } = useContext(AppContext) as AppContextType;
+    const [sortKey, setSortKey] = useState('email');
+    const [sortDirection, setSortDirection] = useState('asc');
+
+    const handleSort = (key: string) => {
+        if (sortKey === key) {
+            setSortDirection(prev => prev === 'asc' ? 'desc' : 'asc');
+        } else {
+            setSortKey(key);
+            setSortDirection('asc');
+        }
+    };
+
+    const sortedData = useMemo(() => {
+        return [...data.users].sort((a, b) => {
+            const valA = a.email; // Sorting by email
+            const valB = b.email;
+            if (valA < valB) return sortDirection === 'asc' ? -1 : 1;
+            if (valA > valB) return sortDirection === 'asc' ? 1 : -1;
+            return 0;
+        });
+    }, [data.users, sortKey, sortDirection]);
+
+    const SortableHeader = ({ tKey, tLabel }: { tKey: string, tLabel: string }) => (
+        <th scope="col" className="px-6 py-3 cursor-pointer hover:bg-stone-200 dark:hover:bg-stone-700" onClick={() => handleSort(tKey)}>
+            <div className="flex items-center">
+                {tLabel}
+                {sortKey === tKey && <ArrowUpDown className="ml-2 h-4 w-4" />}
+            </div>
+        </th>
+    );
 
     return (
         <div className="bg-white dark:bg-stone-800 rounded-xl shadow-sm border border-stone-100 dark:border-stone-700 overflow-x-auto">
             <table className="w-full text-sm text-left text-stone-600 dark:text-stone-300">
                 <thead className="hidden md:table-header-group text-xs text-stone-700 dark:text-stone-400 uppercase bg-stone-100 dark:bg-stone-700">
                     <tr>
-                        <th scope="col" className="px-6 py-3">Email</th>
+                        <SortableHeader tKey="email" tLabel="Email" />
                         <th scope="col" className="px-6 py-3">Peran</th>
                         <th scope="col" className="px-6 py-3">Terhubung ke Host</th>
                         <th scope="col" className="px-6 py-3 text-center">Aksi</th>
                     </tr>
                 </thead>
                 <tbody className="block md:table-row-group">
-                    {data.users.map(user => {
+                    {sortedData.map(user => {
                         const host = data.hosts.find(h => h.id === user.user_metadata.host_id);
                         return (
                             <tr key={user.id} className="block md:table-row bg-white dark:bg-stone-800 border-b dark:border-stone-700 mb-4 md:mb-0">
@@ -187,7 +217,7 @@ function UserModal({ isOpen, onClose, user }: { isOpen: boolean, onClose: () => 
                     <input id="email" type="email" value={formData.email} onChange={handleChange} disabled={!!user} className="bg-stone-50 border border-stone-300 text-stone-900 text-sm rounded-lg block w-full p-2.5 dark:bg-stone-700 dark:border-stone-600 disabled:opacity-50" required />
                 </div>
                 <div>
-                    <label htmlFor="password">Password</label>
+                    <label htmlFor="password" className="block mb-2 text-sm font-medium">Password</label>
                     <input id="password" type="password" value={formData.password} onChange={handleChange} className="bg-stone-50 border border-stone-300 text-stone-900 text-sm rounded-lg block w-full p-2.5 dark:bg-stone-700 dark:border-stone-600" placeholder={user ? "Kosongkan jika tidak ingin diubah" : ""} />
                 </div>
                 <div>
