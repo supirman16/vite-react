@@ -5,7 +5,7 @@ import { X } from 'lucide-react';
 // Komponen ini bertanggung jawab untuk menampilkan menu navigasi geser di perangkat mobile.
 export default function MobileMenu() {
     const { isMenuOpen, setIsMenuOpen, page, setPage, session } = useContext(AppContext) as AppContextType;
-    const isSuperAdmin = session!.user.user_metadata?.role === 'superadmin';
+    const isSuperAdmin = session?.user?.user_metadata?.role === 'superadmin';
 
     const navItems = [
         { id: 'dashboard', label: 'Dashboard', roles: ['superadmin', 'host'] },
