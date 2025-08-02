@@ -2,7 +2,7 @@ import { useContext, useState, useMemo } from 'react';
 import { AppContext, AppContextType, supabase } from '../App';
 import { Plus, Check, XCircle, Edit, Trash2 } from 'lucide-react';
 import Modal from '../components/Modal';
-import EmptyState from '../components/EmptyState'; // <-- Impor baru
+import EmptyState from '../components/EmptyState';
 
 // Komponen ini adalah halaman Manajemen Rekap Live.
 export default function RekapPage() {
@@ -82,6 +82,19 @@ function RekapTable({ month, year, onViewDetail, onAdd }: { month: number, year:
     const formatDuration = (minutes: number) => `${Math.floor(minutes / 60)}j ${minutes % 60}m`;
     const formatDate = (dateString: string) => new Date(dateString).toLocaleDateString('id-ID', { day: 'numeric', month: 'long' });
 
+    if (filteredData.length === 0) {
+        return (
+            <div className="bg-white dark:bg-stone-800 rounded-xl shadow-sm border border-stone-100 dark:border-stone-700">
+                <EmptyState 
+                    title="Belum Ada Rekap"
+                    message="Tidak ada data rekap live untuk ditampilkan pada periode ini. Coba buat yang baru."
+                    actionText="Tambah Rekap Baru"
+                    onActionClick={onAdd}
+                />
+            </div>
+        );
+    }
+
     return (
         <div className="bg-white dark:bg-stone-800 rounded-xl shadow-sm border border-stone-100 dark:border-stone-700 overflow-x-auto">
             <table className="w-full text-sm text-left text-stone-600 dark:text-stone-300">
@@ -97,7 +110,7 @@ function RekapTable({ month, year, onViewDetail, onAdd }: { month: number, year:
                     </tr>
                 </thead>
                 <tbody className="block md:table-row-group">
-                    {filteredData.length > 0 ? filteredData.map(rekap => {
+                    {filteredData.map(rekap => {
                         const host = data.hosts.find(h => h.id === rekap.host_id);
                         const tiktokAccount = data.tiktokAccounts.find(t => t.id === rekap.tiktok_account_id);
                         return (
@@ -119,18 +132,7 @@ function RekapTable({ month, year, onViewDetail, onAdd }: { month: number, year:
                                 </td>
                             </tr>
                         );
-                    }) : (
-                        <tr>
-                            <td colSpan={isSuperAdmin ? 7 : 6}>
-                                <EmptyState 
-                                    title="Belum Ada Rekap"
-                                    message="Tidak ada data rekap live untuk ditampilkan pada periode ini. Coba buat yang baru."
-                                    actionText="Tambah Rekap Baru"
-                                    onActionClick={onAdd}
-                                />
-                            </td>
-                        </tr>
-                    )}
+                    })}
                 </tbody>
             </table>
         </div>
