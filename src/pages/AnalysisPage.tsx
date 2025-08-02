@@ -45,11 +45,132 @@ interface DailyData {
     [key: string]: DailySummary;
 }
 
-// ... (Fungsi calculateMonthlyPerformance dan calculatePayroll tetap sama) ...
+// Fungsi kalkulasi, sekarang berada di dalam file AnalysisPage
+function calculateMonthlyPerformance(hostId: number, year: number, month: number, rekapLive: any[]): PerformanceData {
+    const targetWorkDays = 26;
+    const dailyTargetHours = 6;
+    const minWorkMinutes = 120;
+
+    const hostRekaps = rekapLive.filter(r => {
+        const [recYear, recMonth] = r.tanggal_live.split('-').map(Number);
+        return r.host_id === hostId && recYear === year && (recMonth - 1) === month && r.status === 'approved';
+    });
+
+    const dailyData = hostRekaps.reduce((acc, r) => {
+        const dateKey = r.tanggal_live;
+        if (!acc[dateKey]) {
+            acc[dateKey] = { minutes: 0, revenue: 0 };
+        }
+        acc[dateKey].minutes += r.durasi_menit;
+        acc[dateKey].revenue += r.pendapatan;
+        return acc;
+    }, {} as DailyData);
+
+    let achievedWorkDays = 0;
+    (Object.values(dailyData) as DailySummary[]).forEach((daySummary) => {
+        if (daySummary.minutes >= minWorkMinutes) {
+            achievedWorkDays++;
+        }
+    });
+    
+    let totalLiveMinutes = hostRekaps.reduce((sum, r) => sum + r.durasi_menit, 0);
+    let absentDays = 0;
+
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    const offDayEntitlement = daysInMonth - targetWorkDays;
+    
+    const today = new Date();
+    const lastDayToCheck = (year === today.getFullYear() && month === today.getMonth()) ? today.getDate() : daysInMonth;
+    
+    const presentDays = new Set(Object.keys(dailyData));
+    for (let day = 1; day <= lastDayToCheck; day++) {
+        const dateString = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+        if (!presentDays.has(dateString)) {
+            absentDays++;
+        }
+    }
+
+    const remainingOffDays = offDayEntitlement - absentDays;
+    const totalLiveHours = totalLiveMinutes / 60;
+    const targetLiveHours = achievedWorkDays * dailyTargetHours;
+    const hourBalance = totalLiveHours - targetLiveHours;
+    const totalDiamonds = hostRekaps.reduce((sum, r) => sum + r.pendapatan, 0);
+    const revenuePerDay = achievedWorkDays > 0 ? Math.round(totalDiamonds / achievedWorkDays) : 0;
+
+    return {
+        workDays: achievedWorkDays,
+        totalHours: totalLiveHours,
+        hourBalance: hourBalance,
+        offDayEntitlement: offDayEntitlement,
+        remainingOffDays: remainingOffDays,
+        totalDiamonds: totalDiamonds,
+        revenuePerDay: revenuePerDay
+    };
+}
+
+// Fungsi ini diekspor agar bisa digunakan oleh halaman Gaji
+export function calculatePayroll(hostId: number, year: number, month: number, hosts: any[], rekapLive: any[]) {
+    const host = hosts.find(h => h.id === hostId);
+    if (!host) {
+        return null;
+    }
+
+    const hostRekaps = rekapLive.filter(r => {
+        const recDate = new Date(r.tanggal_live);
+        return r.host_id === hostId && recDate.getFullYear() === year && recDate.getMonth() === month && r.status === 'approved';
+    });
+
+    const totalDiamonds = hostRekaps.reduce((sum, r) => sum + r.pendapatan, 0);
+    const totalMinutes = hostRekaps.reduce((sum, r) => sum + r.durasi_menit, 0);
+    const totalHours = totalMinutes / 60;
+    
+    const workDays = new Set(hostRekaps.map(r => r.tanggal_live)).size;
+
+    // Hitung Bonus berdasarkan target diamond
+    let bonus = 0;
+    if (totalDiamonds >= 300000) bonus = 5000000;
+    else if (totalDiamonds >= 250000) bonus = 4000000;
+    else if (totalDiamonds >= 200000) bonus = 3000000;
+    else if (totalDiamonds >= 150000) bonus = 2000000;
+    else if (totalDiamonds >= 100000) bonus = 1000000;
+    else if (totalDiamonds >= 90000) bonus = 900000;
+    else if (totalDiamonds >= 80000) bonus = 800000;
+    else if (totalDiamonds >= 70000) bonus = 700000;
+    else if (totalDiamonds >= 60000) bonus = 600000;
+    else if (totalDiamonds >= 50000) bonus = 500000;
+
+    // Hitung Potongan Gaji Pokok
+    const targetDays = 26;
+    const targetHours = 156;
+    const baseSalary = host.gaji_pokok || 0;
+    
+    const daysPercentage = Math.min(1, workDays / targetDays);
+    const hoursPercentage = totalHours > 0 ? Math.min(1, totalHours / targetHours) : 0;
+    
+    const achievementPercentage = Math.min(daysPercentage, hoursPercentage);
+    const adjustedBaseSalary = baseSalary * achievementPercentage;
+    const deduction = baseSalary - adjustedBaseSalary;
+
+    const finalSalary = adjustedBaseSalary + bonus;
+
+    return {
+        hostName: host.nama_host,
+        totalHours,
+        totalDiamonds,
+        baseSalary,
+        bonus,
+        deduction,
+        adjustedBaseSalary,
+        finalSalary,
+        workDays,
+        targetDays,
+        targetHours,
+    };
+}
+
 
 // Komponen ini adalah halaman Analisis Kinerja.
 export default function AnalysisPage() {
-    // ... (State dan logika KPI tetap sama) ...
     const { data, session } = useContext(AppContext) as AppContextType;
     const [currentDate, setCurrentDate] = useState(new Date());
     
