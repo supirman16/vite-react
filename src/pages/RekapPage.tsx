@@ -64,16 +64,16 @@ export default function RekapPage() {
 }
 
 // Komponen Tabel Rekap
-function RekapTable({ month, year, onViewDetail, onAdd }: { month: number, year: number, onViewDetail: (rekap: any) => void, onAdd: () => void }) {
+function RekapTable({ month, year, onViewDetail }: { month: number, year: number, onViewDetail: (rekap: any) => void }) {
     const { data, session } = useContext(AppContext) as AppContextType;
-    const isSuperAdmin = session!.user.user_metadata?.role === 'superadmin';
+    const isSuperAdmin = session?.user?.user_metadata?.role === 'superadmin'; // <-- Diperbaiki
 
     const filteredData = useMemo(() => {
         return data.rekapLive.filter(r => {
             const recDate = new Date(r.tanggal_live);
             let match = recDate.getFullYear() === year && recDate.getMonth() === month;
             if (!isSuperAdmin) {
-                match = match && r.host_id === session!.user.user_metadata.host_id;
+                match = match && r.host_id === session?.user?.user_metadata.host_id; // <-- Diperbaiki
             }
             return match;
         }).sort((a, b) => new Date(b.tanggal_live).getTime() - new Date(a.tanggal_live).getTime());
@@ -140,9 +140,9 @@ function RekapTable({ month, year, onViewDetail, onAdd }: { month: number, year:
 }
 
 // Komponen Modal Detail Rekap
-function RekapDetailModal({ isOpen, onClose, rekap }: { isOpen: boolean, onClose: () => void, rekap: any }) {
+unction RekapDetailModal({ isOpen, onClose, rekap }: { isOpen: boolean, onClose: () => void, rekap: any }) {
     const { data, session, setData, showNotification } = useContext(AppContext) as AppContextType;
-    const isSuperAdmin = session!.user.user_metadata?.role === 'superadmin';
+    const isSuperAdmin = session?.user?.user_metadata?.role === 'superadmin'; // <-- Diperbaiki
     
     const host = data.hosts.find(h => h.id === rekap.host_id);
     const tiktokAccount = data.tiktokAccounts.find(t => t.id === rekap.tiktok_account_id);

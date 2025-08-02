@@ -152,8 +152,8 @@ export default function AnalysisPage() {
     const { data, session } = useContext(AppContext) as AppContextType;
     const [currentDate, setCurrentDate] = useState(new Date());
     
-    const isSuperAdmin = session!.user.user_metadata?.role === 'superadmin';
-    const initialHostId = isSuperAdmin ? (data.hosts[0]?.id.toString() || '') : session!.user.user_metadata.host_id.toString();
+    const isSuperAdmin = session?.user?.user_metadata?.role === 'superadmin'; // <-- Diperbaiki
+    const initialHostId = isSuperAdmin ? (data.hosts[0]?.id.toString() || '') : session?.user?.user_metadata.host_id.toString(); // <-- Diperbaiki
     const [selectedHostId, setSelectedHostId] = useState(initialHostId);
     
     const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
