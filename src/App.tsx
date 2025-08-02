@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, createContext } from 'react';
 import { createClient, Session } from '@supabase/supabase-js';
 import LoginPage from './components/LoginPage';
 import DashboardLayout from './components/DashboardLayout';
+import MobileMenu from './components/MobileMenu'; // <-- Impor baru
 
 // -- 1. KONFIGURASI & KLIEN SUPABASE --
 const supabaseUrl = 'https://bvlzzhbvnhzvaojuqoqn.supabase.co'; 
@@ -21,7 +22,7 @@ interface AppData {
 export interface AppContextType {
     session: Session | null;
     data: AppData;
-    setData: React.Dispatch<React.SetStateAction<AppData>>; // <-- Ditambahkan
+    setData: React.Dispatch<React.SetStateAction<AppData>>;
     fetchData: () => void;
     page: string;
     setPage: React.Dispatch<React.SetStateAction<string>>;
@@ -138,6 +139,7 @@ export default function App() {
         <AppContext.Provider value={value}>
             {session ? <DashboardLayout /> : <LoginPage />}
             <Notification notification={notification} />
+            <MobileMenu /> {/* <-- Komponen baru ditambahkan di sini */}
         </AppContext.Provider>
     );
 }
