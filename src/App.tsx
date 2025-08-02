@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, createContext } from 'react';
 import { createClient, Session } from '@supabase/supabase-js';
 import LoginPage from './components/LoginPage';
 import DashboardLayout from './components/DashboardLayout';
-import MobileMenu from './components/MobileMenu'; // <-- Impor baru
+import MobileMenu from './components/MobileMenu';
 
 // -- 1. KONFIGURASI & KLIEN SUPABASE --
 const supabaseUrl = 'https://bvlzzhbvnhzvaojuqoqn.supabase.co'; 
@@ -21,8 +21,8 @@ interface AppData {
 }
 export interface AppContextType {
     session: Session | null;
-    data: AppData;
-    setData: React.Dispatch<React.SetStateAction<AppData>>;
+    data: any; // Sebaiknya diganti dengan tipe yang lebih spesifik
+    setData: React.Dispatch<React.SetStateAction<any>>;
     fetchData: () => void;
     page: string;
     setPage: React.Dispatch<React.SetStateAction<string>>;
@@ -43,7 +43,7 @@ export default function App() {
     const [page, setPage] = useState('dashboard');
     const [theme, setTheme] = useState(() => localStorage.getItem('theme') || 'light');
     const [isMenuOpen, setIsMenuOpen] = useState(false);
-    const [data, setData] = useState<AppData>({
+    const [data, setData] = useState({
         hosts: [],
         tiktokAccounts: [],
         rekapLive: [],
@@ -88,15 +88,10 @@ export default function App() {
     }, []);
 
     useEffect(() => {
-        const body = document.body;
         if (theme === 'dark') {
             document.documentElement.classList.add('dark');
-            body.classList.remove('bg-stone-50', 'text-stone-800');
-            body.classList.add('bg-stone-900', 'text-stone-200');
         } else {
             document.documentElement.classList.remove('dark');
-            body.classList.remove('bg-stone-900', 'text-stone-200');
-            body.classList.add('bg-stone-50', 'text-stone-800');
         }
         localStorage.setItem('theme', theme);
     }, [theme]);
@@ -139,7 +134,7 @@ export default function App() {
         <AppContext.Provider value={value}>
             {session ? <DashboardLayout /> : <LoginPage />}
             <Notification notification={notification} />
-            <MobileMenu /> {/* <-- Komponen baru ditambahkan di sini */}
+            <MobileMenu />
         </AppContext.Provider>
     );
 }
