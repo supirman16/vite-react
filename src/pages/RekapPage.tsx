@@ -1,4 +1,4 @@
-import { useContext, useState, useMemo } from 'react';
+import { useContext, useState, useMemo, useEffect } from 'react';
 import { AppContext, AppContextType, supabase } from '../App';
 import { Plus, Check, XCircle, Edit, Trash2 } from 'lucide-react';
 import Modal from '../components/Modal';
@@ -9,6 +9,7 @@ export default function RekapPage() {
     const [month, setMonth] = useState(new Date().getMonth());
     const [year, setYear] = useState(new Date().getFullYear());
     const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
+    const [isFormModalOpen, setIsFormModalOpen] = useState(false);
     const [selectedRekap, setSelectedRekap] = useState<any | null>(null);
 
     const years = Array.from({ length: 6 }, (_, i) => new Date().getFullYear() - i);
@@ -23,9 +24,16 @@ export default function RekapPage() {
         setIsDetailModalOpen(false);
         setSelectedRekap(null);
     };
-
-    const handleAddRekap = () => {
-        alert('Fungsi Tambah Rekap akan dibuat selanjutnya.');
+    
+    const handleAdd = () => {
+        setSelectedRekap(null);
+        setIsFormModalOpen(true);
+    };
+    
+    const handleEdit = (rekap: any) => {
+        setSelectedRekap(rekap);
+        setIsDetailModalOpen(false);
+        setIsFormModalOpen(true);
     };
 
     return (
@@ -44,18 +52,27 @@ export default function RekapPage() {
                             {years.map(y => <option key={y} value={y}>{y}</option>)}
                         </select>
                     </div>
-                    <button onClick={handleAddRekap} className="unity-gradient-bg text-white font-semibold px-4 py-2.5 rounded-lg shadow-sm hover:opacity-90 flex items-center">
+                    <button onClick={handleAdd} className="unity-gradient-bg text-white font-semibold px-4 py-2.5 rounded-lg shadow-sm hover:opacity-90 flex items-center">
                         <Plus className="h-5 w-5 mr-2" />
                         Tambah Rekap
                     </button>
                 </div>
             </div>
-            <RekapTable month={month} year={year} onViewDetail={handleViewDetail} onAdd={handleAddRekap} />
+            <RekapTable month={month} year={year} onViewDetail={handleViewDetail} onAdd={handleAdd} />
             
-            {selectedRekap && (
+            {isDetailModalOpen && selectedRekap && (
                 <RekapDetailModal 
                     isOpen={isDetailModalOpen}
                     onClose={handleCloseDetail}
+                    rekap={selectedRekap}
+                    onEdit={handleEdit}
+                />
+            )}
+
+            {isFormModalOpen && (
+                <RekapModal
+                    isOpen={isFormModalOpen}
+                    onClose={() => setIsFormModalOpen(false)}
                     rekap={selectedRekap}
                 />
             )}
@@ -140,7 +157,7 @@ function RekapTable({ month, year, onViewDetail, onAdd }: { month: number, year:
 }
 
 // Komponen Modal Detail Rekap
-function RekapDetailModal({ isOpen, onClose, rekap }: { isOpen: boolean, onClose: () => void, rekap: any }) {
+function RekapDetailModal({ isOpen, onClose, rekap, onEdit }: { isOpen: boolean, onClose: () => void, rekap: any, onEdit: (rekap: any) => void }) {
     const { data, session, setData, showNotification } = useContext(AppContext) as AppContextType;
     const isSuperAdmin = session?.user?.user_metadata?.role === 'superadmin';
     
@@ -231,13 +248,94 @@ function RekapDetailModal({ isOpen, onClose, rekap }: { isOpen: boolean, onClose
                 {isSuperAdmin && rekap.status === 'approved' && (
                     <button onClick={() => handleStatusChange('pending')} className="text-sm font-medium text-yellow-600 hover:underline">Rollback</button>
                 )}
-                {rekap.status === 'pending' && (
+                 {rekap.status === 'pending' && (
                     <>
-                        <button onClick={() => alert("Fungsi ubah akan dibuat")} className="text-sm font-medium text-purple-600 hover:underline flex items-center"><Edit className="h-4 w-4 mr-1"/>Ubah</button>
+                        <button onClick={() => onEdit(rekap)} className="text-sm font-medium text-purple-600 hover:underline flex items-center"><Edit className="h-4 w-4 mr-1"/>Ubah</button>
                         <button onClick={handleDelete} className="text-sm font-medium text-red-600 hover:underline flex items-center"><Trash2 className="h-4 w-4 mr-1"/>Hapus</button>
                     </>
                 )}
             </div>
+        </Modal>
+    );
+}
+
+// Komponen Modal Formulir untuk Tambah/Ubah Rekap
+function RekapModal({ isOpen, onClose, rekap }: { isOpen: boolean, onClose: () => void, rekap: any | null }) {
+    const { data, session, setData, showNotification } = useContext(AppContext) as AppContextType;
+    const isSuperAdmin = session!.user.user_metadata?.role === 'superadmin';
+    
+    const [formData, setFormData] = useState({
+        host_id: rekap?.host_id || (isSuperAdmin ? '' : session!.user.user_metadata.host_id),
+        tiktok_account_id: rekap?.tiktok_account_id || '',
+        tanggal_live: rekap?.tanggal_live || new Date().toISOString().split('T')[0],
+        waktu_mulai: rekap?.waktu_mulai || '13:00',
+        waktu_selesai: rekap?.waktu_selesai || '18:00',
+        pendapatan: rekap?.pendapatan || '',
+        catatan: rekap?.catatan || '',
+    });
+    const [loading, setLoading] = useState(false);
+
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
+        const { id, value } = e.target;
+        setFormData(prev => ({ ...prev, [id]: value }));
+    };
+
+    const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+        e.preventDefault();
+        setLoading(true);
+
+        const startDateTime = new Date(`${formData.tanggal_live}T${formData.waktu_mulai}`);
+        let endDateTime = new Date(`${formData.tanggal_live}T${formData.waktu_selesai}`);
+        if (endDateTime <= startDateTime) {
+            endDateTime.setDate(endDateTime.getDate() + 1);
+        }
+        const duration = Math.round((endDateTime.getTime() - startDateTime.getTime()) / (1000 * 60));
+
+        const rekapData = { ...formData, durasi_menit: duration };
+
+        try {
+            if (rekap) { // Update
+                const { data: updatedRekap, error } = await supabase.from('rekap_live').update(rekapData).eq('id', rekap.id).select().single();
+                if (error) throw error;
+                setData(prev => ({ ...prev, rekapLive: prev.rekapLive.map(r => r.id === rekap.id ? updatedRekap : r) }));
+                showNotification('Rekap berhasil diperbarui.');
+            } else { // Insert
+                const { data: newRekap, error } = await supabase.from('rekap_live').insert(rekapData).select().single();
+                if (error) throw error;
+                setData(prev => ({ ...prev, rekapLive: [...prev.rekapLive, newRekap] }));
+                showNotification('Rekap baru berhasil ditambahkan.');
+            }
+            onClose();
+        } catch (error: any) {
+            showNotification(`Gagal menyimpan: ${error.message}`, true);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    return (
+        <Modal isOpen={isOpen} onClose={onClose} title={rekap ? 'Ubah Rekap Live' : 'Tambah Rekap Baru'}>
+            <form onSubmit={handleSubmit} className="space-y-4">
+                <select id="host_id" value={formData.host_id} onChange={handleChange} disabled={!isSuperAdmin} required>
+                    <option value="">Pilih Host</option>
+                    {data.hosts.map(h => <option key={h.id} value={h.id}>{h.nama_host}</option>)}
+                </select>
+                <select id="tiktok_account_id" value={formData.tiktok_account_id} onChange={handleChange} required>
+                    <option value="">Pilih Akun TikTok</option>
+                    {data.tiktokAccounts.map(acc => <option key={acc.id} value={acc.id}>{acc.username}</option>)}
+                </select>
+                <input id="tanggal_live" type="date" value={formData.tanggal_live} onChange={handleChange} required />
+                <div className="grid grid-cols-2 gap-4">
+                    <input id="waktu_mulai" type="time" value={formData.waktu_mulai} onChange={handleChange} required />
+                    <input id="waktu_selesai" type="time" value={formData.waktu_selesai} onChange={handleChange} required />
+                </div>
+                <input id="pendapatan" type="number" value={formData.pendapatan} onChange={handleChange} placeholder="Pendapatan (Diamond)" required />
+                <textarea id="catatan" value={formData.catatan} onChange={handleChange} placeholder="Catatan..."></textarea>
+                <div className="flex justify-end space-x-4 pt-4">
+                    <button type="button" onClick={onClose}>Batal</button>
+                    <button type="submit" disabled={loading}>{loading ? 'Menyimpan...' : 'Simpan'}</button>
+                </div>
+            </form>
         </Modal>
     );
 }
