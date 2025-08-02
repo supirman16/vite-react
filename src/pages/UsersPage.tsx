@@ -3,6 +3,7 @@ import { AppContext, AppContextType, supabase } from '../App';
 import { Plus, Edit, Trash2, ArrowUpDown } from 'lucide-react';
 import Modal from '../components/Modal';
 import ConfirmationModal from '../components/ConfirmationModal';
+import DropdownMenu from '../components/DropdownMenu';
 
 // Komponen ini adalah halaman Manajemen Pengguna untuk superadmin.
 export default function UsersPage() {
@@ -134,16 +135,22 @@ function UsersTable({ onEdit, onDelete }: { onEdit: (user: any) => void, onDelet
                 <tbody className="block md:table-row-group">
                     {sortedData.map(user => {
                         const host = data.hosts.find(h => h.id === user.user_metadata.host_id);
+                        
+                        const actions = [
+                            { label: 'Ubah', icon: Edit, onClick: () => onEdit(user), className: 'text-purple-600 dark:text-purple-400' },
+                        ];
+
+                        if (session!.user.id !== user.id) {
+                            actions.push({ label: 'Hapus', icon: Trash2, onClick: () => onDelete(user), className: 'text-red-600 dark:text-red-400' });
+                        }
+
                         return (
                             <tr key={user.id} className="block md:table-row bg-white dark:bg-stone-800 border-b dark:border-stone-700 mb-4 md:mb-0">
                                 <td data-label="Email:" className="mobile-label px-6 py-4 block md:table-cell font-medium text-stone-900 dark:text-white">{user.email}</td>
                                 <td data-label="Peran:" className="mobile-label px-6 py-4 block md:table-cell">{user.user_metadata.role}</td>
                                 <td data-label="Host:" className="mobile-label px-6 py-4 block md:table-cell">{host ? host.nama_host : '-'}</td>
-                                <td data-label="Aksi:" className="mobile-label px-6 py-4 block md:table-cell text-right md:text-center space-x-2">
-                                    <button onClick={() => onEdit(user)} className="font-medium text-purple-600 hover:underline dark:text-purple-500 p-1"><Edit className="h-4 w-4 inline"/> Ubah</button>
-                                    {session!.user.id !== user.id && (
-                                        <button onClick={() => onDelete(user)} className="font-medium text-red-600 hover:underline dark:text-red-500 p-1"><Trash2 className="h-4 w-4 inline"/> Hapus</button>
-                                    )}
+                                <td data-label="Aksi:" className="mobile-label px-6 py-4 block md:table-cell text-right md:text-center">
+                                    <DropdownMenu actions={actions} />
                                 </td>
                             </tr>
                         );
