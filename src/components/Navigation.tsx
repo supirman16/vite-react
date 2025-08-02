@@ -2,15 +2,16 @@ import { useContext } from 'react';
 import { AppContext, AppContextType } from '../App';
 import { 
     LayoutDashboard, BarChart2, FileText, User, DollarSign, Settings, 
-    Users, Smartphone
+    Users, Smartphone, Trophy
 } from 'lucide-react';
 
 export default function Navigation() {
     const { page, setPage, session } = useContext(AppContext) as AppContextType;
-    const isSuperAdmin = session?.user?.user_metadata?.role === 'superadmin';
+    const isSuperAdmin = session!.user.user_metadata?.role === 'superadmin';
 
     const navItems = [
         { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, roles: ['superadmin', 'host'] },
+        { id: 'leaderboard', label: 'Papan Peringkat', icon: Trophy, roles: ['superadmin', 'host'] }, // <-- Ditambahkan
         { id: 'analysis', label: 'Analisis Kinerja', icon: BarChart2, roles: ['superadmin', 'host'] },
         { id: 'rekap', label: 'Rekap Live', icon: FileText, roles: ['superadmin', 'host'] },
         { id: 'profile', label: 'Profil Saya', icon: User, roles: ['host'] },
