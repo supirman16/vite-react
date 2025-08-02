@@ -2,6 +2,7 @@ import { useContext, useState, useMemo } from 'react';
 import { AppContext, AppContextType, supabase } from '../App';
 import { Plus, Edit, Trash2, ArrowUpDown } from 'lucide-react';
 import Modal from '../components/Modal';
+import ConfirmationModal from '../components/ConfirmationModal'; // <-- Impor baru
 
 // Komponen ini adalah halaman Manajemen Host untuk superadmin.
 export default function HostsPage() {
