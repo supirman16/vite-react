@@ -2,6 +2,7 @@ import { useContext, useState, useMemo } from 'react';
 import { AppContext, AppContextType, supabase } from '../App';
 import { Plus, Check, XCircle, Edit, Trash2 } from 'lucide-react';
 import Modal from '../components/Modal';
+import EmptyState from '../components/EmptyState'; // <-- Impor baru
 
 // Komponen ini adalah halaman Manajemen Rekap Live.
 export default function RekapPage() {
@@ -23,6 +24,10 @@ export default function RekapPage() {
         setSelectedRekap(null);
     };
 
+    const handleAddRekap = () => {
+        alert('Fungsi Tambah Rekap akan dibuat selanjutnya.');
+    };
+
     return (
         <section>
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6">
@@ -39,13 +44,13 @@ export default function RekapPage() {
                             {years.map(y => <option key={y} value={y}>{y}</option>)}
                         </select>
                     </div>
-                    <button onClick={() => alert('Fungsi Tambah Rekap akan dibuat selanjutnya.')} className="unity-gradient-bg text-white font-semibold px-4 py-2.5 rounded-lg shadow-sm hover:opacity-90 flex items-center">
+                    <button onClick={handleAddRekap} className="unity-gradient-bg text-white font-semibold px-4 py-2.5 rounded-lg shadow-sm hover:opacity-90 flex items-center">
                         <Plus className="h-5 w-5 mr-2" />
                         Tambah Rekap
                     </button>
                 </div>
             </div>
-            <RekapTable month={month} year={year} onViewDetail={handleViewDetail} />
+            <RekapTable month={month} year={year} onViewDetail={handleViewDetail} onAdd={handleAddRekap} />
             
             {selectedRekap && (
                 <RekapDetailModal 
@@ -59,7 +64,7 @@ export default function RekapPage() {
 }
 
 // Komponen Tabel Rekap
-function RekapTable({ month, year, onViewDetail }: { month: number, year: number, onViewDetail: (rekap: any) => void }) {
+function RekapTable({ month, year, onViewDetail, onAdd }: { month: number, year: number, onViewDetail: (rekap: any) => void, onAdd: () => void }) {
     const { data, session } = useContext(AppContext) as AppContextType;
     const isSuperAdmin = session!.user.user_metadata?.role === 'superadmin';
 
@@ -116,8 +121,13 @@ function RekapTable({ month, year, onViewDetail }: { month: number, year: number
                         );
                     }) : (
                         <tr>
-                            <td colSpan={isSuperAdmin ? 7 : 6} className="text-center py-8 text-stone-500 dark:text-stone-400">
-                                Tidak ada data rekap untuk ditampilkan pada periode ini.
+                            <td colSpan={isSuperAdmin ? 7 : 6}>
+                                <EmptyState 
+                                    title="Belum Ada Rekap"
+                                    message="Tidak ada data rekap live untuk ditampilkan pada periode ini. Coba buat yang baru."
+                                    actionText="Tambah Rekap Baru"
+                                    onActionClick={onAdd}
+                                />
                             </td>
                         </tr>
                     )}
