@@ -2,13 +2,18 @@ import { useContext, useState } from 'react';
 import { AppContext, AppContextType } from '../App';
 import { Bar } from 'react-chartjs-2';
 import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend } from 'chart.js';
+import Skeleton from '../components/Skeleton'; // <-- Impor baru
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
 
 // Komponen ini adalah halaman utama Dashboard.
-// Ia menampilkan KPI dan grafik performa.
 export default function DashboardPage() {
     const { data } = useContext(AppContext) as AppContextType;
+
+    // Tampilkan kerangka pemuatan jika data belum siap
+    if (data.loading) {
+        return <DashboardSkeleton />;
+    }
 
     const formatDiamond = (num: number) => new Intl.NumberFormat().format(num);
     const formatDuration = (minutes: number) => {
@@ -30,7 +35,7 @@ export default function DashboardPage() {
                     <div 
                         key={kpi.title} 
                         className="bg-white dark:bg-stone-800 p-6 rounded-xl shadow-sm border border-stone-100 dark:border-stone-700 animate-slide-up-fade"
-                        style={{ animationDelay: `${index * 100}ms`, opacity: 0 }} // Opacity 0 untuk awal animasi
+                        style={{ animationDelay: `${index * 100}ms`, opacity: 0 }}
                     >
                         <h3 className="text-sm font-medium text-stone-500 dark:text-stone-400">{kpi.title}</h3>
                         <p className="text-3xl font-bold mt-2 text-stone-900 dark:text-white">{kpi.value}</p>
@@ -38,6 +43,20 @@ export default function DashboardPage() {
                 ))}
             </div>
             <PerformanceChart />
+        </section>
+    );
+}
+
+// Komponen Kerangka Pemuatan untuk Dashboard
+function DashboardSkeleton() {
+    return (
+        <section>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                <Skeleton className="h-28" />
+                <Skeleton className="h-28" />
+                <Skeleton className="h-28" />
+            </div>
+            <Skeleton className="h-96" />
         </section>
     );
 }

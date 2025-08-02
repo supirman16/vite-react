@@ -1,8 +1,9 @@
-import { useContext, useState, useMemo, useEffect } from 'react';
+import { useContext, useState, useMemo } from 'react';
 import { AppContext, AppContextType, supabase } from '../App';
 import { Plus, Check, XCircle, Edit, Trash2 } from 'lucide-react';
 import Modal from '../components/Modal';
 import EmptyState from '../components/EmptyState';
+import Skeleton from '../components/Skeleton'; // <-- Impor baru
 
 // Komponen ini adalah halaman Manajemen Rekap Live.
 export default function RekapPage() {
@@ -83,14 +84,14 @@ export default function RekapPage() {
 // Komponen Tabel Rekap
 function RekapTable({ month, year, onViewDetail, onAdd }: { month: number, year: number, onViewDetail: (rekap: any) => void, onAdd: () => void }) {
     const { data, session } = useContext(AppContext) as AppContextType;
-    const isSuperAdmin = session?.user?.user_metadata?.role === 'superadmin';
+    const isSuperAdmin = session!.user.user_metadata?.role === 'superadmin';
 
     const filteredData = useMemo(() => {
         return data.rekapLive.filter(r => {
             const recDate = new Date(r.tanggal_live);
             let match = recDate.getFullYear() === year && recDate.getMonth() === month;
             if (!isSuperAdmin) {
-                match = match && r.host_id === session?.user?.user_metadata.host_id;
+                match = match && r.host_id === session!.user.user_metadata.host_id;
             }
             return match;
         }).sort((a, b) => new Date(b.tanggal_live).getTime() - new Date(a.tanggal_live).getTime());
@@ -98,6 +99,10 @@ function RekapTable({ month, year, onViewDetail, onAdd }: { month: number, year:
 
     const formatDuration = (minutes: number) => `${Math.floor(minutes / 60)}j ${minutes % 60}m`;
     const formatDate = (dateString: string) => new Date(dateString).toLocaleDateString('id-ID', { day: 'numeric', month: 'long' });
+
+    if (data.loading) {
+        return <RekapTableSkeleton isSuperAdmin={isSuperAdmin} />;
+    }
 
     if (filteredData.length === 0) {
         return (
@@ -156,10 +161,44 @@ function RekapTable({ month, year, onViewDetail, onAdd }: { month: number, year:
     );
 }
 
+// Komponen Kerangka Pemuatan untuk Tabel Rekap
+function RekapTableSkeleton({ isSuperAdmin }: { isSuperAdmin: boolean }) {
+    return (
+        <div className="bg-white dark:bg-stone-800 rounded-xl shadow-sm border border-stone-100 dark:border-stone-700 overflow-x-auto">
+            <table className="w-full text-sm text-left text-stone-600 dark:text-stone-300">
+                <thead className="hidden md:table-header-group text-xs text-stone-700 dark:text-stone-400 uppercase bg-stone-100 dark:bg-stone-700">
+                    <tr>
+                        <th scope="col" className="px-6 py-3">Tanggal</th>
+                        {isSuperAdmin && <th scope="col" className="px-6 py-3">Host</th>}
+                        <th scope="col" className="px-6 py-3">Akun TikTok</th>
+                        <th scope="col" className="px-6 py-3">Durasi</th>
+                        <th scope="col" className="px-6 py-3">Diamond</th>
+                        <th scope="col" className="px-6 py-3">Status</th>
+                        <th scope="col" className="px-6 py-3 text-center">Aksi</th>
+                    </tr>
+                </thead>
+                <tbody className="block md:table-row-group">
+                    {Array.from({ length: 5 }).map((_, i) => (
+                        <tr key={i} className="block md:table-row bg-white dark:bg-stone-800 border-b dark:border-stone-700 mb-4 md:mb-0">
+                            <td className="mobile-label px-6 py-4 block md:table-cell"><Skeleton className="h-5 w-24" /></td>
+                            {isSuperAdmin && <td className="mobile-label px-6 py-4 block md:table-cell"><Skeleton className="h-5 w-20" /></td>}
+                            <td className="mobile-label px-6 py-4 block md:table-cell"><Skeleton className="h-5 w-20" /></td>
+                            <td className="mobile-label px-6 py-4 block md:table-cell"><Skeleton className="h-5 w-16" /></td>
+                            <td className="mobile-label px-6 py-4 block md:table-cell"><Skeleton className="h-5 w-16" /></td>
+                            <td className="mobile-label px-6 py-4 block md:table-cell"><Skeleton className="h-6 w-20 rounded-full" /></td>
+                            <td className="mobile-label px-6 py-4 block md:table-cell text-right md:text-center"><Skeleton className="h-5 w-16" /></td>
+                        </tr>
+                    ))}
+                </tbody>
+            </table>
+        </div>
+    );
+}
+
 // Komponen Modal Detail Rekap
 function RekapDetailModal({ isOpen, onClose, rekap, onEdit }: { isOpen: boolean, onClose: () => void, rekap: any, onEdit: (rekap: any) => void }) {
     const { data, session, setData, showNotification } = useContext(AppContext) as AppContextType;
-    const isSuperAdmin = session?.user?.user_metadata?.role === 'superadmin';
+    const isSuperAdmin = session!.user.user_metadata?.role === 'superadmin';
     
     const host = data.hosts.find(h => h.id === rekap.host_id);
     const tiktokAccount = data.tiktokAccounts.find(t => t.id === rekap.tiktok_account_id);
@@ -248,7 +287,7 @@ function RekapDetailModal({ isOpen, onClose, rekap, onEdit }: { isOpen: boolean,
                 {isSuperAdmin && rekap.status === 'approved' && (
                     <button onClick={() => handleStatusChange('pending')} className="text-sm font-medium text-yellow-600 hover:underline">Rollback</button>
                 )}
-                 {rekap.status === 'pending' && (
+                {rekap.status === 'pending' && (
                     <>
                         <button onClick={() => onEdit(rekap)} className="text-sm font-medium text-purple-600 hover:underline flex items-center"><Edit className="h-4 w-4 mr-1"/>Ubah</button>
                         <button onClick={handleDelete} className="text-sm font-medium text-red-600 hover:underline flex items-center"><Trash2 className="h-4 w-4 mr-1"/>Hapus</button>
