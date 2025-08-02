@@ -267,6 +267,72 @@ export default function AnalysisPage() {
     );
 }
 
+// Komponen Kalender
+function Calendar({ currentDate, selectedHostId, onDayClick }: { currentDate: Date, selectedHostId: string, onDayClick: (day: number) => void }) {
+    const { data } = useContext(AppContext) as AppContextType;
+    
+    const year = currentDate.getFullYear();
+    const month = currentDate.getMonth();
+    
+    const dailyData = useMemo(() => {
+        const hostRekaps = data.rekapLive.filter(r => 
+            r.host_id === parseInt(selectedHostId) && r.status === 'approved'
+        );
+
+        return hostRekaps.reduce((acc, r) => {
+            const [recYear, recMonth, recDay] = r.tanggal_live.split('-').map(Number);
+            if (recYear === year && (recMonth - 1) === month) {
+                if (!acc[recDay]) {
+                    acc[recDay] = { totalMinutes: 0, totalDiamonds: 0 };
+                }
+                acc[recDay].totalMinutes += r.durasi_menit;
+                acc[recDay].totalDiamonds += r.pendapatan;
+            }
+            return acc;
+        }, {} as { [key: number]: { totalMinutes: number, totalDiamonds: number } });
+    }, [data.rekapLive, selectedHostId, year, month]);
+
+    const firstDayOfMonth = new Date(year, month, 1).getDay();
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    const startDay = (firstDayOfMonth === 0) ? 6 : firstDayOfMonth - 1;
+
+    const daysArray = Array.from({ length: daysInMonth }, (_, i) => i + 1);
+    const emptyStartDays = Array.from({ length: startDay });
+
+    return (
+        <div className="mt-8 bg-white dark:bg-stone-800 rounded-xl shadow-sm border border-stone-100 dark:border-stone-700 p-4">
+            <div className="grid grid-cols-7 gap-1 text-center font-semibold text-stone-600 dark:text-stone-300 mb-2">
+                {['Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab', 'Min'].map(day => <div key={day} className="text-xs md:text-sm">{day}</div>)}
+            </div>
+            <div className="grid grid-cols-7 gap-1">
+                {emptyStartDays.map((_, i) => <div key={`empty-${i}`} className="border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-800/50 rounded-md h-16 md:h-32"></div>)}
+                {daysArray.map(day => {
+                    const dayData = dailyData[day];
+                    const isLive = dayData && dayData.totalMinutes >= 120;
+                    const clickableClass = isLive ? 'cursor-pointer hover:bg-stone-100 dark:hover:bg-stone-700' : '';
+                    
+                    return (
+                        <div key={day} onClick={() => isLive && onDayClick(day)} className={`border border-stone-200 dark:border-stone-700 p-1 md:p-2 rounded-md h-16 md:h-32 flex flex-col ${clickableClass}`}>
+                            <div className="font-bold text-stone-800 dark:text-stone-200 text-xs md:text-base">{day}</div>
+                            <div className="mt-1">
+                                <span className={`px-2 py-0.5 inline-flex text-xs leading-5 font-semibold rounded-full ${isLive ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300' : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300'}`}>
+                                    {isLive ? 'Live' : 'Absent'}
+                                </span>
+                            </div>
+                            {isLive && (
+                                <div className="hidden md:flex text-xs mt-2 space-y-1 flex-col">
+                                    <p className="flex justify-between"><span>Jam:</span> <span>{`${Math.floor(dayData.totalMinutes / 60)}j ${dayData.totalMinutes % 60}m`}</span></p>
+                                    <p className="flex justify-between"><span>Diamond:</span> <span>{new Intl.NumberFormat().format(dayData.totalDiamonds)}</span></p>
+                                </div>
+                            )}
+                        </div>
+                    );
+                })}
+            </div>
+        </div>
+    );
+}
+
 // Komponen Grafik Tren 30 Hari
 function TrendChart({ selectedHostId }: { selectedHostId: string }) {
     const { data } = useContext(AppContext) as AppContextType;
