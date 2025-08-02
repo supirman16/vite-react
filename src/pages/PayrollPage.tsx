@@ -1,6 +1,6 @@
 import { useContext, useState, useMemo } from 'react';
 import { AppContext, AppContextType } from '../App';
-import { calculatePayroll } from './AnalysisPage'; // Meminjam fungsi kalkulasi
+import { calculatePayroll } from './AnalysisPage';
 import Modal from '../components/Modal';
 
 // Komponen ini adalah halaman Sistem Gaji untuk superadmin.
@@ -116,11 +116,8 @@ function PayrollDetailModal({ isOpen, onClose, payrollData, period }: { isOpen: 
     const formatDiamond = (num: number) => new Intl.NumberFormat().format(num);
 
     return (
-        <Modal isOpen={isOpen} onClose={onClose} title="Rincian Gaji Host">
-            <div className="text-center mb-4">
-                <p className="text-sm text-stone-500 dark:text-stone-400">{payrollData.hostName}</p>
-                <p className="text-sm font-semibold unity-gradient-text">{period}</p>
-            </div>
+        <Modal isOpen={isOpen} onClose={onClose} title={`Rincian Gaji: ${payrollData.hostName}`}>
+            <p className="text-center -mt-4 mb-4 text-sm font-semibold unity-gradient-text">{period}</p>
             <div className="space-y-4 text-sm">
                 <div className="bg-stone-50 dark:bg-stone-700 p-4 rounded-lg">
                     <h3 className="font-semibold text-stone-700 dark:text-stone-200 mb-2 border-b dark:border-stone-600 pb-2">Gaji Pokok</h3>
@@ -167,7 +164,7 @@ function PayrollDetailModal({ isOpen, onClose, payrollData, period }: { isOpen: 
                     </div>
                 </div>
             </div>
-            <div className="flex justify-end pt-6">
+            <div className="flex justify-end pt-6 mt-4 border-t dark:border-stone-700">
                 <button type="button" onClick={onClose} className="px-5 py-2.5 text-sm font-medium text-white unity-gradient-bg rounded-lg hover:opacity-90">Tutup</button>
             </div>
         </Modal>
