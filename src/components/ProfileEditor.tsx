@@ -6,6 +6,13 @@ interface ProfileEditorProps {
     hostId: number;
 }
 
+const documentCategories = {
+    'ID': { label: 'Identitas Diri', color: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300' },
+    'KONTRAK': { label: 'Kontrak', color: 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-300' },
+    'PAJAK': { label: 'Pajak', color: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300' },
+    'LAINNYA': { label: 'Lainnya', color: 'bg-stone-100 text-stone-800 dark:bg-stone-700 dark:text-stone-300' },
+};
+
 // Komponen ini menampilkan formulir profil dan manajemen dokumen untuk host tertentu.
 export default function ProfileEditor({ hostId }: ProfileEditorProps) {
     const { data, fetchData, showNotification } = useContext(AppContext) as AppContextType;
@@ -97,6 +104,7 @@ export default function ProfileEditor({ hostId }: ProfileEditorProps) {
 function DocumentSection({ hostId }: { hostId: number }) {
     const [documents, setDocuments] = useState<any[]>([]);
     const [loading, setLoading] = useState(false);
+    const [selectedCategory, setSelectedCategory] = useState(Object.keys(documentCategories)[0]);
     const { showNotification } = useContext(AppContext) as AppContextType;
 
     const fetchDocuments = useCallback(async () => {
@@ -118,7 +126,7 @@ function DocumentSection({ hostId }: { hostId: number }) {
         if (!file || !hostId) return;
         
         setLoading(true);
-        const filePath = `${hostId}/${file.name}`;
+        const filePath = `${hostId}/[${selectedCategory}]${file.name}`;
         try {
             const { error } = await supabase.storage
                 .from('host-document')
@@ -141,7 +149,7 @@ function DocumentSection({ hostId }: { hostId: number }) {
             const url = window.URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = fileName;
+            a.download = fileName.replace(/^\[.*?\]/, ''); // Hapus tag kategori saat mengunduh
             document.body.appendChild(a);
             a.click();
             window.URL.revokeObjectURL(url);
@@ -163,24 +171,48 @@ function DocumentSection({ hostId }: { hostId: number }) {
             }
         }
     };
+    
+    const parseFileName = (name: string) => {
+        const match = name.match(/^\[(.*?)\](.*)/);
+        if (match) {
+            const categoryKey = match[1];
+            const originalName = match[2];
+            const categoryInfo = documentCategories[categoryKey as keyof typeof documentCategories] || documentCategories['LAINNYA'];
+            return { name: originalName, category: categoryInfo };
+        }
+        return { name, category: documentCategories['LAINNYA'] };
+    };
 
     return (
         <div className="mt-8 bg-white dark:bg-stone-800 p-6 rounded-xl shadow-sm border border-stone-100 dark:border-stone-700 max-w-lg">
             <h3 className="text-lg font-medium text-stone-900 dark:text-stone-200">Manajemen Dokumen</h3>
             <div className="mt-4 space-y-2">
-                {documents.length > 0 ? documents.map(doc => (
-                    <div key={doc.id} className="flex justify-between items-center bg-stone-100 dark:bg-stone-700 p-2 rounded-md">
-                        <span className="text-sm truncate pr-4">{doc.name}</span>
-                        <div className="flex space-x-2">
-                            <button onClick={() => handleDownload(doc.name)} title="Unduh" className="p-1 text-purple-600 hover:text-purple-800"><Download className="h-4 w-4" /></button>
-                            <button onClick={() => handleDelete(doc.name)} title="Hapus" className="p-1 text-red-600 hover:text-red-800"><Trash2 className="h-4 w-4" /></button>
+                {documents.length > 0 ? documents.map(doc => {
+                    const { name, category } = parseFileName(doc.name);
+                    return (
+                        <div key={doc.id} className="flex justify-between items-center bg-stone-100 dark:bg-stone-700 p-2 rounded-md">
+                            <div className="flex items-center overflow-hidden">
+                                <span className={`px-2 py-1 text-xs font-semibold rounded-md mr-3 ${category.color}`}>{category.label}</span>
+                                <span className="text-sm truncate">{name}</span>
+                            </div>
+                            <div className="flex space-x-2 flex-shrink-0">
+                                <button onClick={() => handleDownload(doc.name)} title="Unduh" className="p-1 text-purple-600 hover:text-purple-800"><Download className="h-4 w-4" /></button>
+                                <button onClick={() => handleDelete(doc.name)} title="Hapus" className="p-1 text-red-600 hover:text-red-800"><Trash2 className="h-4 w-4" /></button>
+                            </div>
                         </div>
-                    </div>
-                )) : <p className="text-sm text-stone-500">Belum ada dokumen.</p>}
+                    )
+                }) : <p className="text-sm text-stone-500">Belum ada dokumen.</p>}
             </div>
             <div className="mt-4">
                 <label htmlFor="host-document-file" className="block mb-2 text-sm font-medium">Unggah Dokumen Baru</label>
-                <input type="file" id="host-document-file" onChange={handleUpload} disabled={loading} className="block w-full text-sm text-stone-900 border border-stone-300 rounded-lg cursor-pointer bg-stone-50 focus:outline-none dark:bg-stone-700 dark:border-stone-600" />
+                <div className="flex items-center space-x-2">
+                    <select value={selectedCategory} onChange={e => setSelectedCategory(e.target.value)} className="bg-stone-50 border border-stone-300 text-stone-900 text-sm rounded-lg focus:ring-purple-500 focus:border-purple-500 block p-2.5 dark:bg-stone-700 dark:border-stone-600">
+                        {Object.entries(documentCategories).map(([key, {label}]) => (
+                            <option key={key} value={key}>{label}</option>
+                        ))}
+                    </select>
+                    <input type="file" id="host-document-file" onChange={handleUpload} disabled={loading} className="block w-full text-sm text-stone-900 border border-stone-300 rounded-lg cursor-pointer bg-stone-50 focus:outline-none dark:bg-stone-700 dark:border-stone-600" />
+                </div>
                 {loading && <p className="text-sm text-purple-600 mt-2">Mengunggah...</p>}
             </div>
         </div>
