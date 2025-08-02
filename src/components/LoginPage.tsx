@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { supabase } from '../App';
+import React, { useState, useContext } from 'react';
+import { AppContext, AppContextType, supabase } from '../App';
 
 // Komponen ini bertanggung jawab untuk menampilkan dan mengelola formulir login.
 export default function LoginPage() {
@@ -21,11 +21,14 @@ export default function LoginPage() {
     };
 
     return (
-        <div className="flex items-center justify-center min-h-screen p-4">
-            <div className="w-full max-w-md p-8 space-y-8 bg-white rounded-xl shadow-lg dark:bg-stone-800">
-                <div>
+        <div className="flex items-center justify-center min-h-screen p-4 bg-gradient-to-br from-stone-100 to-stone-200 dark:from-stone-800 dark:to-stone-900">
+            <div className="w-full max-w-md p-8 space-y-6 bg-white rounded-2xl shadow-lg dark:bg-stone-800/50 dark:border dark:border-stone-700">
+                <div className="text-center">
                     <img className="mx-auto h-20 w-auto" src="https://i.imgur.com/kwZdtFs.png" alt="Unity Agency" />
-                    <h2 className="mt-6 text-center text-3xl font-bold tracking-tight text-stone-900 dark:text-white">Login ke Dashboard</h2>
+                    <h2 className="mt-6 text-center text-3xl font-bold tracking-tight text-stone-900 dark:text-white">Dashboard Login</h2>
+                    <p className="mt-2 text-center text-sm text-stone-600 dark:text-stone-400">
+                        Selamat Datang Kembali!
+                    </p>
                 </div>
                 <form onSubmit={handleLogin} className="mt-8 space-y-6">
                     <div>
@@ -56,12 +59,12 @@ export default function LoginPage() {
                             placeholder="Password" 
                         />
                     </div>
-                    {error && <p className="text-sm text-red-600 text-center">{error}</p>}
+                    {error && <p className="text-sm text-red-500 text-center">{error}</p>}
                     <div>
                         <button 
                             type="submit" 
                             disabled={loading} 
-                            className="group relative flex w-full justify-center rounded-md border border-transparent bg-gradient-to-r from-purple-600 to-blue-500 py-2 px-4 text-sm font-medium text-white hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 disabled:opacity-75"
+                            className="group relative flex w-full justify-center rounded-md border border-transparent unity-gradient-bg px-4 py-2 text-sm font-semibold text-white shadow-sm hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 disabled:opacity-75 transition-opacity"
                         >
                             {loading ? 'Loading...' : 'Login'}
                         </button>
