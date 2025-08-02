@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useContext } from 'react';
 import { AppContext, AppContextType, supabase } from '../App';
-import { Download, Trash2 } from 'lucide-react';
+import { Download, Trash2, Eye } from 'lucide-react';
+import Modal from './Modal';
 
 interface ProfileEditorProps {
     hostId: number;
@@ -106,6 +107,8 @@ function DocumentSection({ hostId }: { hostId: number }) {
     const [loading, setLoading] = useState(false);
     const [selectedCategory, setSelectedCategory] = useState(Object.keys(documentCategories)[0]);
     const { showNotification } = useContext(AppContext) as AppContextType;
+    const [isPreviewOpen, setIsPreviewOpen] = useState(false);
+    const [fileToPreview, setFileToPreview] = useState<any | null>(null);
 
     const fetchDocuments = useCallback(async () => {
         if (!hostId) return;
@@ -141,24 +144,6 @@ function DocumentSection({ hostId }: { hostId: number }) {
         }
     };
 
-    const handleDownload = async (fileName: string) => {
-        try {
-            const { data, error } = await supabase.storage.from('host-document').download(`${hostId}/${fileName}`);
-            if (error) throw error;
-            const blob = new Blob([data], { type: data.type });
-            const url = window.URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = fileName.substring(fileName.indexOf('_') + 1); // Hapus tag kategori saat mengunduh
-            document.body.appendChild(a);
-            a.click();
-            window.URL.revokeObjectURL(url);
-            a.remove();
-        } catch (error: any) {
-            showNotification(`Gagal mengunduh file: ${error.message}`, true);
-        }
-    };
-
     const handleDelete = async (fileName: string) => {
         if (window.confirm(`Apakah Anda yakin ingin menghapus file "${fileName}"?`)) {
             try {
@@ -170,6 +155,11 @@ function DocumentSection({ hostId }: { hostId: number }) {
                 showNotification(`Gagal menghapus file: ${error.message}`, true);
             }
         }
+    };
+
+    const handlePreview = (doc: any) => {
+        setFileToPreview(doc);
+        setIsPreviewOpen(true);
     };
     
     const parseFileName = (name: string) => {
@@ -184,37 +174,93 @@ function DocumentSection({ hostId }: { hostId: number }) {
     };
 
     return (
-        <div className="mt-8 bg-white dark:bg-stone-800 p-6 rounded-xl shadow-sm border border-stone-100 dark:border-stone-700 max-w-lg">
-            <h3 className="text-lg font-medium text-stone-900 dark:text-stone-200">Manajemen Dokumen</h3>
-            <div className="mt-4 space-y-2">
-                {documents.length > 0 ? documents.map(doc => {
-                    const { name, category } = parseFileName(doc.name);
-                    return (
-                        <div key={doc.id} className="flex justify-between items-center bg-stone-100 dark:bg-stone-700 p-2 rounded-md">
-                            <div className="flex items-center overflow-hidden">
-                                <span className={`px-2 py-1 text-xs font-semibold rounded-md mr-3 ${category.color}`}>{category.label}</span>
-                                <span className="text-sm truncate">{name}</span>
+        <>
+            <div className="mt-8 bg-white dark:bg-stone-800 p-6 rounded-xl shadow-sm border border-stone-100 dark:border-stone-700 max-w-lg">
+                <h3 className="text-lg font-medium text-stone-900 dark:text-stone-200">Manajemen Dokumen</h3>
+                <div className="mt-4 space-y-2">
+                    {documents.length > 0 ? documents.map(doc => {
+                        const { name, category } = parseFileName(doc.name);
+                        return (
+                            <div key={doc.id} className="flex justify-between items-center bg-stone-100 dark:bg-stone-700 p-2 rounded-md">
+                                <div className="flex items-center overflow-hidden">
+                                    <span className={`px-2 py-1 text-xs font-semibold rounded-md mr-3 ${category.color}`}>{category.label}</span>
+                                    <span className="text-sm truncate">{name}</span>
+                                </div>
+                                <div className="flex space-x-2 flex-shrink-0">
+                                    <button onClick={() => handlePreview(doc)} title="Lihat" className="p-1 text-blue-600 hover:text-blue-800"><Eye className="h-4 w-4" /></button>
+                                    <button onClick={() => handleDelete(doc.name)} title="Hapus" className="p-1 text-red-600 hover:text-red-800"><Trash2 className="h-4 w-4" /></button>
+                                </div>
                             </div>
-                            <div className="flex space-x-2 flex-shrink-0">
-                                <button onClick={() => handleDownload(doc.name)} title="Unduh" className="p-1 text-purple-600 hover:text-purple-800"><Download className="h-4 w-4" /></button>
-                                <button onClick={() => handleDelete(doc.name)} title="Hapus" className="p-1 text-red-600 hover:text-red-800"><Trash2 className="h-4 w-4" /></button>
-                            </div>
-                        </div>
-                    )
-                }) : <p className="text-sm text-stone-500">Belum ada dokumen.</p>}
-            </div>
-            <div className="mt-4">
-                <label htmlFor="host-document-file" className="block mb-2 text-sm font-medium">Unggah Dokumen Baru</label>
-                <div className="flex items-center space-x-2">
-                    <select value={selectedCategory} onChange={e => setSelectedCategory(e.target.value)} className="bg-stone-50 border border-stone-300 text-stone-900 text-sm rounded-lg focus:ring-purple-500 focus:border-purple-500 block p-2.5 dark:bg-stone-700 dark:border-stone-600">
-                        {Object.entries(documentCategories).map(([key, {label}]) => (
-                            <option key={key} value={key}>{label}</option>
-                        ))}
-                    </select>
-                    <input type="file" id="host-document-file" onChange={handleUpload} disabled={loading} className="block w-full text-sm text-stone-900 border border-stone-300 rounded-lg cursor-pointer bg-stone-50 focus:outline-none dark:bg-stone-700 dark:border-stone-600" />
+                        )
+                    }) : <p className="text-sm text-stone-500">Belum ada dokumen.</p>}
                 </div>
-                {loading && <p className="text-sm text-purple-600 mt-2">Mengunggah...</p>}
+                <div className="mt-4">
+                    <label htmlFor="host-document-file" className="block mb-2 text-sm font-medium">Unggah Dokumen Baru</label>
+                    <div className="flex items-center space-x-2">
+                        <select value={selectedCategory} onChange={e => setSelectedCategory(e.target.value)} className="bg-stone-50 border border-stone-300 text-stone-900 text-sm rounded-lg focus:ring-purple-500 focus:border-purple-500 block p-2.5 dark:bg-stone-700 dark:border-stone-600">
+                            {Object.entries(documentCategories).map(([key, {label}]) => (
+                                <option key={key} value={key}>{label}</option>
+                            ))}
+                        </select>
+                        <input type="file" id="host-document-file" onChange={handleUpload} disabled={loading} className="block w-full text-sm text-stone-900 border border-stone-300 rounded-lg cursor-pointer bg-stone-50 focus:outline-none dark:bg-stone-700 dark:border-stone-600" />
+                    </div>
+                    {loading && <p className="text-sm text-purple-600 mt-2">Mengunggah...</p>}
+                </div>
             </div>
-        </div>
+            {isPreviewOpen && fileToPreview && (
+                <DocumentPreviewModal 
+                    isOpen={isPreviewOpen}
+                    onClose={() => setIsPreviewOpen(false)}
+                    file={fileToPreview}
+                    hostId={hostId}
+                />
+            )}
+        </>
+    );
+}
+
+// Komponen Modal Pratinjau Dokumen
+function DocumentPreviewModal({ isOpen, onClose, file, hostId }: { isOpen: boolean, onClose: () => void, file: any, hostId: number }) {
+    const [fileUrl, setFileUrl] = useState<string | null>(null);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        const getFileUrl = async () => {
+            setLoading(true);
+            const { data, error } = await supabase.storage
+                .from('host-document')
+                .createSignedUrl(`${hostId}/${file.name}`, 60); // URL berlaku selama 60 detik
+
+            if (error) {
+                console.error("Error creating signed URL:", error);
+            } else {
+                setFileUrl(data.signedUrl);
+            }
+            setLoading(false);
+        };
+        if (isOpen) {
+            getFileUrl();
+        }
+    }, [isOpen, file, hostId]);
+
+    const isImage = file.metadata.mimetype.startsWith('image/');
+
+    return (
+        <Modal isOpen={isOpen} onClose={onClose} title="Pratinjau Dokumen">
+            {loading && <p>Memuat pratinjau...</p>}
+            {!loading && fileUrl && (
+                isImage ? (
+                    <img src={fileUrl} alt={`Pratinjau ${file.name}`} className="max-w-full h-auto rounded-md" />
+                ) : (
+                    <div>
+                        <p className="text-sm text-stone-600 dark:text-stone-300">Pratinjau tidak tersedia untuk tipe file ini.</p>
+                        <a href={fileUrl} download target="_blank" rel="noopener noreferrer" className="mt-4 inline-flex items-center unity-gradient-bg text-white font-semibold px-4 py-2 rounded-lg shadow-sm hover:opacity-90">
+                            <Download className="h-4 w-4 mr-2" />
+                            Unduh Dokumen
+                        </a>
+                    </div>
+                )
+            )}
+        </Modal>
     );
 }
