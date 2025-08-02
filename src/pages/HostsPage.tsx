@@ -1,4 +1,4 @@
-import { useContext, useState, useMemo, useEffect } from 'react';
+import { useContext, useState, useMemo } from 'react';
 import { AppContext, AppContextType, supabase } from '../App';
 import { Plus, Edit, Trash2, ArrowUpDown, Search, User } from 'lucide-react';
 import Modal from '../components/Modal';
@@ -137,34 +137,6 @@ function HostsTable({ onEdit, onDelete, onViewProfile, searchQuery, showInactive
     const { data } = useContext(AppContext) as AppContextType;
     const [sortKey, setSortKey] = useState('nama_host');
     const [sortDirection, setSortDirection] = useState('asc');
-    const [liveStatuses, setLiveStatuses] = useState<{ [key: number]: boolean }>({});
-	
-	// Memeriksa status live saat komponen dimuat atau data berubah
-    useEffect(() => {
-        const checkAllStatuses = async () => {
-            const activeHosts = data.hosts.filter(h => h.status === 'Aktif');
-            const statusPromises = activeHosts.map(host => 
-                supabase.functions.invoke('get-live-status', {
-                    body: { username: host.platform_username } // Asumsi ada kolom 'platform_username'
-                })
-            );
-
-            const results = await Promise.all(statusPromises);
-
-            const newStatuses: { [key: number]: boolean } = {};
-            results.forEach((res, index) => {
-                const hostId = activeHosts[index].id;
-                if (res.data) {
-                    newStatuses[hostId] = res.data.isLive;
-                }
-            });
-            setLiveStatuses(newStatuses);
-        };
-
-        if (data.hosts.length > 0) {
-            checkAllStatuses();
-        }
-    }, [data.hosts]);
 
     const handleSort = (key: string) => {
         if (sortKey === key) {
@@ -207,32 +179,23 @@ function HostsTable({ onEdit, onDelete, onViewProfile, searchQuery, showInactive
             <table className="w-full text-sm text-left text-stone-600 dark:text-stone-300">
                 <thead className="hidden md:table-header-group text-xs text-stone-700 dark:text-stone-400 uppercase bg-stone-100 dark:bg-stone-700">
                     <tr>
-                        <th scope="col" className="px-6 py-3">Nama Host</th>
-                        <th scope="col" className="px-6 py-3">Platform</th>
-                        <th scope="col" className="px-6 py-3">Tgl Bergabung</th>
-                        <th scope="col" className="px-6 py-3">Status</th>
+                        <SortableHeader tKey="nama_host" tLabel="Nama Host" />
+                        <SortableHeader tKey="platform" tLabel="Platform" />
+                        <SortableHeader tKey="tanggal_bergabung" tLabel="Tgl Bergabung" />
+                        <SortableHeader tKey="status" tLabel="Status" />
                         <th scope="col" className="px-6 py-3 text-center">Aksi</th>
                     </tr>
                 </thead>
                 <tbody className="block md:table-row-group">
                     {filteredAndSortedData.map(host => {
                         const actions = [
-                            { label: 'Lihat Profil', icon: User, onClick: () => onViewProfile(host) },
-                            { label: 'Ubah Data', icon: Edit, onClick: () => onEdit(host) },
-                            { label: 'Hapus', icon: Trash2, onClick: () => onDelete(host) }
+                            { label: 'Lihat Profil', icon: User, onClick: () => onViewProfile(host), className: 'text-stone-700 dark:text-stone-300' },
+                            { label: 'Ubah Data', icon: Edit, onClick: () => onEdit(host), className: 'text-purple-600 dark:text-purple-400' },
+                            { label: 'Hapus', icon: Trash2, onClick: () => onDelete(host), className: 'text-red-600 dark:text-red-400' }
                         ];
                         return (
-                            <tr key={host.id} className={`block md:table-row ... ${host.status === 'Tidak Aktif' ? 'opacity-60' : ''}`}>
-                                <td data-label="Nama Host:" className="mobile-label px-6 py-4 block md:table-cell font-medium text-stone-900 dark:text-white">
-                                    <div className="flex items-center space-x-2">
-                                        {liveStatuses[host.id] && (
-                                            <span className="live-badge">
-                                                <span className="live-badge-ping"></span>
-                                            </span>
-                                        )}
-                                        <span>{host.nama_host}</span>
-                                    </div>
-                                </td>
+                            <tr key={host.id} className={`block md:table-row bg-white dark:bg-stone-800 border-b dark:border-stone-700 mb-4 md:mb-0 transition-opacity ${host.status === 'Tidak Aktif' ? 'opacity-60' : ''}`}>
+                                <td data-label="Nama Host:" className="mobile-label px-6 py-4 block md:table-cell font-medium text-stone-900 dark:text-white">{host.nama_host}</td>
                                 <td data-label="Platform:" className="mobile-label px-6 py-4 block md:table-cell">{host.platform}</td>
                                 <td data-label="Tgl Bergabung:" className="mobile-label px-6 py-4 block md:table-cell">{formatDate(host.tanggal_bergabung)}</td>
                                 <td data-label="Status:" className="mobile-label px-6 py-4 block md:table-cell">

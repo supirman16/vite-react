@@ -1,4 +1,4 @@
-import { useContext, useState, useMemo } from 'react';
+import { useContext, useState, useMemo, useEffect } from 'react';
 import { AppContext, AppContextType, supabase } from '../App';
 import { Plus, Edit, Trash2, ArrowUpDown, Search } from 'lucide-react';
 import Modal from '../components/Modal';
@@ -64,7 +64,6 @@ export default function TiktokPage() {
                 </button>
             </div>
 
-            {/* Kotak Pencarian */}
             <div className="mb-4">
                 <div className="relative">
                     <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
@@ -108,15 +107,7 @@ function TiktokTable({ onEdit, onDelete, searchQuery }: { onEdit: (account: any)
     const { data } = useContext(AppContext) as AppContextType;
     const [sortKey, setSortKey] = useState('username');
     const [sortDirection, setSortDirection] = useState('asc');
-
-    const handleSort = (key: string) => {
-        if (sortKey === key) {
-            setSortDirection(prev => prev === 'asc' ? 'desc' : 'asc');
-        } else {
-            setSortKey(key);
-            setSortDirection('asc');
-        }
-    };
+    const [liveStatuses, setLiveStatuses] = useState<{ [key: number]: boolean }>({});
 
     const filteredAndSortedData = useMemo(() => {
         const filtered = data.tiktokAccounts.filter(account => 
@@ -131,6 +122,42 @@ function TiktokTable({ onEdit, onDelete, searchQuery }: { onEdit: (account: any)
             return 0;
         });
     }, [data.tiktokAccounts, sortKey, sortDirection, searchQuery]);
+
+    useEffect(() => {
+        const checkAllStatuses = async () => {
+            const activeAccounts = filteredAndSortedData.filter(acc => acc.status === 'Aktif');
+            
+            const statusPromises = activeAccounts.map(account => 
+                supabase.functions.invoke('get-live-status', {
+                    body: { username: account.username }
+                })
+            );
+
+            const results = await Promise.all(statusPromises);
+
+            const newStatuses: { [key: number]: boolean } = {};
+            results.forEach((res, index) => {
+                const accountId = activeAccounts[index].id;
+                if (res.data) {
+                    newStatuses[accountId] = res.data.isLive;
+                }
+            });
+            setLiveStatuses(newStatuses);
+        };
+
+        if (filteredAndSortedData.length > 0) {
+            checkAllStatuses();
+        }
+    }, [filteredAndSortedData]);
+
+    const handleSort = (key: string) => {
+        if (sortKey === key) {
+            setSortDirection(prev => prev === 'asc' ? 'desc' : 'asc');
+        } else {
+            setSortKey(key);
+            setSortDirection('asc');
+        }
+    };
 
     const SortableHeader = ({ tKey, tLabel }: { tKey: string, tLabel: string }) => (
         <th scope="col" className="px-6 py-3 cursor-pointer hover:bg-stone-200 dark:hover:bg-stone-700" onClick={() => handleSort(tKey)}>
@@ -159,7 +186,16 @@ function TiktokTable({ onEdit, onDelete, searchQuery }: { onEdit: (account: any)
                         ];
                         return (
                             <tr key={account.id} className="block md:table-row bg-white dark:bg-stone-800 border-b dark:border-stone-700 mb-4 md:mb-0">
-                                <td data-label="Username:" className="mobile-label px-6 py-4 block md:table-cell font-medium text-stone-900 dark:text-white">{account.username}</td>
+                                <td data-label="Username:" className="mobile-label px-6 py-4 block md:table-cell font-medium text-stone-900 dark:text-white">
+                                    <div className="flex items-center space-x-2">
+                                        {liveStatuses[account.id] && (
+                                            <span className="live-badge">
+                                                <span className="live-badge-ping"></span>
+                                            </span>
+                                        )}
+                                        <span>{account.username}</span>
+                                    </div>
+                                </td>
                                 <td data-label="Status:" className="mobile-label px-6 py-4 block md:table-cell">
                                     <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${account.status === 'Aktif' ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300' : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300'}`}>
                                         {account.status}
