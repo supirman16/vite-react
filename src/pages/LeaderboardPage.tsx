@@ -45,24 +45,26 @@ function LeaderboardTables({ month, year }: { month: number, year: number }) {
     const { data } = useContext(AppContext) as AppContextType;
 
     const leaderboardData: LeaderboardData[] = useMemo(() => {
-        return data.hosts.map(host => {
-            const hostRekaps = data.rekapLive.filter(r => {
-                const recDate = new Date(r.tanggal_live);
-                return r.host_id === host.id && recDate.getFullYear() === year && recDate.getMonth() === month && r.status === 'approved';
+        return data.hosts
+            .filter(host => host.status === 'Aktif') // <-- HANYA HOST AKTIF
+            .map(host => {
+                const hostRekaps = data.rekapLive.filter(r => {
+                    const recDate = new Date(r.tanggal_live);
+                    return r.host_id === host.id && recDate.getFullYear() === year && recDate.getMonth() === month && r.status === 'approved';
+                });
+
+                const totalMinutes = hostRekaps.reduce((sum, r) => sum + r.durasi_menit, 0);
+                const totalDiamonds = hostRekaps.reduce((sum, r) => sum + r.pendapatan, 0);
+                const efficiency = totalMinutes > 0 ? totalDiamonds / (totalMinutes / 60) : 0;
+
+                return {
+                    hostId: host.id,
+                    hostName: host.nama_host,
+                    totalDiamonds,
+                    totalMinutes,
+                    efficiency,
+                };
             });
-
-            const totalMinutes = hostRekaps.reduce((sum, r) => sum + r.durasi_menit, 0);
-            const totalDiamonds = hostRekaps.reduce((sum, r) => sum + r.pendapatan, 0);
-            const efficiency = totalMinutes > 0 ? totalDiamonds / (totalMinutes / 60) : 0;
-
-            return {
-                hostId: host.id,
-                hostName: host.nama_host,
-                totalDiamonds,
-                totalMinutes,
-                efficiency,
-            };
-        });
     }, [data.hosts, data.rekapLive, month, year]);
 
     const topByDiamonds = [...leaderboardData].sort((a, b) => b.totalDiamonds - a.totalDiamonds).slice(0, 10);

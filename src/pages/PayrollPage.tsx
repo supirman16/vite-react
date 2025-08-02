@@ -59,7 +59,7 @@ function PayrollTable({ month, year, onViewDetail }: { month: number, year: numb
 
     const payrolls = useMemo(() => {
         return data.hosts
-            .filter(host => host.status === 'Aktif')
+            .filter(host => host.status === 'Aktif') // <-- HANYA HOST AKTIF
             .map(host => calculatePayroll(host.id, year, month, data.hosts, data.rekapLive))
             .filter(p => p !== null);
     }, [data.hosts, data.rekapLive, year, month]);

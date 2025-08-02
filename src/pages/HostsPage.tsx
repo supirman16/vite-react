@@ -1,20 +1,22 @@
 import { useContext, useState, useMemo } from 'react';
 import { AppContext, AppContextType, supabase } from '../App';
-import { Plus, Edit, Trash2, ArrowUpDown, User } from 'lucide-react';
+import { Plus, Edit, Trash2, ArrowUpDown, Search, User } from 'lucide-react';
 import Modal from '../components/Modal';
 import ConfirmationModal from '../components/ConfirmationModal';
 import DropdownMenu from '../components/DropdownMenu';
-import ProfileEditor from '../components/ProfileEditor'; // <-- Impor baru
+import ProfileEditor from '../components/ProfileEditor';
 
 // Komponen ini adalah halaman Manajemen Host untuk superadmin.
 export default function HostsPage() {
     const { setData, showNotification } = useContext(AppContext) as AppContextType;
     const [isFormModalOpen, setIsFormModalOpen] = useState(false);
     const [isConfirmOpen, setIsConfirmOpen] = useState(false);
-    const [isProfileModalOpen, setIsProfileModalOpen] = useState(false); // <-- State baru
+    const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
     const [selectedHost, setSelectedHost] = useState<any | null>(null);
     const [hostToDelete, setHostToDelete] = useState<any | null>(null);
-    const [hostForProfile, setHostForProfile] = useState<any | null>(null); // <-- State baru
+    const [hostForProfile, setHostForProfile] = useState<any | null>(null);
+    const [searchQuery, setSearchQuery] = useState('');
+    const [showInactive, setShowInactive] = useState(false); // <-- State baru
 
     const handleAdd = () => {
         setSelectedHost(null);
@@ -70,7 +72,34 @@ export default function HostsPage() {
                     Tambah Host Baru
                 </button>
             </div>
-            <HostsTable onEdit={handleEdit} onDelete={handleDelete} onViewProfile={handleViewProfile} />
+
+            {/* Opsi Pencarian & Filter */}
+            <div className="mb-4 flex flex-col sm:flex-row gap-4">
+                <div className="relative flex-grow">
+                    <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+                        <Search className="h-5 w-5 text-stone-400" />
+                    </div>
+                    <input
+                        type="text"
+                        placeholder="Cari host berdasarkan nama..."
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        className="block w-full rounded-md border-0 bg-white dark:bg-stone-800 py-2.5 pl-10 text-stone-900 dark:text-white shadow-sm ring-1 ring-inset ring-stone-300 dark:ring-stone-700 placeholder:text-stone-400 focus:ring-2 focus:ring-inset focus:ring-purple-600 sm:text-sm"
+                    />
+                </div>
+                <div className="flex items-center space-x-2">
+                    <input
+                        id="show-inactive"
+                        type="checkbox"
+                        checked={showInactive}
+                        onChange={(e) => setShowInactive(e.target.checked)}
+                        className="h-4 w-4 rounded border-stone-300 text-purple-600 focus:ring-purple-600"
+                    />
+                    <label htmlFor="show-inactive" className="text-sm text-stone-600 dark:text-stone-300">Tampilkan host tidak aktif</label>
+                </div>
+            </div>
+
+            <HostsTable onEdit={handleEdit} onDelete={handleDelete} onViewProfile={handleViewProfile} searchQuery={searchQuery} showInactive={showInactive} />
 
             {isFormModalOpen && (
                 <HostModal 
@@ -104,7 +133,7 @@ export default function HostsPage() {
 }
 
 // Komponen Tabel Host
-function HostsTable({ onEdit, onDelete, onViewProfile }: { onEdit: (host: any) => void, onDelete: (host: any) => void, onViewProfile: (host: any) => void }) {
+function HostsTable({ onEdit, onDelete, onViewProfile, searchQuery, showInactive }: { onEdit: (host: any) => void, onDelete: (host: any) => void, onViewProfile: (host: any) => void, searchQuery: string, showInactive: boolean }) {
     const { data } = useContext(AppContext) as AppContextType;
     const [sortKey, setSortKey] = useState('nama_host');
     const [sortDirection, setSortDirection] = useState('asc');
@@ -118,15 +147,21 @@ function HostsTable({ onEdit, onDelete, onViewProfile }: { onEdit: (host: any) =
         }
     };
     
-    const sortedData = useMemo(() => {
-        return [...data.hosts].sort((a, b) => {
+    const filteredAndSortedData = useMemo(() => {
+        const statusFiltered = showInactive ? data.hosts : data.hosts.filter(host => host.status === 'Aktif');
+        
+        const searchFiltered = statusFiltered.filter(host => 
+            host.nama_host.toLowerCase().includes(searchQuery.toLowerCase())
+        );
+
+        return [...searchFiltered].sort((a, b) => {
             const valA = a[sortKey];
             const valB = b[sortKey];
             if (valA < valB) return sortDirection === 'asc' ? -1 : 1;
             if (valA > valB) return sortDirection === 'asc' ? 1 : -1;
             return 0;
         });
-    }, [data.hosts, sortKey, sortDirection]);
+    }, [data.hosts, sortKey, sortDirection, searchQuery, showInactive]);
 
     const formatDate = (dateString: string) => new Date(dateString).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
 
@@ -152,14 +187,14 @@ function HostsTable({ onEdit, onDelete, onViewProfile }: { onEdit: (host: any) =
                     </tr>
                 </thead>
                 <tbody className="block md:table-row-group">
-                    {sortedData.map(host => {
+                    {filteredAndSortedData.map(host => {
                         const actions = [
                             { label: 'Lihat Profil', icon: User, onClick: () => onViewProfile(host), className: 'text-stone-700 dark:text-stone-300' },
                             { label: 'Ubah Data', icon: Edit, onClick: () => onEdit(host), className: 'text-purple-600 dark:text-purple-400' },
                             { label: 'Hapus', icon: Trash2, onClick: () => onDelete(host), className: 'text-red-600 dark:text-red-400' }
                         ];
                         return (
-                            <tr key={host.id} className="block md:table-row bg-white dark:bg-stone-800 border-b dark:border-stone-700 mb-4 md:mb-0">
+                            <tr key={host.id} className={`block md:table-row bg-white dark:bg-stone-800 border-b dark:border-stone-700 mb-4 md:mb-0 transition-opacity ${host.status === 'Tidak Aktif' ? 'opacity-60' : ''}`}>
                                 <td data-label="Nama Host:" className="mobile-label px-6 py-4 block md:table-cell font-medium text-stone-900 dark:text-white">{host.nama_host}</td>
                                 <td data-label="Platform:" className="mobile-label px-6 py-4 block md:table-cell">{host.platform}</td>
                                 <td data-label="Tgl Bergabung:" className="mobile-label px-6 py-4 block md:table-cell">{formatDate(host.tanggal_bergabung)}</td>
