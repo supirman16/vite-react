@@ -5,8 +5,8 @@ import DashboardLayout from './components/DashboardLayout';
 import MobileMenu from './components/MobileMenu';
 
 // -- 1. KONFIGURASI & KLIEN SUPABASE --
-const supabaseUrl = 'https://bvlzzhbvnhzvaojuqoqn.supabase.co'; 
-const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJ2bHp6aGJ2bmh6dmFvanVxb3FuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTM1Nzc4NjEsImV4cCI6MjA2OTE1Mzg2MX0.ngr8Zjd5lzsOWhycC_CDb3sOwVBFl21WTWSFt_cK2Hw'; 
+const supabaseUrl = 'https://zorudwncbfietuzxrerd.supabase.co'; 
+const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpvcnVkd25jYmZpZXR1enhyZXJkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTI2NzMzNTUsImV4cCI6MjA2ODI0OTM1NX0.d6YJ8qj3Uegmei6ip52fQ0gnjJltqVDlrlbu6VXk7Ks'; 
 export const supabase = createClient(supabaseUrl, supabaseKey);
 
 // -- 2. TIPE DATA (UNTUK TYPESCRIPT) --
@@ -152,4 +152,5 @@ function Notification({ notification }: { notification: { message: string; isErr
             {notification.message}
         </div>
     );
+
 }
