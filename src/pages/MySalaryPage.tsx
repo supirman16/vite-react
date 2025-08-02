@@ -11,7 +11,7 @@ export default function MySalaryPage() {
     const years = Array.from({ length: 6 }, (_, i) => new Date().getFullYear() - i);
     const months = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
 
-    const hostId = session?.user?.user_metadata.host_id; // <-- Diperbaiki
+    const hostId = session?.user?.user_metadata.host_id;
 
     const payrollData = useMemo(() => {
         if (!hostId) return null;

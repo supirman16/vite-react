@@ -140,7 +140,7 @@ function UsersTable({ onEdit, onDelete }: { onEdit: (user: any) => void, onDelet
                                 <td data-label="Host:" className="mobile-label px-6 py-4 block md:table-cell">{host ? host.nama_host : '-'}</td>
                                 <td data-label="Aksi:" className="mobile-label px-6 py-4 block md:table-cell text-right md:text-center space-x-2">
                                     <button onClick={() => onEdit(user)} className="font-medium text-purple-600 hover:underline dark:text-purple-500 p-1"><Edit className="h-4 w-4 inline"/> Ubah</button>
-                                    {session?.user?.id !== user.id && ( // <-- Diperbaiki
+                                    {session?.user?.id !== user.id && (
                                         <button onClick={() => onDelete(user)} className="font-medium text-red-600 hover:underline dark:text-red-500 p-1"><Trash2 className="h-4 w-4 inline"/> Hapus</button>
                                     )}
                                 </td>

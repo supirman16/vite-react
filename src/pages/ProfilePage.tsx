@@ -8,7 +8,7 @@ export default function ProfilePage() {
     const [loading, setLoading] = useState(false);
 
     // Menemukan data host yang sedang login
-    const hostData = data.hosts.find(h => h.id === session?.user?.user_metadata.host_id); // <-- Diperbaiki
+    const hostData = data.hosts.find(h => h.id === session?.user?.user_metadata.host_id);
 
     const [formData, setFormData] = useState({
         nama_host: '',
@@ -43,7 +43,7 @@ export default function ProfilePage() {
             const { error } = await supabase
                 .from('hosts')
                 .update(formData)
-                .eq('id', session?.user?.user_metadata.host_id); // <-- Diperbaiki
+                .eq('id', session?.user?.user_metadata.host_id);
             if (error) throw error;
             alert('Profil berhasil diperbarui!');
             fetchData(); // Muat ulang data untuk menampilkan perubahan
@@ -102,7 +102,7 @@ function DocumentSection() {
     const { session } = useContext(AppContext) as AppContextType;
     const [documents, setDocuments] = useState<any[]>([]);
     const [loading, setLoading] = useState(false);
-    const hostId = session?.user?.user_metadata.host_id; // <-- Diperbaiki
+    const hostId = session?.user?.user_metadata.host_id;
 
     const fetchDocuments = useCallback(async () => {
         if (!hostId) return;
