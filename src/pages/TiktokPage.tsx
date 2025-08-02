@@ -1,6 +1,6 @@
 import { useContext, useState, useMemo } from 'react';
 import { AppContext, AppContextType, supabase } from '../App';
-import { Plus, Edit, Trash2, ArrowUpDown } from 'lucide-react';
+import { Plus, Edit, Trash2, ArrowUpDown, Search } from 'lucide-react';
 import Modal from '../components/Modal';
 import ConfirmationModal from '../components/ConfirmationModal';
 import DropdownMenu from '../components/DropdownMenu';
@@ -12,6 +12,7 @@ export default function TiktokPage() {
     const [isConfirmOpen, setIsConfirmOpen] = useState(false);
     const [selectedAccount, setSelectedAccount] = useState<any | null>(null);
     const [accountToDelete, setAccountToDelete] = useState<any | null>(null);
+    const [searchQuery, setSearchQuery] = useState('');
 
     const handleAdd = () => {
         setSelectedAccount(null);
@@ -62,7 +63,24 @@ export default function TiktokPage() {
                     Tambah Akun Baru
                 </button>
             </div>
-            <TiktokTable onEdit={handleEdit} onDelete={handleDelete} />
+
+            {/* Kotak Pencarian */}
+            <div className="mb-4">
+                <div className="relative">
+                    <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+                        <Search className="h-5 w-5 text-stone-400" />
+                    </div>
+                    <input
+                        type="text"
+                        placeholder="Cari akun berdasarkan username..."
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        className="block w-full rounded-md border-0 bg-white dark:bg-stone-800 py-2.5 pl-10 text-stone-900 dark:text-white shadow-sm ring-1 ring-inset ring-stone-300 dark:ring-stone-700 placeholder:text-stone-400 focus:ring-2 focus:ring-inset focus:ring-purple-600 sm:text-sm"
+                    />
+                </div>
+            </div>
+
+            <TiktokTable onEdit={handleEdit} onDelete={handleDelete} searchQuery={searchQuery} />
 
             {isModalOpen && (
                 <TiktokModal 
@@ -86,7 +104,7 @@ export default function TiktokPage() {
 }
 
 // Komponen Tabel Akun TikTok
-function TiktokTable({ onEdit, onDelete }: { onEdit: (account: any) => void, onDelete: (account: any) => void }) {
+function TiktokTable({ onEdit, onDelete, searchQuery }: { onEdit: (account: any) => void, onDelete: (account: any) => void, searchQuery: string }) {
     const { data } = useContext(AppContext) as AppContextType;
     const [sortKey, setSortKey] = useState('username');
     const [sortDirection, setSortDirection] = useState('asc');
@@ -100,15 +118,19 @@ function TiktokTable({ onEdit, onDelete }: { onEdit: (account: any) => void, onD
         }
     };
 
-    const sortedData = useMemo(() => {
-        return [...data.tiktokAccounts].sort((a, b) => {
+    const filteredAndSortedData = useMemo(() => {
+        const filtered = data.tiktokAccounts.filter(account => 
+            account.username.toLowerCase().includes(searchQuery.toLowerCase())
+        );
+
+        return [...filtered].sort((a, b) => {
             const valA = a[sortKey];
             const valB = b[sortKey];
             if (valA < valB) return sortDirection === 'asc' ? -1 : 1;
             if (valA > valB) return sortDirection === 'asc' ? 1 : -1;
             return 0;
         });
-    }, [data.tiktokAccounts, sortKey, sortDirection]);
+    }, [data.tiktokAccounts, sortKey, sortDirection, searchQuery]);
 
     const SortableHeader = ({ tKey, tLabel }: { tKey: string, tLabel: string }) => (
         <th scope="col" className="px-6 py-3 cursor-pointer hover:bg-stone-200 dark:hover:bg-stone-700" onClick={() => handleSort(tKey)}>
@@ -130,7 +152,7 @@ function TiktokTable({ onEdit, onDelete }: { onEdit: (account: any) => void, onD
                     </tr>
                 </thead>
                 <tbody className="block md:table-row-group">
-                    {sortedData.map(account => {
+                    {filteredAndSortedData.map(account => {
                         const actions = [
                             { label: 'Ubah', icon: Edit, onClick: () => onEdit(account), className: 'text-purple-600 dark:text-purple-400' },
                             { label: 'Hapus', icon: Trash2, onClick: () => onDelete(account), className: 'text-red-600 dark:text-red-400' }

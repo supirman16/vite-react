@@ -1,6 +1,6 @@
 import { useContext, useState, useMemo, useEffect } from 'react';
 import { AppContext, AppContextType, supabase } from '../App';
-import { Plus, Edit, Trash2, ArrowUpDown } from 'lucide-react';
+import { Plus, Edit, Trash2, ArrowUpDown, Search } from 'lucide-react';
 import Modal from '../components/Modal';
 import ConfirmationModal from '../components/ConfirmationModal';
 import DropdownMenu from '../components/DropdownMenu';
@@ -12,6 +12,7 @@ export default function UsersPage() {
     const [isConfirmOpen, setIsConfirmOpen] = useState(false);
     const [selectedUser, setSelectedUser] = useState<any | null>(null);
     const [userToDelete, setUserToDelete] = useState<any | null>(null);
+    const [searchQuery, setSearchQuery] = useState('');
 
     const handleAdd = () => {
         setSelectedUser(null);
@@ -64,7 +65,24 @@ export default function UsersPage() {
                     Tambah Pengguna Baru
                 </button>
             </div>
-            <UsersTable onEdit={handleEdit} onDelete={handleDelete} />
+
+            {/* Kotak Pencarian */}
+            <div className="mb-4">
+                <div className="relative">
+                    <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+                        <Search className="h-5 w-5 text-stone-400" />
+                    </div>
+                    <input
+                        type="text"
+                        placeholder="Cari pengguna berdasarkan email..."
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        className="block w-full rounded-md border-0 bg-white dark:bg-stone-800 py-2.5 pl-10 text-stone-900 dark:text-white shadow-sm ring-1 ring-inset ring-stone-300 dark:ring-stone-700 placeholder:text-stone-400 focus:ring-2 focus:ring-inset focus:ring-purple-600 sm:text-sm"
+                    />
+                </div>
+            </div>
+
+            <UsersTable onEdit={handleEdit} onDelete={handleDelete} searchQuery={searchQuery} />
 
             {isModalOpen && (
                 <UserModal 
@@ -88,7 +106,7 @@ export default function UsersPage() {
 }
 
 // Komponen Tabel Pengguna
-function UsersTable({ onEdit, onDelete }: { onEdit: (user: any) => void, onDelete: (user: any) => void }) {
+function UsersTable({ onEdit, onDelete, searchQuery }: { onEdit: (user: any) => void, onDelete: (user: any) => void, searchQuery: string }) {
     const { data, session } = useContext(AppContext) as AppContextType;
     const [sortKey, setSortKey] = useState('email');
     const [sortDirection, setSortDirection] = useState('asc');
@@ -102,15 +120,19 @@ function UsersTable({ onEdit, onDelete }: { onEdit: (user: any) => void, onDelet
         }
     };
 
-    const sortedData = useMemo(() => {
-        return [...data.users].sort((a, b) => {
+    const filteredAndSortedData = useMemo(() => {
+        const filtered = data.users.filter(user => 
+            user.email.toLowerCase().includes(searchQuery.toLowerCase())
+        );
+
+        return [...filtered].sort((a, b) => {
             const valA = a.email; // Sorting by email
             const valB = b.email;
             if (valA < valB) return sortDirection === 'asc' ? -1 : 1;
             if (valA > valB) return sortDirection === 'asc' ? 1 : -1;
             return 0;
         });
-    }, [data.users, sortKey, sortDirection]);
+    }, [data.users, sortKey, sortDirection, searchQuery]);
 
     const SortableHeader = ({ tKey, tLabel }: { tKey: string, tLabel: string }) => (
         <th scope="col" className="px-6 py-3 cursor-pointer hover:bg-stone-200 dark:hover:bg-stone-700" onClick={() => handleSort(tKey)}>
@@ -133,7 +155,7 @@ function UsersTable({ onEdit, onDelete }: { onEdit: (user: any) => void, onDelet
                     </tr>
                 </thead>
                 <tbody className="block md:table-row-group">
-                    {sortedData.map(user => {
+                    {filteredAndSortedData.map(user => {
                         const host = data.hosts.find(h => h.id === user.user_metadata.host_id);
                         
                         const actions = [
