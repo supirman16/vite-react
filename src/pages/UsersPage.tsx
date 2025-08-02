@@ -66,7 +66,6 @@ export default function UsersPage() {
                 </button>
             </div>
 
-            {/* Kotak Pencarian */}
             <div className="mb-4">
                 <div className="relative">
                     <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
@@ -162,7 +161,7 @@ function UsersTable({ onEdit, onDelete, searchQuery }: { onEdit: (user: any) => 
                             { label: 'Ubah', icon: Edit, onClick: () => onEdit(user), className: 'text-purple-600 dark:text-purple-400' },
                         ];
 
-                        if (session?.user?.id !== user.id) { // <-- Diperbaiki
+                        if (session?.user?.id !== user.id) {
                             actions.push({ label: 'Hapus', icon: Trash2, onClick: () => onDelete(user), className: 'text-red-600 dark:text-red-400' });
                         }
 
@@ -210,8 +209,13 @@ function UserModal({ isOpen, onClose, user }: { isOpen: boolean, onClose: () => 
         setLoading(true);
         try {
             if (user) { // Update
-                const { data: updatedUser, error } = await supabase.functions.invoke('update-user-role', {
-                    body: { userId: user.id, role: formData.role, host_id: formData.host_id ? parseInt(formData.host_id) : null }
+                const { data: updatedUser, error } = await supabase.functions.invoke('update-user-details', {
+                    body: { 
+                        userId: user.id, 
+                        role: formData.role, 
+                        host_id: formData.host_id ? parseInt(formData.host_id) : null,
+                        password: formData.password || null
+                    }
                 });
                 if (error) throw error;
                 
