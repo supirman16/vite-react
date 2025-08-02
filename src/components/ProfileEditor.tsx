@@ -126,7 +126,7 @@ function DocumentSection({ hostId }: { hostId: number }) {
         if (!file || !hostId) return;
         
         setLoading(true);
-        const filePath = `${hostId}/[${selectedCategory}]${file.name}`;
+        const filePath = `${hostId}/${selectedCategory}_${file.name}`;
         try {
             const { error } = await supabase.storage
                 .from('host-document')
@@ -149,7 +149,7 @@ function DocumentSection({ hostId }: { hostId: number }) {
             const url = window.URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = fileName.replace(/^\[.*?\]/, ''); // Hapus tag kategori saat mengunduh
+            a.download = fileName.substring(fileName.indexOf('_') + 1); // Hapus tag kategori saat mengunduh
             document.body.appendChild(a);
             a.click();
             window.URL.revokeObjectURL(url);
@@ -173,11 +173,11 @@ function DocumentSection({ hostId }: { hostId: number }) {
     };
     
     const parseFileName = (name: string) => {
-        const match = name.match(/^\[(.*?)\](.*)/);
-        if (match) {
-            const categoryKey = match[1];
-            const originalName = match[2];
-            const categoryInfo = documentCategories[categoryKey as keyof typeof documentCategories] || documentCategories['LAINNYA'];
+        const parts = name.split('_');
+        if (parts.length > 1 && documentCategories[parts[0] as keyof typeof documentCategories]) {
+            const categoryKey = parts[0];
+            const originalName = parts.slice(1).join('_');
+            const categoryInfo = documentCategories[categoryKey as keyof typeof documentCategories];
             return { name: originalName, category: categoryInfo };
         }
         return { name, category: documentCategories['LAINNYA'] };
