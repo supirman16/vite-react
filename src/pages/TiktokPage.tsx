@@ -4,11 +4,10 @@ import { Plus, Edit, Trash2, ArrowUpDown, Search } from 'lucide-react';
 import Modal from '../components/Modal';
 import ConfirmationModal from '../components/ConfirmationModal';
 import DropdownMenu from '../components/DropdownMenu';
-import { io } from "socket.io-client";
 
-// --- KONFIGURASI EULERSTREAM ---
-const EULER_STREAM_URL = "https://ws.eulerstream.com/"; 
-const EULER_STREAM_API_KEY = "ZTlhMTg4YzcyMTRhNWY1ZTk2ZTNkODcwYTE0YTQyMDcwNGFiMGIwYjc4MmZmMjljZGE1ZmEw"; // Ganti dengan API key Anda jika perlu
+// --- KONFIGURASI EULERSTREAM (REST API) ---
+const EULER_STREAM_API_URL = "https://tiktok.eulerstream.com/api/v1/user/"; 
+const EULER_STREAM_API_KEY = "ZTlhMTg4YzcyMTRhNWY1ZTk2ZTNkODcwYTE0YTQyMDcwNGFiMGIwYjc4MmZmMjljZGE1ZmEw";
 
 // Komponen ini adalah halaman Manajemen Akun TikTok untuk superadmin.
 export default function TiktokPage() {
@@ -113,6 +112,7 @@ function TiktokTable({ onEdit, onDelete, searchQuery }: { onEdit: (account: any)
     const [sortKey, setSortKey] = useState('username');
     const [sortDirection, setSortDirection] = useState('asc');
     const [liveStatuses, setLiveStatuses] = useState<{ [key: string]: boolean }>({});
+    const [loadingStatuses, setLoadingStatuses] = useState(true);
 
     const filteredAndSortedData = useMemo(() => {
         const filtered = data.tiktokAccounts.filter(account => 
@@ -129,39 +129,40 @@ function TiktokTable({ onEdit, onDelete, searchQuery }: { onEdit: (account: any)
     }, [data.tiktokAccounts, sortKey, sortDirection, searchQuery]);
 
     useEffect(() => {
-        if (filteredAndSortedData.length === 0) return;
+        const checkAllStatuses = async () => {
+            setLoadingStatuses(true);
+            const activeAccounts = filteredAndSortedData.filter(acc => acc.status === 'Aktif');
+            
+            const statusPromises = activeAccounts.map(async (account) => {
+                try {
+                    const response = await fetch(`${EULER_STREAM_API_URL}${account.username}/live-status`, {
+                        method: 'GET',
+                        headers: { 'X-API-Key': EULER_STREAM_API_KEY }
+                    });
+                    if (!response.ok) return { username: account.username, isLive: false };
+                    const result = await response.json();
+                    return { username: account.username, isLive: result.is_live };
+                } catch (error) {
+                    console.error(`Error fetching status for ${account.username}:`, error);
+                    return { username: account.username, isLive: false };
+                }
+            });
 
-        const socketOptions = {
-            path: '/socket.io',
-            transports: ['websocket'],
-            query: {
-                apiKey: EULER_STREAM_API_KEY
-            }
+            const results = await Promise.all(statusPromises);
+
+            const newStatuses: { [key: string]: boolean } = {};
+            results.forEach(res => {
+                newStatuses[res.username.toLowerCase()] = res.isLive;
+            });
+            setLiveStatuses(newStatuses);
+            setLoadingStatuses(false);
         };
 
-        const socket = io(EULER_STREAM_URL, socketOptions);
-
-        socket.on('connect', () => {
-            console.log('Terhubung ke EulerStream WebSocket.');
-            const usernames = filteredAndSortedData.map(acc => acc.username);
-            socket.emit('register', usernames);
-        });
-
-        socket.on('liveStatus', (data: { [key: string]: boolean }) => {
-            setLiveStatuses(data);
-        });
-
-        socket.on('disconnect', () => {
-            console.log('Terputus dari EulerStream WebSocket.');
-        });
-        
-        socket.on('connect_error', (err) => {
-            console.error('Koneksi WebSocket Gagal:', err.message);
-        });
-
-        return () => {
-            socket.disconnect();
-        };
+        if (filteredAndSortedData.length > 0) {
+            checkAllStatuses();
+        } else {
+            setLoadingStatuses(false);
+        }
     }, [filteredAndSortedData]);
 
     const handleSort = (key: string) => {
@@ -203,10 +204,12 @@ function TiktokTable({ onEdit, onDelete, searchQuery }: { onEdit: (account: any)
                             <tr key={account.id} className="block md:table-row bg-white dark:bg-stone-800 border-b dark:border-stone-700 mb-4 md:mb-0">
                                 <td data-label="Username:" className="mobile-label px-6 py-4 block md:table-cell font-medium text-stone-900 dark:text-white">
                                     <div className="flex items-center space-x-2">
-                                        {isLive && (
-                                            <span className="live-badge" title="Sedang Live">
-                                                <span className="live-badge-ping"></span>
-                                            </span>
+                                        {loadingStatuses ? <Skeleton className="h-3 w-3 rounded-full" /> : (
+                                            isLive && (
+                                                <span className="live-badge" title="Sedang Live">
+                                                    <span className="live-badge-ping"></span>
+                                                </span>
+                                            )
                                         )}
                                         <span>{account.username}</span>
                                     </div>
