@@ -1,5 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { WebcastPushConnection } from 'tiktok-live-connector';
+// Menggunakan nama kelas yang baru dan benar
+import { TikTokLiveConnection } from 'tiktok-live-connector';
 
 export default function handler(
   request: VercelRequest,
@@ -21,12 +22,13 @@ export default function handler(
   }
 
   try {
-    let tiktokLiveConnection = new WebcastPushConnection(username);
+    // Menggunakan nama kelas yang baru dan benar
+    let tiktokLiveConnection = new TikTokLiveConnection(username);
 
     tiktokLiveConnection.connect().then(state => {
       // Jika berhasil terhubung, berarti sedang live
       tiktokLiveConnection.disconnect();
-      response.status(200).json({ isLive: true });
+      response.status(200).json({ isLive: true, roomId: state.roomId });
     }).catch(err => {
       // Jika gagal, berarti tidak live
       response.status(200).json({ isLive: false, error: err.message });
