@@ -12,35 +12,29 @@ export default function LiveTestPage() {
     const [connectionStatus, setConnectionStatus] = useState('Menunggu untuk memulai...');
     const [chatLog, setChatLog] = useState<string[]>([]);
     
-    // State baru untuk memicu koneksi
-    const [usernameToConnect, setUsernameToConnect] = useState<string | null>(null);
+    // State untuk memicu koneksi. Menggunakan objek untuk memastikan perubahan referensi.
+    const [connectionRequest, setConnectionRequest] = useState<{ username: string; timestamp: number } | null>(null);
     const ws = useRef<WebSocket | null>(null);
 
     // useEffect ini sekarang mengelola seluruh siklus hidup WebSocket
     useEffect(() => {
-        // Jangan lakukan apa pun jika tidak ada username yang dipilih untuk dihubungkan
-        if (!usernameToConnect) {
+        // Jangan lakukan apa pun jika tidak ada permintaan koneksi
+        if (!connectionRequest) {
             return;
         }
 
-        // Bersihkan koneksi sebelumnya jika ada
-        if (ws.current) {
-            console.log("Membersihkan koneksi WebSocket sebelumnya...");
-            ws.current.onopen = null;
-            ws.current.onmessage = null;
-            ws.current.onerror = null;
-            ws.current.onclose = null;
-            ws.current.close();
-        }
-
+        const { username } = connectionRequest;
         setChatLog([]);
-        setConnectionStatus(`Menghubungkan ke EulerStream untuk @${usernameToConnect}...`);
+        setConnectionStatus(`Menghubungkan ke EulerStream untuk @${username}...`);
 
         // Buat koneksi baru
         const newWs = new WebSocket(EULER_STREAM_WEBSOCKET_URL);
+        ws.current = newWs;
+
+        console.log(`[WebSocket] Dibuat (readyState: ${newWs.readyState})`);
 
         newWs.onopen = () => {
-            console.log('WebSocket terhubung ke EulerStream.');
+            console.log(`[WebSocket] Terbuka (readyState: ${newWs.readyState})`);
             setConnectionStatus('Terhubung ke server. Mengautentikasi...');
             newWs.send(JSON.stringify({
                 action: "authorize",
@@ -52,16 +46,14 @@ export default function LiveTestPage() {
             const message = JSON.parse(event.data);
 
             if (message.action === "authorized") {
-                console.log("Otorisasi berhasil. Mengirim permintaan subscribe...");
-                setConnectionStatus(`Otorisasi berhasil. Berlangganan ke @${usernameToConnect}...`);
+                console.log("[WebSocket] Otorisasi berhasil. Mengirim permintaan subscribe...");
+                setConnectionStatus(`Otorisasi berhasil. Berlangganan ke @${username}...`);
                 newWs.send(JSON.stringify({
                     action: "subscribe",
-                    data: {
-                        username: usernameToConnect
-                    }
+                    data: { username }
                 }));
             } else if (message.action === "subscribed") {
-                console.log(`Berhasil berlangganan ke ${message.data.username}`);
+                console.log(`[WebSocket] Berhasil berlangganan ke ${message.data.username}`);
                 setConnectionStatus(`Berhasil memantau @${message.data.username}. Menunggu data...`);
             } else if (message.event) {
                 switch (message.event.type) {
@@ -77,45 +69,44 @@ export default function LiveTestPage() {
                         }
                         break;
                     case 'disconnected':
-                        setConnectionStatus(`Siaran langsung untuk @${usernameToConnect} telah berakhir.`);
+                        setConnectionStatus(`Siaran langsung untuk @${username} telah berakhir.`);
                         break;
                 }
             } else if (message.error) {
-                console.error("Error dari EulerStream:", message.error);
+                console.error("[WebSocket] Error dari EulerStream:", message.error);
                 setConnectionStatus(`Error: ${message.error}`);
             }
         };
 
-        newWs.onclose = () => {
-            console.log('WebSocket terputus dari EulerStream.');
+        newWs.onclose = (event) => {
+            console.log(`[WebSocket] Ditutup (readyState: ${newWs.readyState}). Kode: ${event.code}, Alasan: ${event.reason}`);
             setConnectionStatus('Koneksi ditutup. Silakan coba lagi.');
         };
 
         newWs.onerror = (error) => {
-            console.error('WebSocket Error:', error);
+            console.error('[WebSocket] Error:', error);
             setConnectionStatus('Terjadi eror pada koneksi WebSocket. Periksa konsol untuk detail.');
         };
 
-        ws.current = newWs;
-
         // Fungsi pembersihan untuk efek ini
         return () => {
-            console.log("Membersihkan koneksi WebSocket untuk", usernameToConnect);
+            console.log(`[WebSocket] Membersihkan koneksi untuk @${username} (readyState: ${newWs.readyState})`);
+            // Hapus event handler untuk mencegahnya berjalan pada koneksi yang sudah ditutup
             newWs.onopen = null;
             newWs.onmessage = null;
             newWs.onerror = null;
             newWs.onclose = null;
             newWs.close();
         };
-    }, [usernameToConnect]); // Jalankan ulang efek ini setiap kali usernameToConnect berubah
+    }, [connectionRequest]); // Jalankan ulang efek ini setiap kali ada permintaan koneksi baru
 
     const handleTestConnection = () => {
         if (!selectedUsername) {
             setConnectionStatus('Silakan pilih username terlebih dahulu.');
             return;
         }
-        // Memicu useEffect dengan mengatur state
-        setUsernameToConnect(selectedUsername);
+        // Memicu useEffect dengan mengatur state. Timestamp memastikan objek baru dibuat setiap kali.
+        setConnectionRequest({ username: selectedUsername, timestamp: Date.now() });
     };
 
     return (
