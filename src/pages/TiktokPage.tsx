@@ -127,20 +127,27 @@ function TiktokTable({ onEdit, onDelete, searchQuery }: { onEdit: (account: any)
         const checkAllStatuses = async () => {
             const activeAccounts = filteredAndSortedData.filter(acc => acc.status === 'Aktif');
             
-            const statusPromises = activeAccounts.map(account => 
-                supabase.functions.invoke('get-live-status', {
-                    body: { username: account.username }
-                })
-            );
+            const statusPromises = activeAccounts.map(async (account) => {
+                try {
+                    const response = await fetch('/api/get-live-status', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ username: account.username })
+                    });
+                    if (!response.ok) return { isLive: false };
+                    return response.json();
+                } catch (error) {
+                    console.error(`Error fetching status for ${account.username}:`, error);
+                    return { isLive: false };
+                }
+            });
 
             const results = await Promise.all(statusPromises);
 
             const newStatuses: { [key: number]: boolean } = {};
             results.forEach((res, index) => {
                 const accountId = activeAccounts[index].id;
-                if (res.data) {
-                    newStatuses[accountId] = res.data.isLive;
-                }
+                newStatuses[accountId] = res.isLive;
             });
             setLiveStatuses(newStatuses);
         };
