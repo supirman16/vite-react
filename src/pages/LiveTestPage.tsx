@@ -1,112 +1,96 @@
 import { useContext, useState, useEffect, useRef } from 'react';
 import { AppContext, AppContextType } from '../App';
+// Impor SDK resmi dari EulerStream
+import { EulerAPI } from '@eulerstream/euler-api-sdk';
 
 // Kunci API EulerStream Anda
 const EULER_STREAM_API_KEY = "ZTlhMTg4YzcyMTRhNWY1ZTk2ZTNkODcwYTE0YTQyMDcwNGFiMGIwYjc4MmZmMjljZGE1ZmEw";
-const EULER_STREAM_WEBSOCKET_URL = "wss://tiktok.eulerstream.com/ws";
 
-// Komponen ini sekarang akan terhubung langsung ke WebSocket Proxy EulerStream
+// Komponen ini sekarang menggunakan SDK resmi EulerStream
 export default function LiveTestPage() {
     const { data } = useContext(AppContext) as AppContextType;
     const [selectedUsername, setSelectedUsername] = useState<string>('');
     const [connectionStatus, setConnectionStatus] = useState('Menunggu untuk memulai...');
     const [chatLog, setChatLog] = useState<string[]>([]);
     
-    // State untuk memicu koneksi. Menggunakan objek untuk memastikan perubahan referensi.
-    const [connectionRequest, setConnectionRequest] = useState<{ username: string; timestamp: number } | null>(null);
-    const ws = useRef<WebSocket | null>(null);
+    const [usernameToConnect, setUsernameToConnect] = useState<string | null>(null);
+    // Ref sekarang akan menyimpan instance dari EulerAPI
+    const api = useRef<EulerAPI | null>(null);
 
-    // useEffect ini sekarang mengelola seluruh siklus hidup WebSocket
+    // useEffect ini mengelola seluruh siklus hidup koneksi menggunakan SDK
     useEffect(() => {
-        // Jangan lakukan apa pun jika tidak ada permintaan koneksi
-        if (!connectionRequest) {
+        if (!usernameToConnect) {
             return;
         }
 
-        const { username } = connectionRequest;
+        // Buat instance baru dari SDK dengan kunci API Anda
+        const eulerApi = new EulerAPI(EULER_STREAM_API_KEY);
+        api.current = eulerApi;
+
         setChatLog([]);
-        setConnectionStatus(`Menghubungkan ke EulerStream untuk @${username}...`);
+        setConnectionStatus(`Menghubungkan ke EulerStream untuk @${usernameToConnect}...`);
 
-        // Buat koneksi baru
-        const newWs = new WebSocket(EULER_STREAM_WEBSOCKET_URL);
-        ws.current = newWs;
+        // --- Menggunakan event handler dari SDK ---
 
-        console.log(`[WebSocket] Dibuat (readyState: ${newWs.readyState})`);
+        eulerApi.on('open', () => {
+            console.log('[SDK] WebSocket terhubung dan terotorisasi.');
+            setConnectionStatus(`Otorisasi berhasil. Berlangganan ke @${usernameToConnect}...`);
+            // Setelah terhubung dan terotorisasi, langsung subscribe
+            eulerApi.subscribe(usernameToConnect);
+        });
 
-        newWs.onopen = () => {
-            console.log(`[WebSocket] Terbuka (readyState: ${newWs.readyState})`);
-            setConnectionStatus('Terhubung ke server. Mengautentikasi...');
-            newWs.send(JSON.stringify({
-                action: "authorize",
-                data: EULER_STREAM_API_KEY,
-            }));
-        };
+        eulerApi.on('subscribed', (username) => {
+            console.log(`[SDK] Berhasil berlangganan ke ${username}`);
+            setConnectionStatus(`Berhasil memantau @${username}. Menunggu data...`);
+        });
 
-        newWs.onmessage = (event) => {
-            const message = JSON.parse(event.data);
-
-            if (message.action === "authorized") {
-                console.log("[WebSocket] Otorisasi berhasil. Mengirim permintaan subscribe...");
-                setConnectionStatus(`Otorisasi berhasil. Berlangganan ke @${username}...`);
-                newWs.send(JSON.stringify({
-                    action: "subscribe",
-                    data: { username }
-                }));
-            } else if (message.action === "subscribed") {
-                console.log(`[WebSocket] Berhasil berlangganan ke ${message.data.username}`);
-                setConnectionStatus(`Berhasil memantau @${message.data.username}. Menunggu data...`);
-            } else if (message.event) {
-                switch (message.event.type) {
-                    case 'chat':
-                        const chatText = `${message.event.data.user.uniqueId}: ${message.event.data.comment}`;
-                        setChatLog(prev => [chatText, ...prev].slice(0, 100));
-                        break;
-                    case 'gift':
-                        const gift = message.event.data.gift;
-                        if (gift && gift.gift_name) {
-                            const giftText = `🎁 ${message.event.data.user.uniqueId} mengirim ${gift.gift_name} x${gift.repeat_count}`;
-                            setChatLog(prev => [giftText, ...prev].slice(0, 100));
-                        }
-                        break;
-                    case 'disconnected':
-                        setConnectionStatus(`Siaran langsung untuk @${username} telah berakhir.`);
-                        break;
-                }
-            } else if (message.error) {
-                console.error("[WebSocket] Error dari EulerStream:", message.error);
-                setConnectionStatus(`Error: ${message.error}`);
+        eulerApi.on('event', (event) => {
+            // Menangani semua event dari TikTok (chat, gift, dll.)
+            switch (event.type) {
+                case 'chat':
+                    const chatText = `${event.data.user.uniqueId}: ${event.data.comment}`;
+                    setChatLog(prev => [chatText, ...prev].slice(0, 100));
+                    break;
+                case 'gift':
+                    const gift = event.data.gift;
+                    if (gift && gift.gift_name) {
+                        const giftText = `🎁 ${event.data.user.uniqueId} mengirim ${gift.gift_name} x${gift.repeat_count}`;
+                        setChatLog(prev => [giftText, ...prev].slice(0, 100));
+                    }
+                    break;
+                case 'disconnected':
+                    setConnectionStatus(`Siaran langsung untuk @${usernameToConnect} telah berakhir.`);
+                    break;
             }
-        };
+        });
 
-        newWs.onclose = (event) => {
-            console.log(`[WebSocket] Ditutup (readyState: ${newWs.readyState}). Kode: ${event.code}, Alasan: ${event.reason}`);
+        eulerApi.on('close', (event) => {
+            console.log(`[SDK] Koneksi ditutup. Kode: ${event.code}, Alasan: ${event.reason}`);
             setConnectionStatus('Koneksi ditutup. Silakan coba lagi.');
-        };
+        });
 
-        newWs.onerror = (error) => {
-            console.error('[WebSocket] Error:', error);
-            setConnectionStatus('Terjadi eror pada koneksi WebSocket. Periksa konsol untuk detail.');
-        };
+        eulerApi.on('error', (error) => {
+            console.error('[SDK] Error:', error);
+            setConnectionStatus(`Terjadi eror: ${error.message}`);
+        });
+
+        // Memulai koneksi
+        eulerApi.connect();
 
         // Fungsi pembersihan untuk efek ini
         return () => {
-            console.log(`[WebSocket] Membersihkan koneksi untuk @${username} (readyState: ${newWs.readyState})`);
-            // Hapus event handler untuk mencegahnya berjalan pada koneksi yang sudah ditutup
-            newWs.onopen = null;
-            newWs.onmessage = null;
-            newWs.onerror = null;
-            newWs.onclose = null;
-            newWs.close();
+            console.log(`[SDK] Membersihkan koneksi untuk @${usernameToConnect}`);
+            eulerApi.disconnect();
         };
-    }, [connectionRequest]); // Jalankan ulang efek ini setiap kali ada permintaan koneksi baru
+    }, [usernameToConnect]); // Jalankan ulang efek ini setiap kali usernameToConnect berubah
 
     const handleTestConnection = () => {
         if (!selectedUsername) {
             setConnectionStatus('Silakan pilih username terlebih dahulu.');
             return;
         }
-        // Memicu useEffect dengan mengatur state. Timestamp memastikan objek baru dibuat setiap kali.
-        setConnectionRequest({ username: selectedUsername, timestamp: Date.now() });
+        // Memicu useEffect dengan mengatur state
+        setUsernameToConnect(selectedUsername);
     };
 
     return (
