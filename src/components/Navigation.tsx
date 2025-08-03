@@ -2,7 +2,7 @@ import { useContext } from 'react';
 import { AppContext, AppContextType } from '../App';
 import { 
     LayoutDashboard, BarChart2, FileText, User, DollarSign, Settings, 
-    Users, Smartphone, Trophy
+    Users, Smartphone, Trophy, TestTube2
 } from 'lucide-react';
 
 export default function Navigation() {
@@ -11,7 +11,7 @@ export default function Navigation() {
 
     const navItems = [
         { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, roles: ['superadmin', 'host'] },
-        { id: 'leaderboard', label: 'Papan Peringkat', icon: Trophy, roles: ['superadmin', 'host'] }, // <-- Ditambahkan
+        { id: 'leaderboard', label: 'Papan Peringkat', icon: Trophy, roles: ['superadmin', 'host'] },
         { id: 'analysis', label: 'Analisis Kinerja', icon: BarChart2, roles: ['superadmin', 'host'] },
         { id: 'rekap', label: 'Rekap Live', icon: FileText, roles: ['superadmin', 'host'] },
         { id: 'profile', label: 'Profil Saya', icon: User, roles: ['host'] },
@@ -21,6 +21,7 @@ export default function Navigation() {
         { id: 'hosts', label: 'Manajemen Host', icon: Users, roles: ['superadmin'] },
         { id: 'tiktok', label: 'Manajemen Akun', icon: Smartphone, roles: ['superadmin'] },
         { id: 'users', label: 'Manajemen Pengguna', icon: Users, roles: ['superadmin'] },
+        { id: 'livetest', label: 'Uji Coba Live', icon: TestTube2, roles: ['superadmin'] }, // <-- Ditambahkan
     ];
 
     const userRole = isSuperAdmin ? 'superadmin' : 'host';
