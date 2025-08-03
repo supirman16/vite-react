@@ -13,112 +13,103 @@ const server = http.createServer(app);
 const wss = new WebSocketServer({ server });
 
 // === TAMBAHAN: Health Check Endpoint ===
-// Rute ini akan merespons permintaan HTTP dari Railway untuk memastikan server tetap berjalan.
 app.get('/', (req, res) => {
-  res.send('TikTok WebSocket Server is running.');
+  res.status(200).send('TikTok WebSocket Server is running and healthy.');
 });
-// ======================================
 
 // Objek untuk menyimpan koneksi TikTok yang aktif untuk setiap klien WebSocket
 const activeConnections = new Map();
 
 // --- 3. Logika WebSocket Server ---
 wss.on('connection', (ws) => {
-    console.log('Klien baru terhubung ke WebSocket server.');
+    console.log('[Server Log] New client connected to WebSocket server.');
 
-    // Saat menerima pesan dari klien
     ws.on('message', async (message) => {
+        console.log(`[Server Log] Received message: ${message}`);
         try {
             const data = JSON.parse(message);
 
-            // Periksa apakah ada koneksi lama untuk klien ini dan putuskan
             if (activeConnections.has(ws)) {
-                console.log('Memutuskan koneksi TikTok lama...');
+                console.log('[Server Log] Disconnecting old TikTok connection for this client...');
                 activeConnections.get(ws).disconnect();
                 activeConnections.delete(ws);
             }
 
-            // Hanya proses jika aksinya adalah 'connect'
             if (data.action === 'connect' && data.username) {
                 const { username } = data;
-                console.log(`Menerima permintaan untuk terhubung ke @${username}`);
+                console.log(`[Server Log] Received connect request for @${username}`);
+                ws.send(JSON.stringify({ type: 'status', message: `Connecting to @${username}...` }));
 
-                // Kirim status 'menghubungkan' kembali ke klien
-                ws.send(JSON.stringify({ type: 'status', message: `Menghubungkan ke @${username}...` }));
+                try {
+                    console.log(`[Server Log] Creating new TikTokLiveConnection for @${username}`);
+                    const tiktokConnection = new TikTokLiveConnection(username);
+                    console.log(`[Server Log] TikTokLiveConnection object created successfully.`);
+                    
+                    activeConnections.set(ws, tiktokConnection);
+                    setupEventHandlers(tiktokConnection, ws, username);
 
-                // Buat koneksi baru ke TikTok
-                const tiktokConnection = new TikTokLiveConnection(username);
-                activeConnections.set(ws, tiktokConnection); // Simpan koneksi
+                    console.log(`[Server Log] Attempting to connect to @${username}'s live...`);
+                    await tiktokConnection.connect();
+                    console.log(`[Server Log] tiktokConnection.connect() promise resolved.`);
 
-                // Tangani event dari TikTok dan teruskan ke klien
-                setupEventHandlers(tiktokConnection, ws, username);
-
-                // Coba terhubung
-                await tiktokConnection.connect();
+                } catch (connectionError) {
+                    console.error(`[Server Log] ERROR during TikTok connection process for @${username}:`, connectionError);
+                    ws.send(JSON.stringify({ type: 'error', message: `Failed to connect to TikTok: ${connectionError.message}` }));
+                }
 
             }
-        } catch (error) {
-            console.error('Pesan tidak valid atau eror:', error);
-            ws.send(JSON.stringify({ type: 'error', message: 'Pesan tidak valid dari klien.' }));
+        } catch (parseError) {
+            console.error('[Server Log] ERROR parsing message from client:', parseError);
+            ws.send(JSON.stringify({ type: 'error', message: 'Invalid message format from client.' }));
         }
     });
 
-    // Saat koneksi klien ditutup
     ws.on('close', () => {
-        console.log('Klien terputus.');
-        // Putuskan juga koneksi TikTok yang terkait
+        console.log('[Server Log] Client disconnected.');
         if (activeConnections.has(ws)) {
+            console.log('[Server Log] Disconnecting associated TikTok connection.');
             activeConnections.get(ws).disconnect();
             activeConnections.delete(ws);
         }
+    });
+
+    ws.on('error', (error) => {
+        console.error('[Server Log] WebSocket error:', error);
     });
 });
 
 // --- 4. Fungsi Bantuan untuk Event Handler ---
 function setupEventHandlers(tiktokConnection, ws, username) {
-    // Berhasil terhubung
     tiktokConnection.on('connected', (state) => {
-        console.log(`Berhasil terhubung ke Room ID ${state.roomId}`);
+        console.log(`[Server Log] Successfully connected to @${username}'s Room ID ${state.roomId}`);
         ws.send(JSON.stringify({ type: 'connected', message: `BERHASIL terhubung ke @${username} (Room ID: ${state.roomId})` }));
     });
 
-    // Gagal terhubung
     tiktokConnection.on('disconnected', () => {
-        console.log('Koneksi TikTok terputus.');
+        console.log(`[Server Log] TikTok connection for @${username} disconnected.`);
         ws.send(JSON.stringify({ type: 'disconnected', message: 'Koneksi ke TikTok terputus.' }));
     });
 
-    // Menerima chat
     tiktokConnection.on(WebcastEvent.CHAT, (data) => {
-        const chatMessage = {
-            type: 'chat',
-            data: {
-                uniqueId: data.uniqueId,
-                comment: data.comment
-            }
-        };
+        const chatMessage = { type: 'chat', data: { uniqueId: data.uniqueId, comment: data.comment } };
         ws.send(JSON.stringify(chatMessage));
     });
 
-    // Menerima gift
     tiktokConnection.on(WebcastEvent.GIFT, (data) => {
-        // Hanya proses jika nama gift ada
         if (data.gift && data.gift.gift_name) {
-            const giftMessage = {
-                type: 'gift',
-                data: {
-                    uniqueId: data.uniqueId,
-                    giftName: data.gift.gift_name,
-                    repeatCount: data.gift.repeat_count
-                }
-            };
+            const giftMessage = { type: 'gift', data: { uniqueId: data.uniqueId, giftName: data.gift.gift_name, repeatCount: data.gift.repeat_count } };
             ws.send(JSON.stringify(giftMessage));
         }
     });
-}
 
+    // Menambahkan penanganan eror spesifik dari konektor
+    tiktokConnection.on('error', (error) => {
+        console.error(`[Server Log] Error from TikTokLiveConnection for @${username}:`, error);
+        ws.send(JSON.stringify({ type: 'error', message: `An error occurred with the TikTok connection: ${error.message}` }));
+    });
+}
 
 // --- 5. Jalankan Server ---
 server.listen(PORT, () => {
-    console.log(`WebSocket server berjalan di http://localhost:${PORT}`);
+    console.log(`[Server Log] WebSocket server is listening on port ${PORT}`);
 });
