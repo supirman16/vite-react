@@ -4,6 +4,12 @@ import { Plus, Edit, Trash2, ArrowUpDown, Search } from 'lucide-react';
 import Modal from '../components/Modal';
 import ConfirmationModal from '../components/ConfirmationModal';
 import DropdownMenu from '../components/DropdownMenu';
+import { io } from "socket.io-client";
+
+// --- KONFIGURASI EULERSTREAM ---
+// GANTI DENGAN URL DAN API KEY ANDA
+const EULER_STREAM_URL = "https://tiktok.eulerstream.com/"; 
+const EULER_STREAM_API_KEY = "ZTlhMTg4YzcyMTRhNWY1ZTk2ZTNkODcwYTE0YTQyMDcwNGFiMGIwYjc4MmZmMjljZGE1ZmEw"; 
 
 // Komponen ini adalah halaman Manajemen Akun TikTok untuk superadmin.
 export default function TiktokPage() {
@@ -107,7 +113,7 @@ function TiktokTable({ onEdit, onDelete, searchQuery }: { onEdit: (account: any)
     const { data } = useContext(AppContext) as AppContextType;
     const [sortKey, setSortKey] = useState('username');
     const [sortDirection, setSortDirection] = useState('asc');
-    const [liveStatuses, setLiveStatuses] = useState<{ [key: number]: boolean }>({});
+    const [liveStatuses, setLiveStatuses] = useState<{ [key: string]: boolean }>({});
 
     const filteredAndSortedData = useMemo(() => {
         const filtered = data.tiktokAccounts.filter(account => 
@@ -124,37 +130,31 @@ function TiktokTable({ onEdit, onDelete, searchQuery }: { onEdit: (account: any)
     }, [data.tiktokAccounts, sortKey, sortDirection, searchQuery]);
 
     useEffect(() => {
-        const checkAllStatuses = async () => {
-            const activeAccounts = filteredAndSortedData.filter(acc => acc.status === 'Aktif');
-            
-            const statusPromises = activeAccounts.map(async (account) => {
-                try {
-                    const response = await fetch('/api/get-live-status', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ username: account.username })
-                    });
-                    if (!response.ok) return { isLive: false };
-                    return response.json();
-                } catch (error) {
-                    console.error(`Error fetching status for ${account.username}:`, error);
-                    return { isLive: false };
-                }
-            });
+        if (filteredAndSortedData.length === 0) return;
 
-            const results = await Promise.all(statusPromises);
+        // Buat koneksi ke server WebSocket EulerStream
+        const socket = io(EULER_STREAM_URL, { query: { apiKey: EULER_STREAM_API_KEY } });
 
-            const newStatuses: { [key: number]: boolean } = {};
-            results.forEach((res, index) => {
-                const accountId = activeAccounts[index].id;
-                newStatuses[accountId] = res.isLive;
-            });
-            setLiveStatuses(newStatuses);
+        socket.on('connect', () => {
+            console.log('Terhubung ke EulerStream WebSocket.');
+            // Kirim daftar username yang ingin dipantau
+            const usernames = filteredAndSortedData.map(acc => acc.username);
+            socket.emit('register', usernames);
+        });
+
+        // Dengarkan event 'liveStatus' dari server
+        socket.on('liveStatus', (data: { [key: string]: boolean }) => {
+            setLiveStatuses(data);
+        });
+
+        socket.on('disconnect', () => {
+            console.log('Terputus dari EulerStream WebSocket.');
+        });
+
+        // Membersihkan koneksi saat komponen dilepas
+        return () => {
+            socket.disconnect();
         };
-
-        if (filteredAndSortedData.length > 0) {
-            checkAllStatuses();
-        }
     }, [filteredAndSortedData]);
 
     const handleSort = (key: string) => {
@@ -187,6 +187,7 @@ function TiktokTable({ onEdit, onDelete, searchQuery }: { onEdit: (account: any)
                 </thead>
                 <tbody className="block md:table-row-group">
                     {filteredAndSortedData.map(account => {
+                        const isLive = liveStatuses[account.username.toLowerCase()] || false;
                         const actions = [
                             { label: 'Ubah', icon: Edit, onClick: () => onEdit(account), className: 'text-purple-600 dark:text-purple-400' },
                             { label: 'Hapus', icon: Trash2, onClick: () => onDelete(account), className: 'text-red-600 dark:text-red-400' }
@@ -195,8 +196,8 @@ function TiktokTable({ onEdit, onDelete, searchQuery }: { onEdit: (account: any)
                             <tr key={account.id} className="block md:table-row bg-white dark:bg-stone-800 border-b dark:border-stone-700 mb-4 md:mb-0">
                                 <td data-label="Username:" className="mobile-label px-6 py-4 block md:table-cell font-medium text-stone-900 dark:text-white">
                                     <div className="flex items-center space-x-2">
-                                        {liveStatuses[account.id] && (
-                                            <span className="live-badge">
+                                        {isLive && (
+                                            <span className="live-badge" title="Sedang Live">
                                                 <span className="live-badge-ping"></span>
                                             </span>
                                         )}
