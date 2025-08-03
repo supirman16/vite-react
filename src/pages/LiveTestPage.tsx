@@ -1,7 +1,7 @@
 import { useContext, useState, useEffect, useRef } from 'react';
 import { AppContext, AppContextType } from '../App';
-// Impor SDK resmi dari EulerStream
-import { EulerAPI } from '@eulerstream/euler-api-sdk';
+// --- PERUBAHAN UTAMA: Menggunakan default import ---
+import EulerAPI from '@eulerstream/euler-api-sdk';
 
 // Kunci API EulerStream Anda
 const EULER_STREAM_API_KEY = "ZTlhMTg4YzcyMTRhNWY1ZTk2ZTNkODcwYTE0YTQyMDcwNGFiMGIwYjc4MmZmMjljZGE1ZmEw";
@@ -66,7 +66,7 @@ export default function LiveTestPage() {
 
         eulerApi.on('close', (event) => {
             console.log(`[SDK] Koneksi ditutup. Kode: ${event.code}, Alasan: ${event.reason}`);
-            setConnectionStatus('Koneksi ditutup. Silakan coba lagi.');
+            setConnectionStatus('Koneosi ditutup. Silakan coba lagi.');
         });
 
         eulerApi.on('error', (error) => {
