@@ -14,47 +14,60 @@ export default function LiveTestPage() {
     const ws = useRef<WebSocket | null>(null);
     const currentUsername = useRef<string | null>(null);
 
-    // Efek untuk mengelola koneksi WebSocket
+    // Efek untuk membersihkan koneksi saat komponen dilepas
     useEffect(() => {
-        // Fungsi untuk membersihkan koneksi saat komponen dilepas
         return () => {
             if (ws.current) {
-                console.log("Menutup koneksi WebSocket...");
+                console.log("Menutup koneksi WebSocket saat komponen dilepas...");
                 ws.current.close();
             }
         };
     }, []);
 
-    const setupWebSocketListeners = () => {
-        if (!ws.current) return;
+    const handleTestConnection = () => {
+        if (!selectedUsername) {
+            setConnectionStatus('Silakan pilih username terlebih dahulu.');
+            return;
+        }
+
+        // Tutup koneksi lama jika ada
+        if (ws.current) {
+            console.log("Menutup koneksi WebSocket yang ada untuk memulai yang baru...");
+            ws.current.close();
+        }
+
+        setChatLog([]);
+        currentUsername.current = selectedUsername;
+        setConnectionStatus(`Mencoba terhubung ke EulerStream untuk @${selectedUsername}...`);
+
+        // Buat instance WebSocket baru
+        ws.current = new WebSocket(EULER_STREAM_WEBSOCKET_URL);
+
+        // --- PERUBAHAN LOGIKA UTAMA DIMULAI DI SINI ---
 
         ws.current.onopen = () => {
             console.log('WebSocket terhubung ke EulerStream.');
             setConnectionStatus('Terhubung ke server. Mengautentikasi...');
-            // Kirim pesan otorisasi setelah terhubung
+            // Langsung kirim pesan otorisasi setelah terhubung
             ws.current?.send(JSON.stringify({
                 action: "authorize",
                 data: EULER_STREAM_API_KEY,
             }));
         };
 
-        ws.current.onclose = () => {
-            console.log('WebSocket terputus dari EulerStream.');
-            setConnectionStatus('Koneksi terputus. Silakan coba lagi.');
-        };
-
-        ws.current.onerror = (error) => {
-            console.error('WebSocket Error:', error);
-            setConnectionStatus('Terjadi eror pada koneksi WebSocket.');
-        };
-
         ws.current.onmessage = (event) => {
             const message = JSON.parse(event.data);
 
-            // Menangani berbagai jenis pesan dari server
             if (message.action === "authorized") {
-                console.log("Otorisasi berhasil.");
-                setConnectionStatus(`Otorisasi berhasil. Siap untuk memantau live.`);
+                console.log("Otorisasi berhasil. Mengirim permintaan subscribe...");
+                setConnectionStatus(`Otorisasi berhasil. Meminta data untuk @${selectedUsername}...`);
+                // Setelah otorisasi berhasil, langsung kirim pesan subscribe
+                ws.current?.send(JSON.stringify({
+                    action: "subscribe",
+                    data: {
+                        username: selectedUsername
+                    }
+                }));
             } else if (message.action === "subscribed") {
                 console.log(`Berhasil subscribe ke ${message.data.username}`);
                 setConnectionStatus(`Berhasil memantau @${message.data.username}. Menunggu data...`);
@@ -81,46 +94,16 @@ export default function LiveTestPage() {
                 setConnectionStatus(`Error: ${message.error}`);
             }
         };
-    };
 
-    const handleTestConnection = () => {
-        if (!selectedUsername) {
-            setConnectionStatus('Silakan pilih username terlebih dahulu.');
-            return;
-        }
+        ws.current.onclose = () => {
+            console.log('WebSocket terputus dari EulerStream.');
+            setConnectionStatus('Koneksi terputus. Silakan coba lagi.');
+        };
 
-        // Jika ada koneksi lama, tutup dulu
-        if (ws.current && ws.current.readyState === WebSocket.OPEN) {
-            ws.current.close();
-        }
-
-        setChatLog([]);
-        currentUsername.current = selectedUsername;
-        setConnectionStatus('Mencoba terhubung ke EulerStream...');
-
-        // Buat instance WebSocket baru
-        ws.current = new WebSocket(EULER_STREAM_WEBSOCKET_URL);
-        setupWebSocketListeners();
-
-        // Kita akan mengirim pesan subscribe setelah otorisasi berhasil
-        const subscribeInterval = setInterval(() => {
-            if (ws.current && ws.current.readyState === WebSocket.OPEN) {
-                // Cek status koneksi sebelum subscribe
-                if (connectionStatus.startsWith("Otorisasi berhasil")) {
-                    console.log(`Mengirim permintaan subscribe untuk @${selectedUsername}`);
-                    ws.current.send(JSON.stringify({
-                        action: "subscribe",
-                        data: {
-                            username: selectedUsername
-                        }
-                    }));
-                    clearInterval(subscribeInterval);
-                }
-            } else {
-                // Hentikan jika koneksi gagal
-                clearInterval(subscribeInterval);
-            }
-        }, 1000); // Coba setiap detik
+        ws.current.onerror = (error) => {
+            console.error('WebSocket Error:', error);
+            setConnectionStatus('Terjadi eror pada koneksi WebSocket. Periksa konsol untuk detail.');
+        };
     };
 
     return (
