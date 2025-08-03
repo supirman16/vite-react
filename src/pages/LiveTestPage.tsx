@@ -13,7 +13,7 @@ export default function LiveTestPage() {
     // Efek ini akan membuat dan membersihkan koneksi WebSocket
     useEffect(() => {
         // GANTI URL DI BAWAH INI DENGAN URL DARI RENDER
-        const websocketUrl = 'wss://vite-react.railway.internal'; // <-- PERHATIKAN INI
+        const websocketUrl = 'wss://vite-react-production-4165.up.railway.app'; // <-- PERHATIKAN INI
         
         ws.current = new WebSocket(websocketUrl);
 
@@ -122,4 +122,5 @@ export default function LiveTestPage() {
         </section>
     );
 }
+
 
