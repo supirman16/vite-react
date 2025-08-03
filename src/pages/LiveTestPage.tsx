@@ -1,7 +1,7 @@
 import { useContext, useState, useEffect, useRef } from 'react';
 import { AppContext, AppContextType } from '../App';
-// --- PERUBAHAN UTAMA: Menggunakan default import ---
-import EulerAPI from '@eulerstream/euler-api-sdk';
+// --- PERUBAHAN UTAMA: Menggunakan namespace import untuk stabilitas ---
+import * as EulerSDK from '@eulerstream/euler-api-sdk';
 
 // Kunci API EulerStream Anda
 const EULER_STREAM_API_KEY = "ZTlhMTg4YzcyMTRhNWY1ZTk2ZTNkODcwYTE0YTQyMDcwNGFiMGIwYjc4MmZmMjljZGE1ZmEw";
@@ -15,37 +15,33 @@ export default function LiveTestPage() {
     
     const [usernameToConnect, setUsernameToConnect] = useState<string | null>(null);
     // Ref sekarang akan menyimpan instance dari EulerAPI
-    const api = useRef<EulerAPI | null>(null);
+    const api = useRef<any | null>(null);
 
-    // useEffect ini mengelola seluruh siklus hidup koneksi menggunakan SDK
     useEffect(() => {
         if (!usernameToConnect) {
             return;
         }
 
-        // Buat instance baru dari SDK dengan kunci API Anda
-        const eulerApi = new EulerAPI(EULER_STREAM_API_KEY);
+        // --- PERUBAHAN UTAMA: Mengakses kelas dari namespace ---
+        // Ini adalah cara yang paling andal untuk menginstansiasi kelas dari library
+        const eulerApi = new EulerSDK.EulerAPI(EULER_STREAM_API_KEY);
         api.current = eulerApi;
 
         setChatLog([]);
         setConnectionStatus(`Menghubungkan ke EulerStream untuk @${usernameToConnect}...`);
 
-        // --- Menggunakan event handler dari SDK ---
-
         eulerApi.on('open', () => {
             console.log('[SDK] WebSocket terhubung dan terotorisasi.');
             setConnectionStatus(`Otorisasi berhasil. Berlangganan ke @${usernameToConnect}...`);
-            // Setelah terhubung dan terotorisasi, langsung subscribe
             eulerApi.subscribe(usernameToConnect);
         });
 
-        eulerApi.on('subscribed', (username) => {
+        eulerApi.on('subscribed', (username: string) => {
             console.log(`[SDK] Berhasil berlangganan ke ${username}`);
             setConnectionStatus(`Berhasil memantau @${username}. Menunggu data...`);
         });
 
-        eulerApi.on('event', (event) => {
-            // Menangani semua event dari TikTok (chat, gift, dll.)
+        eulerApi.on('event', (event: any) => {
             switch (event.type) {
                 case 'chat':
                     const chatText = `${event.data.user.uniqueId}: ${event.data.comment}`;
@@ -64,32 +60,29 @@ export default function LiveTestPage() {
             }
         });
 
-        eulerApi.on('close', (event) => {
+        eulerApi.on('close', (event: any) => {
             console.log(`[SDK] Koneksi ditutup. Kode: ${event.code}, Alasan: ${event.reason}`);
-            setConnectionStatus('Koneosi ditutup. Silakan coba lagi.');
+            setConnectionStatus('Koneksi ditutup. Silakan coba lagi.');
         });
 
-        eulerApi.on('error', (error) => {
+        eulerApi.on('error', (error: Error) => {
             console.error('[SDK] Error:', error);
             setConnectionStatus(`Terjadi eror: ${error.message}`);
         });
 
-        // Memulai koneksi
         eulerApi.connect();
 
-        // Fungsi pembersihan untuk efek ini
         return () => {
             console.log(`[SDK] Membersihkan koneksi untuk @${usernameToConnect}`);
             eulerApi.disconnect();
         };
-    }, [usernameToConnect]); // Jalankan ulang efek ini setiap kali usernameToConnect berubah
+    }, [usernameToConnect]);
 
     const handleTestConnection = () => {
         if (!selectedUsername) {
             setConnectionStatus('Silakan pilih username terlebih dahulu.');
             return;
         }
-        // Memicu useEffect dengan mengatur state
         setUsernameToConnect(selectedUsername);
     };
 
