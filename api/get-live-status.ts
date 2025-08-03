@@ -31,11 +31,9 @@ export default async function handler(
 
     // Gunakan try...catch baru khusus untuk operasi koneksi
     try {
-      const tiktokLiveConnection = new TikTokLiveConnection(username, {
-          // Tambahkan timeout untuk mencegah serverless function timeout (misal, 7 detik)
-          // Ini penting karena batas default Vercel adalah 10 detik
-          timeout: 7000 
-      });
+      // Inisialisasi koneksi tanpa opsi 'timeout' yang tidak valid.
+      // Library akan menggunakan timeout default-nya.
+      const tiktokLiveConnection = new TikTokLiveConnection(username);
 
       // Tunggu (await) hingga koneksi selesai
       const state = await tiktokLiveConnection.connect();
