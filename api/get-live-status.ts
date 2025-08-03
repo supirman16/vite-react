@@ -1,8 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-
-// --- Menggunakan API EulerStream yang andal ---
-const EULER_STREAM_API_URL = "https://tiktok.eulerstream.com/api/v1/user/"; 
-const EULER_STREAM_API_KEY = "ZTlhMTg4YzcyMTRhNWY1ZTk2ZTNkODcwYTE0YTQyMDcwNGFiMGIwYjc4MmZmMjljZGE1ZmEw";
+// Kita akan menggunakan library-nya langsung di sini
+import { TikTokLiveConnection } from 'tiktok-live-connector';
 
 export default async function handler(
   request: VercelRequest,
@@ -28,29 +26,30 @@ export default async function handler(
       return response.status(400).json({ error: 'Username is required' });
     }
 
-    // Panggil API EulerStream untuk memeriksa status live
-    const apiResponse = await fetch(`${EULER_STREAM_API_URL}${username}/live-status`, {
-        method: 'GET',
-        headers: { 'X-API-Key': EULER_STREAM_API_KEY }
-    });
+    // Gunakan try...catch khusus untuk operasi koneksi
+    try {
+      // Buat koneksi baru menggunakan library
+      const tiktokConnection = new TikTokLiveConnection(username, {
+          // Opsi ini penting untuk lingkungan serverless agar tidak menggantung
+          processInitialData: false,
+          fetchRoomInfoOnConnect: true,
+      });
 
-    if (!apiResponse.ok) {
-        const errorBody = await apiResponse.text();
-        return response.status(200).json({ 
-            isLive: false, 
-            error: `EulerStream API returned status ${apiResponse.status}: ${errorBody}` 
-        });
-    }
+      // Coba terhubung. Await akan menunggu hingga selesai atau gagal.
+      const state = await tiktokConnection.connect();
+      
+      // Jika berhasil, langsung putuskan koneksi dan kirim respons sukses
+      tiktokConnection.disconnect();
+      return response.status(200).json({ isLive: true, roomId: state.roomId });
 
-    const result = await apiResponse.json();
-
-    if (result.is_live) {
-        return response.status(200).json({ isLive: true, roomId: result.room_id || 'N/A' });
-    } else {
-        return response.status(200).json({ isLive: false, error: 'User is not live according to EulerStream.' });
+    } catch (err: any) {
+      // Jika connect() gagal (misal, user tidak live), ini adalah hasil yang diharapkan.
+      // Kirim respons 200 OK dengan status isLive: false.
+      return response.status(200).json({ isLive: false, error: err.message || 'User is not live or connection failed.' });
     }
 
   } catch (err: any) {
+    // Menangani eror tak terduga lainnya
     console.error('Internal Server Error in get-live-status:', err);
     return response.status(500).json({ error: 'An internal server error occurred.', details: err.message });
   }
