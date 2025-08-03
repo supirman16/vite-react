@@ -19,6 +19,10 @@ export default function LiveTestPage() {
         return () => {
             if (ws.current) {
                 console.log("Menutup koneksi WebSocket saat komponen dilepas...");
+                ws.current.onopen = null;
+                ws.current.onmessage = null;
+                ws.current.onerror = null;
+                ws.current.onclose = null;
                 ws.current.close();
             }
         };
@@ -30,9 +34,14 @@ export default function LiveTestPage() {
             return;
         }
 
-        // Tutup koneksi lama jika ada
+        // --- PERUBAHAN LOGIKA UTAMA: Manajemen Koneksi yang Lebih Tangguh ---
+        // Tutup koneksi lama jika ada, dan pastikan event handler-nya dibersihkan
         if (ws.current) {
             console.log("Menutup koneksi WebSocket yang ada untuk memulai yang baru...");
+            ws.current.onopen = null;
+            ws.current.onmessage = null;
+            ws.current.onerror = null;
+            ws.current.onclose = null;
             ws.current.close();
         }
 
@@ -41,28 +50,26 @@ export default function LiveTestPage() {
         setConnectionStatus(`Mencoba terhubung ke EulerStream untuk @${selectedUsername}...`);
 
         // Buat instance WebSocket baru
-        ws.current = new WebSocket(EULER_STREAM_WEBSOCKET_URL);
+        const newWs = new WebSocket(EULER_STREAM_WEBSOCKET_URL);
 
-        // --- PERUBAHAN LOGIKA UTAMA DIMULAI DI SINI ---
-
-        ws.current.onopen = () => {
+        newWs.onopen = () => {
             console.log('WebSocket terhubung ke EulerStream.');
             setConnectionStatus('Terhubung ke server. Mengautentikasi...');
             // Langsung kirim pesan otorisasi setelah terhubung
-            ws.current?.send(JSON.stringify({
+            newWs.send(JSON.stringify({
                 action: "authorize",
                 data: EULER_STREAM_API_KEY,
             }));
         };
 
-        ws.current.onmessage = (event) => {
+        newWs.onmessage = (event) => {
             const message = JSON.parse(event.data);
 
             if (message.action === "authorized") {
                 console.log("Otorisasi berhasil. Mengirim permintaan subscribe...");
                 setConnectionStatus(`Otorisasi berhasil. Meminta data untuk @${selectedUsername}...`);
                 // Setelah otorisasi berhasil, langsung kirim pesan subscribe
-                ws.current?.send(JSON.stringify({
+                newWs.send(JSON.stringify({
                     action: "subscribe",
                     data: {
                         username: selectedUsername
@@ -95,15 +102,21 @@ export default function LiveTestPage() {
             }
         };
 
-        ws.current.onclose = () => {
+        newWs.onclose = () => {
             console.log('WebSocket terputus dari EulerStream.');
-            setConnectionStatus('Koneksi terputus. Silakan coba lagi.');
+            // Hanya set status jika ini bukan penutupan yang disengaja
+            if (ws.current === newWs) {
+                 setConnectionStatus('Koneksi terputus. Silakan coba lagi.');
+            }
         };
 
-        ws.current.onerror = (error) => {
+        newWs.onerror = (error) => {
             console.error('WebSocket Error:', error);
             setConnectionStatus('Terjadi eror pada koneksi WebSocket. Periksa konsol untuk detail.');
         };
+        
+        // Simpan instance WebSocket yang baru ke dalam ref
+        ws.current = newWs;
     };
 
     return (
