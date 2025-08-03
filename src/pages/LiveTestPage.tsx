@@ -1,54 +1,81 @@
-import { useContext, useState } from 'react';
+import { useContext, useState, useEffect, useRef } from 'react';
 import { AppContext, AppContextType } from '../App';
-// Hapus impor 'tiktok-live-connector' dari sini
-// import { TikTokLiveConnection } from 'tiktok-live-connector';
 
-// Komponen ini adalah halaman khusus untuk menguji koneksi ke TikTok LIVE.
+// Komponen ini adalah halaman khusus untuk menguji koneksi ke TikTok LIVE melalui WebSocket.
 export default function LiveTestPage() {
     const { data } = useContext(AppContext) as AppContextType;
     const [selectedUsername, setSelectedUsername] = useState<string>('');
     const [connectionStatus, setConnectionStatus] = useState('Menunggu untuk memulai...');
-    const [isConnecting, setIsConnecting] = useState(false);
-    // Log obrolan tidak dapat berfungsi dengan mudah tanpa WebSocket, jadi kita sederhanakan untuk saat ini.
-    const [chatLog, setChatLog] = useState<string[]>(['Log obrolan dinonaktifkan di sisi klien. Fitur ini memerlukan implementasi backend dengan WebSocket.']);
+    const [chatLog, setChatLog] = useState<string[]>([]);
+    const [isConnected, setIsConnected] = useState(false);
+    const ws = useRef<WebSocket | null>(null);
 
-    const handleTestConnection = async () => {
+    // Efek ini akan membuat dan membersihkan koneksi WebSocket
+    useEffect(() => {
+        // GANTI URL DI BAWAH INI DENGAN URL DARI RENDER
+        const websocketUrl = 'wss://nama-server-anda.onrender.com'; // <-- PERHATIKAN INI
+        
+        ws.current = new WebSocket(websocketUrl);
+
+        ws.current.onopen = () => {
+            console.log('WebSocket terhubung ke server.');
+            setConnectionStatus('Siap untuk menguji koneksi. Pilih akun dan klik tombol.');
+        };
+
+        ws.current.onclose = () => {
+            console.log('WebSocket terputus dari server.');
+            setConnectionStatus('Koneksi ke server terputus. Silakan segarkan halaman.');
+            setIsConnected(false);
+        };
+
+        ws.current.onmessage = (event) => {
+            const message = JSON.parse(event.data);
+
+            switch (message.type) {
+                case 'status':
+                case 'connected':
+                case 'disconnected':
+                    setConnectionStatus(message.message);
+                    if(message.type === 'connected') setIsConnected(true);
+                    if(message.type === 'disconnected') setIsConnected(false);
+                    break;
+                case 'chat':
+                    const chatText = `${message.data.uniqueId}: ${message.data.comment}`;
+                    setChatLog(prev => [chatText, ...prev].slice(0, 100));
+                    break;
+                case 'gift':
+                    const giftText = `🎁 ${message.data.uniqueId} mengirim ${message.data.giftName} x${message.data.repeatCount}`;
+                    setChatLog(prev => [giftText, ...prev].slice(0, 100));
+                    break;
+                case 'error':
+                     setConnectionStatus(`Error dari server: ${message.message}`);
+                     break;
+            }
+        };
+
+        // Fungsi pembersihan saat komponen dilepas
+        return () => {
+            if (ws.current) {
+                ws.current.close();
+            }
+        };
+    }, []); // Array dependensi kosong berarti efek ini hanya berjalan sekali
+
+    const handleTestConnection = () => {
         if (!selectedUsername) {
             setConnectionStatus('Silakan pilih username terlebih dahulu.');
             return;
         }
 
-        setIsConnecting(true);
-        setConnectionStatus(`Memeriksa status live untuk @${selectedUsername}...`);
-        
-        try {
-            // Panggil API backend Anda, bukan library secara langsung.
-            // Kita gunakan endpoint yang sudah ada sebagai contoh.
-            // Anda mungkin perlu membuat endpoint baru untuk fungsionalitas penuh.
-            const response = await fetch('/api/get-live-status', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ username: selectedUsername }),
-            });
-
-            if (!response.ok) {
-                throw new Error(`Server merespons dengan status ${response.status}`);
-            }
-
-            const result = await response.json();
-
-            if (result.isLive) {
-                setConnectionStatus(`BERHASIL: @${selectedUsername} sedang live. Room ID: ${result.roomId}`);
-            } else {
-                setConnectionStatus(`INFO: @${selectedUsername} sedang tidak live. Pesan error: ${result.error || 'Tidak ada sesi live yang ditemukan.'}`);
-            }
-
-        } catch (err: any) {
-            setConnectionStatus(`GAGAL terhubung ke API: ${err.message}`);
-        } finally {
-            setIsConnecting(false);
+        if (ws.current && ws.current.readyState === WebSocket.OPEN) {
+            setChatLog([]); // Kosongkan log saat memulai koneksi baru
+            const message = {
+                action: 'connect',
+                username: selectedUsername
+            };
+            ws.current.send(JSON.stringify(message));
+        } else {
+            setConnectionStatus('Koneksi WebSocket belum siap. Coba lagi sebentar.');
         }
     };
 
@@ -73,10 +100,9 @@ export default function LiveTestPage() {
                     </select>
                     <button 
                         onClick={handleTestConnection} 
-                        disabled={isConnecting}
                         className="w-full sm:w-auto unity-gradient-bg text-white font-semibold px-5 py-2.5 rounded-lg shadow-sm hover:opacity-90 flex items-center justify-center disabled:opacity-75"
                     >
-                        {isConnecting ? 'Memeriksa...' : 'Test Status Live'}
+                        Test Koneksi
                     </button>
                 </div>
 
@@ -88,6 +114,7 @@ export default function LiveTestPage() {
                 <div className="mt-6">
                     <h3 className="text-lg font-medium">Log Chat & Hadiah (Real-time):</h3>
                     <div className="mt-2 p-4 h-64 overflow-y-auto bg-stone-100 dark:bg-stone-900 rounded-md text-sm space-y-2">
+                        {chatLog.length === 0 && <p className="text-stone-400">Menunggu data chat dan hadiah...</p>}
                         {chatLog.map((msg, i) => <p key={i}>{msg}</p>)}
                     </div>
                 </div>
