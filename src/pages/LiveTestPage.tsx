@@ -1,53 +1,53 @@
 import { useContext, useState } from 'react';
 import { AppContext, AppContextType } from '../App';
-import { TikTokLiveConnection } from 'tiktok-live-connector';
+// Hapus impor 'tiktok-live-connector' dari sini
+// import { TikTokLiveConnection } from 'tiktok-live-connector';
 
 // Komponen ini adalah halaman khusus untuk menguji koneksi ke TikTok LIVE.
 export default function LiveTestPage() {
     const { data } = useContext(AppContext) as AppContextType;
     const [selectedUsername, setSelectedUsername] = useState<string>('');
     const [connectionStatus, setConnectionStatus] = useState('Menunggu untuk memulai...');
-    const [chatLog, setChatLog] = useState<string[]>([]);
     const [isConnecting, setIsConnecting] = useState(false);
+    // Log obrolan tidak dapat berfungsi dengan mudah tanpa WebSocket, jadi kita sederhanakan untuk saat ini.
+    const [chatLog, setChatLog] = useState<string[]>(['Log obrolan dinonaktifkan di sisi klien. Fitur ini memerlukan implementasi backend dengan WebSocket.']);
 
-    const handleTestConnection = () => {
+    const handleTestConnection = async () => {
         if (!selectedUsername) {
             setConnectionStatus('Silakan pilih username terlebih dahulu.');
             return;
         }
 
         setIsConnecting(true);
-        setConnectionStatus(`Mencoba terhubung ke @${selectedUsername}...`);
-        setChatLog([]);
-
+        setConnectionStatus(`Memeriksa status live untuk @${selectedUsername}...`);
+        
         try {
-            const connection = new TikTokLiveConnection(selectedUsername);
-
-            connection.connect().then(state => {
-                setConnectionStatus(`BERHASIL terhubung ke Room ID: ${state.roomId}`);
-                setIsConnecting(false);
-
-                connection.on('chat', data => {
-                    const message = `${data.uniqueId}: ${data.comment}`;
-                    setChatLog(prev => [message, ...prev].slice(0, 100)); // Simpan 100 pesan terakhir
-                });
-
-                connection.on('gift', data => {
-                    const message = `🎁 ${data.uniqueId} mengirim ${data.gift.gift_name} x${data.gift.repeat_count}`;
-                    setChatLog(prev => [message, ...prev].slice(0, 100));
-                });
-                
-                connection.on('disconnected', () => {
-                    setConnectionStatus('Koneksi terputus.');
-                });
-
-            }).catch(err => {
-                setConnectionStatus(`GAGAL terhubung: ${err.message || err.toString()}`);
-                setIsConnecting(false);
+            // Panggil API backend Anda, bukan library secara langsung.
+            // Kita gunakan endpoint yang sudah ada sebagai contoh.
+            // Anda mungkin perlu membuat endpoint baru untuk fungsionalitas penuh.
+            const response = await fetch('/api/get-live-status', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ username: selectedUsername }),
             });
 
+            if (!response.ok) {
+                throw new Error(`Server merespons dengan status ${response.status}`);
+            }
+
+            const result = await response.json();
+
+            if (result.isLive) {
+                setConnectionStatus(`BERHASIL: @${selectedUsername} sedang live. Room ID: ${result.roomId}`);
+            } else {
+                setConnectionStatus(`INFO: @${selectedUsername} sedang tidak live. Pesan error: ${result.error || 'Tidak ada sesi live yang ditemukan.'}`);
+            }
+
         } catch (err: any) {
-            setConnectionStatus(`Error saat inisiasi: ${err.message}`);
+            setConnectionStatus(`GAGAL terhubung ke API: ${err.message}`);
+        } finally {
             setIsConnecting(false);
         }
     };
@@ -76,7 +76,7 @@ export default function LiveTestPage() {
                         disabled={isConnecting}
                         className="w-full sm:w-auto unity-gradient-bg text-white font-semibold px-5 py-2.5 rounded-lg shadow-sm hover:opacity-90 flex items-center justify-center disabled:opacity-75"
                     >
-                        {isConnecting ? 'Menghubungkan...' : 'Test Koneksi'}
+                        {isConnecting ? 'Memeriksa...' : 'Test Status Live'}
                     </button>
                 </div>
 
