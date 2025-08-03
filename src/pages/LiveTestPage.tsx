@@ -1,57 +1,133 @@
-import { useContext, useState } from 'react';
+import { useContext, useState, useEffect, useRef } from 'react';
 import { AppContext, AppContextType } from '../App';
 
-// Komponen ini sekarang akan memeriksa status live melalui API Vercel.
+// Kunci API EulerStream Anda
+const EULER_STREAM_API_KEY = "ZTlhMTg4YzcyMTRhNWY1ZTk2ZTNkODcwYTE0YTQyMDcwNGFiMGIwYjc4MmZmMjljZGE1ZmEw";
+const EULER_STREAM_WEBSOCKET_URL = "wss://tiktok.eulerstream.com/ws";
+
+// Komponen ini sekarang akan terhubung langsung ke WebSocket Proxy EulerStream
 export default function LiveTestPage() {
     const { data } = useContext(AppContext) as AppContextType;
     const [selectedUsername, setSelectedUsername] = useState<string>('');
     const [connectionStatus, setConnectionStatus] = useState('Menunggu untuk memulai...');
-    const [isConnecting, setIsConnecting] = useState(false);
+    const [chatLog, setChatLog] = useState<string[]>([]);
+    const ws = useRef<WebSocket | null>(null);
+    const currentUsername = useRef<string | null>(null);
 
-    const handleTestConnection = async () => {
+    // Efek untuk mengelola koneksi WebSocket
+    useEffect(() => {
+        // Fungsi untuk membersihkan koneksi saat komponen dilepas
+        return () => {
+            if (ws.current) {
+                console.log("Menutup koneksi WebSocket...");
+                ws.current.close();
+            }
+        };
+    }, []);
+
+    const setupWebSocketListeners = () => {
+        if (!ws.current) return;
+
+        ws.current.onopen = () => {
+            console.log('WebSocket terhubung ke EulerStream.');
+            setConnectionStatus('Terhubung ke server. Mengautentikasi...');
+            // Kirim pesan otorisasi setelah terhubung
+            ws.current?.send(JSON.stringify({
+                action: "authorize",
+                data: EULER_STREAM_API_KEY,
+            }));
+        };
+
+        ws.current.onclose = () => {
+            console.log('WebSocket terputus dari EulerStream.');
+            setConnectionStatus('Koneksi terputus. Silakan coba lagi.');
+        };
+
+        ws.current.onerror = (error) => {
+            console.error('WebSocket Error:', error);
+            setConnectionStatus('Terjadi eror pada koneksi WebSocket.');
+        };
+
+        ws.current.onmessage = (event) => {
+            const message = JSON.parse(event.data);
+
+            // Menangani berbagai jenis pesan dari server
+            if (message.action === "authorized") {
+                console.log("Otorisasi berhasil.");
+                setConnectionStatus(`Otorisasi berhasil. Siap untuk memantau live.`);
+            } else if (message.action === "subscribed") {
+                console.log(`Berhasil subscribe ke ${message.data.username}`);
+                setConnectionStatus(`Berhasil memantau @${message.data.username}. Menunggu data...`);
+            } else if (message.event) {
+                // Menangani event dari TikTok
+                switch (message.event.type) {
+                    case 'chat':
+                        const chatText = `${message.event.data.user.uniqueId}: ${message.event.data.comment}`;
+                        setChatLog(prev => [chatText, ...prev].slice(0, 100));
+                        break;
+                    case 'gift':
+                        const gift = message.event.data.gift;
+                        if (gift && gift.gift_name) {
+                            const giftText = `🎁 ${message.event.data.user.uniqueId} mengirim ${gift.gift_name} x${gift.repeat_count}`;
+                            setChatLog(prev => [giftText, ...prev].slice(0, 100));
+                        }
+                        break;
+                    case 'disconnected':
+                        setConnectionStatus(`Siaran langsung untuk @${currentUsername.current} telah berakhir.`);
+                        break;
+                }
+            } else if (message.error) {
+                console.error("Error dari EulerStream:", message.error);
+                setConnectionStatus(`Error: ${message.error}`);
+            }
+        };
+    };
+
+    const handleTestConnection = () => {
         if (!selectedUsername) {
             setConnectionStatus('Silakan pilih username terlebih dahulu.');
             return;
         }
 
-        setIsConnecting(true);
-        setConnectionStatus(`Memeriksa status live untuk @${selectedUsername}...`);
-        
-        try {
-            // Panggil API backend Vercel Anda.
-            const response = await fetch('/api/get-live-status', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ username: selectedUsername }),
-            });
-
-            if (!response.ok) {
-                // Ini akan menangani eror jaringan atau eror 500 dari server
-                throw new Error(`Server merespons dengan status ${response.status}`);
-            }
-
-            const result = await response.json();
-
-            if (result.isLive) {
-                setConnectionStatus(`BERHASIL: @${selectedUsername} sedang live. Room ID: ${result.roomId || 'N/A'}`);
-            } else {
-                setConnectionStatus(`INFO: @${selectedUsername} sedang tidak live. Pesan: ${result.error || 'Tidak ada sesi live yang ditemukan.'}`);
-            }
-
-        } catch (err: any) {
-            setConnectionStatus(`GAGAL terhubung ke API: ${err.message}`);
-        } finally {
-            setIsConnecting(false);
+        // Jika ada koneksi lama, tutup dulu
+        if (ws.current && ws.current.readyState === WebSocket.OPEN) {
+            ws.current.close();
         }
+
+        setChatLog([]);
+        currentUsername.current = selectedUsername;
+        setConnectionStatus('Mencoba terhubung ke EulerStream...');
+
+        // Buat instance WebSocket baru
+        ws.current = new WebSocket(EULER_STREAM_WEBSOCKET_URL);
+        setupWebSocketListeners();
+
+        // Kita akan mengirim pesan subscribe setelah otorisasi berhasil
+        const subscribeInterval = setInterval(() => {
+            if (ws.current && ws.current.readyState === WebSocket.OPEN) {
+                // Cek status koneksi sebelum subscribe
+                if (connectionStatus.startsWith("Otorisasi berhasil")) {
+                    console.log(`Mengirim permintaan subscribe untuk @${selectedUsername}`);
+                    ws.current.send(JSON.stringify({
+                        action: "subscribe",
+                        data: {
+                            username: selectedUsername
+                        }
+                    }));
+                    clearInterval(subscribeInterval);
+                }
+            } else {
+                // Hentikan jika koneksi gagal
+                clearInterval(subscribeInterval);
+            }
+        }, 1000); // Coba setiap detik
     };
 
     return (
         <section>
             <div className="mb-6">
-                <h2 className="text-xl font-semibold text-stone-800 dark:text-stone-100">Uji Status TikTok LIVE</h2>
-                <p className="text-sm text-stone-500 dark:text-stone-400 mt-1">Pilih satu akun untuk memeriksa apakah sedang live.</p>
+                <h2 className="text-xl font-semibold text-stone-800 dark:text-stone-100">Uji Coba Koneksi TikTok LIVE</h2>
+                <p className="text-sm text-stone-500 dark:text-stone-400 mt-1">Pilih satu akun yang sedang live untuk menguji koneksi.</p>
             </div>
 
             <div className="bg-white dark:bg-stone-800 p-6 rounded-xl shadow-sm border border-stone-100 dark:border-stone-700">
@@ -68,16 +144,23 @@ export default function LiveTestPage() {
                     </select>
                     <button 
                         onClick={handleTestConnection} 
-                        disabled={isConnecting}
-                        className="w-full sm:w-auto unity-gradient-bg text-white font-semibold px-5 py-2.5 rounded-lg shadow-sm hover:opacity-90 flex items-center justify-center disabled:opacity-75"
+                        className="w-full sm:w-auto unity-gradient-bg text-white font-semibold px-5 py-2.5 rounded-lg shadow-sm hover:opacity-90 flex items-center justify-center"
                     >
-                        {isConnecting ? 'Memeriksa...' : 'Test Status Live'}
+                        Mulai Pantau Live
                     </button>
                 </div>
 
                 <div className="mt-6">
                     <h3 className="text-lg font-medium">Status Koneksi:</h3>
                     <pre className="mt-2 p-4 bg-stone-100 dark:bg-stone-900 rounded-md text-sm whitespace-pre-wrap break-all">{connectionStatus}</pre>
+                </div>
+
+                <div className="mt-6">
+                    <h3 className="text-lg font-medium">Log Chat & Hadiah (Real-time):</h3>
+                    <div className="mt-2 p-4 h-64 overflow-y-auto bg-stone-100 dark:bg-stone-900 rounded-md text-sm space-y-2">
+                        {chatLog.length === 0 && <p className="text-stone-400">Menunggu data chat dan hadiah...</p>}
+                        {chatLog.map((msg, i) => <p key={i}>{msg}</p>)}
+                    </div>
                 </div>
             </div>
         </section>
