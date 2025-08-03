@@ -1,27 +1,27 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { TikTokLiveConnection } from 'tiktok-live-connector';
 
-// Jadikan fungsi handler menjadi async
+// --- Menggunakan API EulerStream yang lebih andal ---
+const EULER_STREAM_API_URL = "https://tiktok.eulerstream.com/api/v1/user/"; 
+// Kunci API ini diambil dari kode Anda yang sudah ada di TiktokPage.tsx
+const EULER_STREAM_API_KEY = "ZTlhMTg4YzcyMTRhNWY1ZTk2ZTNkODcwYTE0YTQyMDcwNGFiMGIwYjc4MmZmMjljZGE1ZmEw";
+
 export default async function handler(
   request: VercelRequest,
   response: VercelResponse,
 ) {
-  // Menangani CORS untuk permintaan preflight dan permintaan utama
+  // Menangani CORS
   response.setHeader('Access-Control-Allow-Origin', '*');
   response.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   response.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
 
-  // Tangani permintaan preflight OPTIONS
   if (request.method === 'OPTIONS') {
     return response.status(200).end();
   }
   
-  // Pastikan ini adalah permintaan POST
   if (request.method !== 'POST') {
       return response.status(405).json({ error: 'Method Not Allowed' });
   }
 
-  // Bungkus logika utama dalam try...catch untuk menangani eror tak terduga
   try {
     const { username } = request.body;
 
@@ -29,28 +29,33 @@ export default async function handler(
       return response.status(400).json({ error: 'Username is required' });
     }
 
-    // Gunakan try...catch baru khusus untuk operasi koneksi
-    try {
-      // Inisialisasi koneksi tanpa opsi 'timeout' yang tidak valid.
-      // Library akan menggunakan timeout default-nya.
-      const tiktokLiveConnection = new TikTokLiveConnection(username);
+    // Panggil API EulerStream untuk memeriksa status live
+    const apiResponse = await fetch(`${EULER_STREAM_API_URL}${username}/live-status`, {
+        method: 'GET',
+        headers: { 'X-API-Key': EULER_STREAM_API_KEY }
+    });
 
-      // Tunggu (await) hingga koneksi selesai
-      const state = await tiktokLiveConnection.connect();
-      
-      // Jika berhasil, putuskan koneksi dan kirim respons sukses
-      tiktokLiveConnection.disconnect();
-      return response.status(200).json({ isLive: true, roomId: state.roomId });
+    // Jika respons dari EulerStream tidak OK, teruskan sebagai eror
+    if (!apiResponse.ok) {
+        const errorBody = await apiResponse.text();
+        // Kembalikan status 200 agar frontend bisa menanganinya sebagai "tidak live"
+        return response.status(200).json({ 
+            isLive: false, 
+            error: `EulerStream API returned status ${apiResponse.status}: ${errorBody}` 
+        });
+    }
 
-    } catch (err: any) {
-      // Jika connect() gagal (misal, user tidak live), ini adalah hasil yang diharapkan.
-      // Kirim respons 200 OK dengan status isLive: false.
-      return response.status(200).json({ isLive: false, error: err.message || 'User is not live or connection failed.' });
+    const result = await apiResponse.json();
+
+    // Kirim respons berdasarkan hasil dari EulerStream
+    if (result.is_live) {
+        return response.status(200).json({ isLive: true, roomId: result.room_id || 'N/A' });
+    } else {
+        return response.status(200).json({ isLive: false, error: 'User is not live according to EulerStream.' });
     }
 
   } catch (err: any) {
-    // Catch ini akan menangani eror internal lainnya (misal: request body tidak valid)
-    // dan mengembalikan status 500 yang sebenarnya.
+    // Tangani eror jaringan atau eror tak terduga lainnya
     console.error('Internal Server Error in get-live-status:', err);
     return response.status(500).json({ error: 'An internal server error occurred.', details: err.message });
   }
