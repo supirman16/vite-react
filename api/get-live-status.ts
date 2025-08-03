@@ -1,4 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
+// Menggunakan Axios untuk panggilan HTTP yang lebih stabil
+import axios from 'axios';
 
 // --- Menggunakan API EulerStream dengan endpoint yang BENAR ---
 const EULER_STREAM_API_URL = "https://tiktok.eulerstream.com/api/v1/user/"; 
@@ -28,21 +30,18 @@ export default async function handler(
       return response.status(400).json({ error: 'Username is required' });
     }
 
-    // Panggil endpoint user info dari EulerStream
-    const apiResponse = await fetch(`${EULER_STREAM_API_URL}${username}`, {
-        method: 'GET',
-        headers: { 'X-API-Key': EULER_STREAM_API_KEY }
+    // Panggil endpoint user info dari EulerStream menggunakan axios
+    const apiResponse = await axios.get(`${EULER_STREAM_API_URL}${username}`, {
+        headers: { 
+            'X-API-Key': EULER_STREAM_API_KEY,
+            // Beberapa API memerlukan User-Agent standar
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/108.0.0.0 Safari/537.36'
+        },
+        // Menambahkan timeout untuk mencegah fungsi menggantung
+        timeout: 10000 // 10 detik
     });
 
-    if (!apiResponse.ok) {
-        const errorBody = await apiResponse.text();
-        return response.status(200).json({ 
-            isLive: false, 
-            error: `EulerStream API returned status ${apiResponse.status}: ${errorBody}` 
-        });
-    }
-
-    const result = await apiResponse.json();
+    const result = apiResponse.data;
 
     // Periksa properti 'is_live' dari respons
     if (result.is_live) {
@@ -52,7 +51,11 @@ export default async function handler(
     }
 
   } catch (err: any) {
-    console.error('Internal Server Error in get-live-status:', err);
-    return response.status(500).json({ error: 'An internal server error occurred.', details: err.message });
+    // Axios memberikan detail eror yang lebih baik, yang akan membantu jika masalah masih ada
+    console.error('Internal Server Error in get-live-status:', err.response?.data || err.message);
+    return response.status(500).json({ 
+        error: 'An internal server error occurred.', 
+        details: err.response?.data || err.message 
+    });
   }
 }
