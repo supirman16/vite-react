@@ -7,7 +7,6 @@ export default function LiveTestPage() {
     const [selectedUsername, setSelectedUsername] = useState<string>('');
     const [connectionStatus, setConnectionStatus] = useState('Menunggu untuk memulai...');
     const [isConnecting, setIsConnecting] = useState(false);
-    const [chatLog, setChatLog] = useState<string[]>(['Log obrolan real-time dinonaktifkan untuk versi ini.']);
 
     const handleTestConnection = async () => {
         if (!selectedUsername) {
@@ -20,7 +19,6 @@ export default function LiveTestPage() {
         
         try {
             // Panggil API backend Vercel Anda.
-            // Pastikan file /api/get-live-status.ts ada dan menggunakan EulerStream.
             const response = await fetch('/api/get-live-status', {
                 method: 'POST',
                 headers: {
@@ -30,6 +28,7 @@ export default function LiveTestPage() {
             });
 
             if (!response.ok) {
+                // Ini akan menangani eror jaringan atau eror 500 dari server
                 throw new Error(`Server merespons dengan status ${response.status}`);
             }
 
