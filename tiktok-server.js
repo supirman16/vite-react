@@ -43,18 +43,34 @@ wss.on('connection', (ws) => {
                 try {
                     console.log(`[Server Log] Creating new TikTokLiveConnection for @${username}`);
                     const tiktokConnection = new TikTokLiveConnection(username);
-                    console.log(`[Server Log] TikTokLiveConnection object created successfully.`);
-                    
                     activeConnections.set(ws, tiktokConnection);
                     setupEventHandlers(tiktokConnection, ws, username);
 
-                    console.log(`[Server Log] Attempting to connect to @${username}'s live...`);
-                    await tiktokConnection.connect();
-                    console.log(`[Server Log] tiktokConnection.connect() promise resolved.`);
+                    // === PERUBAHAN UTAMA: Menambahkan Timeout Manual ===
+                    console.log(`[Server Log] Attempting to connect to @${username}'s live (with 15s timeout)...`);
+                    
+                    const timeoutPromise = new Promise((_, reject) => 
+                        setTimeout(() => reject(new Error('Connection timed out after 15 seconds')), 15000)
+                    );
+
+                    // Balapan antara koneksi aktual dan janji timeout
+                    await Promise.race([
+                        tiktokConnection.connect(),
+                        timeoutPromise
+                    ]);
+
+                    console.log(`[Server Log] tiktokConnection.connect() was successful (did not time out).`);
+                    // ===============================================
 
                 } catch (connectionError) {
-                    console.error(`[Server Log] ERROR during TikTok connection process for @${username}:`, connectionError);
+                    // Ini sekarang akan menangkap eror koneksi DAN eror timeout
+                    console.error(`[Server Log] ERROR during TikTok connection process for @${username}:`, connectionError.message);
                     ws.send(JSON.stringify({ type: 'error', message: `Failed to connect to TikTok: ${connectionError.message}` }));
+                    // Pastikan untuk membersihkan koneksi yang gagal
+                    if(activeConnections.has(ws)) {
+                        activeConnections.get(ws).disconnect();
+                        activeConnections.delete(ws);
+                    }
                 }
 
             }
@@ -102,7 +118,6 @@ function setupEventHandlers(tiktokConnection, ws, username) {
         }
     });
 
-    // Menambahkan penanganan eror spesifik dari konektor
     tiktokConnection.on('error', (error) => {
         console.error(`[Server Log] Error from TikTokLiveConnection for @${username}:`, error);
         ws.send(JSON.stringify({ type: 'error', message: `An error occurred with the TikTok connection: ${error.message}` }));
