@@ -11,33 +11,21 @@ export default function LiveTestPage() {
     const [selectedUsername, setSelectedUsername] = useState<string>('');
     const [connectionStatus, setConnectionStatus] = useState('Menunggu untuk memulai...');
     const [chatLog, setChatLog] = useState<string[]>([]);
+    
+    // State baru untuk memicu koneksi
+    const [usernameToConnect, setUsernameToConnect] = useState<string | null>(null);
     const ws = useRef<WebSocket | null>(null);
-    const currentUsername = useRef<string | null>(null);
 
-    // Efek untuk membersihkan koneksi saat komponen dilepas
+    // useEffect ini sekarang mengelola seluruh siklus hidup WebSocket
     useEffect(() => {
-        return () => {
-            if (ws.current) {
-                console.log("Menutup koneksi WebSocket saat komponen dilepas...");
-                ws.current.onopen = null;
-                ws.current.onmessage = null;
-                ws.current.onerror = null;
-                ws.current.onclose = null;
-                ws.current.close();
-            }
-        };
-    }, []);
-
-    const handleTestConnection = () => {
-        if (!selectedUsername) {
-            setConnectionStatus('Silakan pilih username terlebih dahulu.');
+        // Jangan lakukan apa pun jika tidak ada username yang dipilih untuk dihubungkan
+        if (!usernameToConnect) {
             return;
         }
 
-        // --- PERUBAHAN LOGIKA UTAMA: Manajemen Koneksi yang Lebih Tangguh ---
-        // Tutup koneksi lama jika ada, dan pastikan event handler-nya dibersihkan
+        // Bersihkan koneksi sebelumnya jika ada
         if (ws.current) {
-            console.log("Menutup koneksi WebSocket yang ada untuk memulai yang baru...");
+            console.log("Membersihkan koneksi WebSocket sebelumnya...");
             ws.current.onopen = null;
             ws.current.onmessage = null;
             ws.current.onerror = null;
@@ -46,16 +34,14 @@ export default function LiveTestPage() {
         }
 
         setChatLog([]);
-        currentUsername.current = selectedUsername;
-        setConnectionStatus(`Mencoba terhubung ke EulerStream untuk @${selectedUsername}...`);
+        setConnectionStatus(`Menghubungkan ke EulerStream untuk @${usernameToConnect}...`);
 
-        // Buat instance WebSocket baru
+        // Buat koneksi baru
         const newWs = new WebSocket(EULER_STREAM_WEBSOCKET_URL);
 
         newWs.onopen = () => {
             console.log('WebSocket terhubung ke EulerStream.');
             setConnectionStatus('Terhubung ke server. Mengautentikasi...');
-            // Langsung kirim pesan otorisasi setelah terhubung
             newWs.send(JSON.stringify({
                 action: "authorize",
                 data: EULER_STREAM_API_KEY,
@@ -67,19 +53,17 @@ export default function LiveTestPage() {
 
             if (message.action === "authorized") {
                 console.log("Otorisasi berhasil. Mengirim permintaan subscribe...");
-                setConnectionStatus(`Otorisasi berhasil. Meminta data untuk @${selectedUsername}...`);
-                // Setelah otorisasi berhasil, langsung kirim pesan subscribe
+                setConnectionStatus(`Otorisasi berhasil. Berlangganan ke @${usernameToConnect}...`);
                 newWs.send(JSON.stringify({
                     action: "subscribe",
                     data: {
-                        username: selectedUsername
+                        username: usernameToConnect
                     }
                 }));
             } else if (message.action === "subscribed") {
-                console.log(`Berhasil subscribe ke ${message.data.username}`);
+                console.log(`Berhasil berlangganan ke ${message.data.username}`);
                 setConnectionStatus(`Berhasil memantau @${message.data.username}. Menunggu data...`);
             } else if (message.event) {
-                // Menangani event dari TikTok
                 switch (message.event.type) {
                     case 'chat':
                         const chatText = `${message.event.data.user.uniqueId}: ${message.event.data.comment}`;
@@ -93,7 +77,7 @@ export default function LiveTestPage() {
                         }
                         break;
                     case 'disconnected':
-                        setConnectionStatus(`Siaran langsung untuk @${currentUsername.current} telah berakhir.`);
+                        setConnectionStatus(`Siaran langsung untuk @${usernameToConnect} telah berakhir.`);
                         break;
                 }
             } else if (message.error) {
@@ -104,19 +88,34 @@ export default function LiveTestPage() {
 
         newWs.onclose = () => {
             console.log('WebSocket terputus dari EulerStream.');
-            // Hanya set status jika ini bukan penutupan yang disengaja
-            if (ws.current === newWs) {
-                 setConnectionStatus('Koneksi terputus. Silakan coba lagi.');
-            }
+            setConnectionStatus('Koneksi ditutup. Silakan coba lagi.');
         };
 
         newWs.onerror = (error) => {
             console.error('WebSocket Error:', error);
             setConnectionStatus('Terjadi eror pada koneksi WebSocket. Periksa konsol untuk detail.');
         };
-        
-        // Simpan instance WebSocket yang baru ke dalam ref
+
         ws.current = newWs;
+
+        // Fungsi pembersihan untuk efek ini
+        return () => {
+            console.log("Membersihkan koneksi WebSocket untuk", usernameToConnect);
+            newWs.onopen = null;
+            newWs.onmessage = null;
+            newWs.onerror = null;
+            newWs.onclose = null;
+            newWs.close();
+        };
+    }, [usernameToConnect]); // Jalankan ulang efek ini setiap kali usernameToConnect berubah
+
+    const handleTestConnection = () => {
+        if (!selectedUsername) {
+            setConnectionStatus('Silakan pilih username terlebih dahulu.');
+            return;
+        }
+        // Memicu useEffect dengan mengatur state
+        setUsernameToConnect(selectedUsername);
     };
 
     return (
