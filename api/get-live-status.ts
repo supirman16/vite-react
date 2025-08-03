@@ -1,7 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { TikTokLiveConnection } from 'tiktok-live-connector';
 
-// Kunci API EulerStream dari kode Anda yang sudah ada
+// --- Menggunakan API EulerStream dengan endpoint yang BENAR ---
+const EULER_STREAM_API_URL = "https://tiktok.eulerstream.com/api/v1/user/"; 
 const EULER_STREAM_API_KEY = "ZTlhMTg4YzcyMTRhNWY1ZTk2ZTNkODcwYTE0YTQyMDcwNGFiMGIwYjc4MmZmMjljZGE1ZmEw";
 
 export default async function handler(
@@ -28,44 +28,30 @@ export default async function handler(
       return response.status(400).json({ error: 'Username is required' });
     }
 
-    try {
-      // Buat koneksi baru dengan konfigurasi signing yang benar
-      const tiktokConnection = new TikTokLiveConnection(username, {
-        // Ini adalah bagian terpenting yang menyelesaikan masalah
-        signWebcastRequest: async (url, headers) => {
-            const signResponse = await fetch('https://tiktok.eulerstream.com/api/v1/webcast/sign_url', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-API-Key': EULER_STREAM_API_KEY,
-                },
-                body: JSON.stringify({ url }),
-            });
-            const signedData = await signResponse.json();
-            if (signedData.error) {
-                throw new Error(signedData.error);
-            }
-            return {
-                ...signedData,
-                "User-Agent": headers['User-Agent'],
-            };
-        }
-      });
+    // Panggil endpoint user info dari EulerStream
+    const apiResponse = await fetch(`${EULER_STREAM_API_URL}${username}`, {
+        method: 'GET',
+        headers: { 'X-API-Key': EULER_STREAM_API_KEY }
+    });
 
-      // Coba terhubung
-      const state = await tiktokConnection.connect();
-      
-      // Jika berhasil, langsung putuskan koneksi dan kirim respons sukses
-      tiktokConnection.disconnect();
-      return response.status(200).json({ isLive: true, roomId: state.roomId });
+    if (!apiResponse.ok) {
+        const errorBody = await apiResponse.text();
+        return response.status(200).json({ 
+            isLive: false, 
+            error: `EulerStream API returned status ${apiResponse.status}: ${errorBody}` 
+        });
+    }
 
-    } catch (err: any) {
-      // Jika connect() gagal, kirim respons bahwa user tidak live
-      return response.status(200).json({ isLive: false, error: err.message || 'User is not live or connection failed.' });
+    const result = await apiResponse.json();
+
+    // Periksa properti 'is_live' dari respons
+    if (result.is_live) {
+        return response.status(200).json({ isLive: true, roomId: result.room_id || 'N/A' });
+    } else {
+        return response.status(200).json({ isLive: false, error: 'User is not live according to EulerStream.' });
     }
 
   } catch (err: any) {
-    // Menangani eror tak terduga lainnya
     console.error('Internal Server Error in get-live-status:', err);
     return response.status(500).json({ error: 'An internal server error occurred.', details: err.message });
   }
