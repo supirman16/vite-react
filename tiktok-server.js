@@ -1,8 +1,6 @@
 // tiktok-server.js
 
 // --- 1. Impor Dependensi ---
-// Kita akan memerlukan 'express', 'ws', dan 'tiktok-live-connector'
-// Jalankan `npm install express ws` untuk menginstalnya.
 import express from 'express';
 import http from 'http';
 import { WebSocketServer } from 'ws';
@@ -13,6 +11,13 @@ const PORT = process.env.PORT || 8080;
 const app = express();
 const server = http.createServer(app);
 const wss = new WebSocketServer({ server });
+
+// === TAMBAHAN: Health Check Endpoint ===
+// Rute ini akan merespons permintaan HTTP dari Railway untuk memastikan server tetap berjalan.
+app.get('/', (req, res) => {
+  res.send('TikTok WebSocket Server is running.');
+});
+// ======================================
 
 // Objek untuk menyimpan koneksi TikTok yang aktif untuk setiap klien WebSocket
 const activeConnections = new Map();
