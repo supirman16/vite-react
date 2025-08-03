@@ -7,9 +7,8 @@ import DropdownMenu from '../components/DropdownMenu';
 import { io } from "socket.io-client";
 
 // --- KONFIGURASI EULERSTREAM ---
-// GANTI DENGAN URL DAN API KEY ANDA
-const EULER_STREAM_URL = "https://tiktok.eulerstream.com/"; 
-const EULER_STREAM_API_KEY = "ZTlhMTg4YzcyMTRhNWY1ZTk2ZTNkODcwYTE0YTQyMDcwNGFiMGIwYjc4MmZmMjljZGE1ZmEw"; 
+const EULER_STREAM_URL = "https://ws.eulerstream.com/"; 
+const EULER_STREAM_API_KEY = "ZTlhMTg4YzcyMTRhNWY1ZTk2ZTNkODcwYTE0YTQyMDcwNGFiMGIwYjc4MmZmMjljZGE1ZmEw"; // Ganti dengan API key Anda jika perlu
 
 // Komponen ini adalah halaman Manajemen Akun TikTok untuk superadmin.
 export default function TiktokPage() {
@@ -132,17 +131,22 @@ function TiktokTable({ onEdit, onDelete, searchQuery }: { onEdit: (account: any)
     useEffect(() => {
         if (filteredAndSortedData.length === 0) return;
 
-        // Buat koneksi ke server WebSocket EulerStream
-        const socket = io(EULER_STREAM_URL, { query: { apiKey: EULER_STREAM_API_KEY } });
+        const socketOptions = {
+            path: '/socket.io',
+            transports: ['websocket'],
+            query: {
+                apiKey: EULER_STREAM_API_KEY
+            }
+        };
+
+        const socket = io(EULER_STREAM_URL, socketOptions);
 
         socket.on('connect', () => {
             console.log('Terhubung ke EulerStream WebSocket.');
-            // Kirim daftar username yang ingin dipantau
             const usernames = filteredAndSortedData.map(acc => acc.username);
             socket.emit('register', usernames);
         });
 
-        // Dengarkan event 'liveStatus' dari server
         socket.on('liveStatus', (data: { [key: string]: boolean }) => {
             setLiveStatuses(data);
         });
@@ -150,8 +154,11 @@ function TiktokTable({ onEdit, onDelete, searchQuery }: { onEdit: (account: any)
         socket.on('disconnect', () => {
             console.log('Terputus dari EulerStream WebSocket.');
         });
+        
+        socket.on('connect_error', (err) => {
+            console.error('Koneksi WebSocket Gagal:', err.message);
+        });
 
-        // Membersihkan koneksi saat komponen dilepas
         return () => {
             socket.disconnect();
         };
