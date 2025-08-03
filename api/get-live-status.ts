@@ -1,6 +1,8 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-// Kita akan menggunakan library-nya langsung di sini
 import { TikTokLiveConnection } from 'tiktok-live-connector';
+
+// Kunci API EulerStream dari kode Anda yang sudah ada
+const EULER_STREAM_API_KEY = "ZTlhMTg4YzcyMTRhNWY1ZTk2ZTNkODcwYTE0YTQyMDcwNGFiMGIwYjc4MmZmMjljZGE1ZmEw";
 
 export default async function handler(
   request: VercelRequest,
@@ -26,16 +28,31 @@ export default async function handler(
       return response.status(400).json({ error: 'Username is required' });
     }
 
-    // Gunakan try...catch khusus untuk operasi koneksi
     try {
-      // Buat koneksi baru menggunakan library
+      // Buat koneksi baru dengan konfigurasi signing yang benar
       const tiktokConnection = new TikTokLiveConnection(username, {
-          // Opsi ini penting untuk lingkungan serverless agar tidak menggantung
-          processInitialData: false,
-          fetchRoomInfoOnConnect: true,
+        // Ini adalah bagian terpenting yang menyelesaikan masalah
+        signWebcastRequest: async (url, headers) => {
+            const signResponse = await fetch('https://tiktok.eulerstream.com/api/v1/webcast/sign_url', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-API-Key': EULER_STREAM_API_KEY,
+                },
+                body: JSON.stringify({ url }),
+            });
+            const signedData = await signResponse.json();
+            if (signedData.error) {
+                throw new Error(signedData.error);
+            }
+            return {
+                ...signedData,
+                "User-Agent": headers['User-Agent'],
+            };
+        }
       });
 
-      // Coba terhubung. Await akan menunggu hingga selesai atau gagal.
+      // Coba terhubung
       const state = await tiktokConnection.connect();
       
       // Jika berhasil, langsung putuskan koneksi dan kirim respons sukses
@@ -43,8 +60,7 @@ export default async function handler(
       return response.status(200).json({ isLive: true, roomId: state.roomId });
 
     } catch (err: any) {
-      // Jika connect() gagal (misal, user tidak live), ini adalah hasil yang diharapkan.
-      // Kirim respons 200 OK dengan status isLive: false.
+      // Jika connect() gagal, kirim respons bahwa user tidak live
       return response.status(200).json({ isLive: false, error: err.message || 'User is not live or connection failed.' });
     }
 
