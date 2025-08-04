@@ -1,12 +1,13 @@
-import { useContext, useState, useMemo, useEffect } from 'react';
+import { useContext, useState, useMemo, useEffect, useCallback } from 'react';
 import { AppContext, AppContextType, supabase } from '../App';
-import { Plus, Edit, Trash2, ArrowUpDown, Search } from 'lucide-react';
+import { Plus, Edit, Trash2, ArrowUpDown, Search, RefreshCw } from 'lucide-react';
 import Modal from '../components/Modal';
 import ConfirmationModal from '../components/ConfirmationModal';
 import DropdownMenu from '../components/DropdownMenu';
-import Skeleton from '../components/Skeleton'; // <-- Impor yang hilang ditambahkan di sini
+import Skeleton from '../components/Skeleton';
 
 // --- KONFIGURASI EULERSTREAM (REST API) ---
+// Menggunakan endpoint yang sudah terverifikasi benar
 const EULER_STREAM_API_URL = "https://tiktok.eulerstream.com/api/v1/user/"; 
 const EULER_STREAM_API_KEY = "ZTlhMTg4YzcyMTRhNWY1ZTk2ZTNkODcwYTE0YTQyMDcwNGFiMGIwYjc4MmZmMjljZGE1ZmEw";
 
@@ -129,42 +130,43 @@ function TiktokTable({ onEdit, onDelete, searchQuery }: { onEdit: (account: any)
         });
     }, [data.tiktokAccounts, sortKey, sortDirection, searchQuery]);
 
+    const checkAllStatuses = useCallback(async () => {
+        setLoadingStatuses(true);
+        const activeAccounts = filteredAndSortedData.filter(acc => acc.status === 'Aktif');
+        
+        const statusPromises = activeAccounts.map(async (account) => {
+            try {
+                // --- PERBAIKAN: Menggunakan endpoint yang benar ---
+                const response = await fetch(`${EULER_STREAM_API_URL}${account.username}`, {
+                    method: 'GET',
+                    headers: { 'X-API-Key': EULER_STREAM_API_KEY }
+                });
+                if (!response.ok) return { username: account.username, isLive: false };
+                const result = await response.json();
+                return { username: account.username, isLive: result.is_live };
+            } catch (error) {
+                console.error(`Error fetching status for ${account.username}:`, error);
+                return { username: account.username, isLive: false };
+            }
+        });
+
+        const results = await Promise.all(statusPromises);
+
+        const newStatuses: { [key: string]: boolean } = {};
+        results.forEach(res => {
+            newStatuses[res.username.toLowerCase()] = res.isLive;
+        });
+        setLiveStatuses(newStatuses);
+        setLoadingStatuses(false);
+    }, [filteredAndSortedData]);
+
     useEffect(() => {
-        const checkAllStatuses = async () => {
-            setLoadingStatuses(true);
-            const activeAccounts = filteredAndSortedData.filter(acc => acc.status === 'Aktif');
-            
-            const statusPromises = activeAccounts.map(async (account) => {
-                try {
-                    const response = await fetch(`${EULER_STREAM_API_URL}${account.username}/live-status`, {
-                        method: 'GET',
-                        headers: { 'X-API-Key': EULER_STREAM_API_KEY }
-                    });
-                    if (!response.ok) return { username: account.username, isLive: false };
-                    const result = await response.json();
-                    return { username: account.username, isLive: result.is_live };
-                } catch (error) {
-                    console.error(`Error fetching status for ${account.username}:`, error);
-                    return { username: account.username, isLive: false };
-                }
-            });
-
-            const results = await Promise.all(statusPromises);
-
-            const newStatuses: { [key: string]: boolean } = {};
-            results.forEach(res => {
-                newStatuses[res.username.toLowerCase()] = res.isLive;
-            });
-            setLiveStatuses(newStatuses);
-            setLoadingStatuses(false);
-        };
-
         if (filteredAndSortedData.length > 0) {
             checkAllStatuses();
         } else {
             setLoadingStatuses(false);
         }
-    }, [filteredAndSortedData]);
+    }, [filteredAndSortedData, checkAllStatuses]);
 
     const handleSort = (key: string) => {
         if (sortKey === key) {
@@ -186,6 +188,16 @@ function TiktokTable({ onEdit, onDelete, searchQuery }: { onEdit: (account: any)
 
     return (
         <div className="bg-white dark:bg-stone-800 rounded-xl shadow-sm border border-stone-100 dark:border-stone-700 overflow-x-auto">
+            <div className="p-4 border-b dark:border-stone-700 flex justify-end">
+                <button 
+                    onClick={checkAllStatuses} 
+                    disabled={loadingStatuses}
+                    className="text-sm bg-stone-100 dark:bg-stone-700 px-3 py-2 rounded-lg flex items-center hover:bg-stone-200 dark:hover:bg-stone-600 disabled:opacity-50"
+                >
+                    <RefreshCw className={`h-4 w-4 mr-2 ${loadingStatuses ? 'animate-spin' : ''}`} />
+                    {loadingStatuses ? 'Memuat...' : 'Segarkan Status'}
+                </button>
+            </div>
             <table className="w-full text-sm text-left text-stone-600 dark:text-stone-300">
                 <thead className="hidden md:table-header-group text-xs text-stone-700 dark:text-stone-400 uppercase bg-stone-100 dark:bg-stone-700">
                     <tr>
