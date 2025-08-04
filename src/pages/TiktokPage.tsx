@@ -135,12 +135,15 @@ function TiktokTable({ onEdit, onDelete, searchQuery }: { onEdit: (account: any)
         
         const statusPromises = activeAccounts.map(async (account) => {
             try {
-                // --- PERBAIKAN: Menggunakan encodeURIComponent untuk nama pengguna yang aman ---
+                // --- PERBAIKAN UTAMA: Memindahkan apiKey ke parameter URL ---
                 const safeUsername = encodeURIComponent(account.username);
-                const response = await fetch(`${EULER_STREAM_API_URL}${safeUsername}`, {
-                    method: 'GET',
-                    headers: { 'X-API-Key': EULER_STREAM_API_KEY }
+                const urlWithKey = `${EULER_STREAM_API_URL}${safeUsername}?apiKey=${EULER_STREAM_API_KEY}`;
+                
+                const response = await fetch(urlWithKey, {
+                    method: 'GET'
+                    // Header tidak lagi diperlukan untuk otentikasi
                 });
+
                 if (!response.ok) return { username: account.username, isLive: false };
                 const result = await response.json();
                 return { username: account.username, isLive: result.is_live };
