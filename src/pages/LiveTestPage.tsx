@@ -1,11 +1,11 @@
 import { useContext, useState, useEffect, useRef } from 'react';
 import { AppContext, AppContextType } from '../App';
 
-// Kunci API dan URL WebSocket EulerStream
+// Kunci API dan URL WebSocket EulerStream yang BENAR
 const EULER_STREAM_API_KEY = "ZTlhMTg4YzcyMTRhNWY1ZTk2ZTNkODcwYTE0YTQyMDcwNGFiMGIwYjc4MmZmMjljZGE1ZmEw";
-const EULER_STREAM_WEBSOCKET_URL = "wss://tiktok.eulerstream.com/ws";
+const EULER_STREAM_WEBSOCKET_URL = "wss://ws.eulerstream.com";
 
-// Komponen ini sekarang terhubung langsung ke EulerStream tanpa SDK
+// Komponen ini sekarang terhubung langsung ke EulerStream dengan metode yang benar
 export default function LiveTestPage() {
     const { data } = useContext(AppContext) as AppContextType;
     const [selectedUsername, setSelectedUsername] = useState<string>('');
@@ -15,7 +15,7 @@ export default function LiveTestPage() {
     const [usernameToConnect, setUsernameToConnect] = useState<string | null>(null);
     const ws = useRef<WebSocket | null>(null);
 
-    // useEffect ini sekarang mengelola seluruh siklus hidup WebSocket secara manual
+    // useEffect ini sekarang mengelola seluruh siklus hidup WebSocket
     useEffect(() => {
         if (!usernameToConnect) {
             return;
@@ -29,31 +29,21 @@ export default function LiveTestPage() {
         setChatLog([]);
         setConnectionStatus(`Menghubungkan ke EulerStream untuk @${usernameToConnect}...`);
 
-        const newWs = new WebSocket(EULER_STREAM_WEBSOCKET_URL);
+        // --- PERUBAHAN UTAMA: Menggunakan URL dan parameter yang benar ---
+        const connectionUrl = `${EULER_STREAM_WEBSOCKET_URL}?uniqueId=${usernameToConnect}&apiKey=${EULER_STREAM_API_KEY}`;
+        const newWs = new WebSocket(connectionUrl);
 
         newWs.onopen = () => {
-            console.log('[Manual WS] Terhubung. Mengirim otorisasi...');
-            setConnectionStatus('Terhubung ke server. Mengautentikasi...');
-            newWs.send(JSON.stringify({
-                action: "authorize",
-                data: EULER_STREAM_API_KEY,
-            }));
+            console.log('[WS] Terhubung ke EulerStream.');
+            setConnectionStatus(`Berhasil terhubung! Memantau @${usernameToConnect}. Menunggu data...`);
         };
 
         newWs.onmessage = (event) => {
             const message = JSON.parse(event.data);
 
-            if (message.action === "authorized") {
-                console.log("[Manual WS] Otorisasi berhasil. Mengirim subscribe...");
-                setConnectionStatus(`Otorisasi berhasil. Berlangganan ke @${usernameToConnect}...`);
-                newWs.send(JSON.stringify({
-                    action: "subscribe",
-                    data: { username: usernameToConnect }
-                }));
-            } else if (message.action === "subscribed") {
-                console.log(`[Manual WS] Berhasil berlangganan ke ${message.data.username}`);
-                setConnectionStatus(`Berhasil memantau @${message.data.username}. Menunggu data...`);
-            } else if (message.event) {
+            // Dokumentasi ini tidak menyebutkan pesan 'authorized' atau 'subscribed',
+            // jadi kita langsung menangani 'event'.
+            if (message.event) {
                 switch (message.event.type) {
                     case 'chat':
                         const chatText = `${message.event.data.user.uniqueId}: ${message.event.data.comment}`;
@@ -71,25 +61,25 @@ export default function LiveTestPage() {
                         break;
                 }
             } else if (message.error) {
-                console.error("[Manual WS] Error dari EulerStream:", message.error);
+                console.error("[WS] Error dari EulerStream:", message.error);
                 setConnectionStatus(`Error: ${message.error}`);
             }
         };
 
         newWs.onclose = (event) => {
-            console.log(`[Manual WS] Koneksi ditutup. Kode: ${event.code}`);
-            setConnectionStatus('Koneksi ditutup. Silakan coba lagi.');
+            console.log(`[WS] Koneksi ditutup. Kode: ${event.code}`);
+            setConnectionStatus(`Koneksi ditutup. Kode: ${event.code}. Silakan coba lagi.`);
         };
 
         newWs.onerror = (error) => {
-            console.error('[Manual WS] Error:', error);
+            console.error('[WS] Error:', error);
             setConnectionStatus('Terjadi eror pada koneksi WebSocket. Periksa konsol untuk detail.');
         };
 
         ws.current = newWs;
 
         return () => {
-            console.log(`[Manual WS] Membersihkan koneksi untuk @${usernameToConnect}`);
+            console.log(`[WS] Membersihkan koneksi untuk @${usernameToConnect}`);
             newWs.close();
         };
     }, [usernameToConnect]);
