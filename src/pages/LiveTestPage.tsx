@@ -10,62 +10,71 @@ export default function LiveTestPage() {
     const [connectionStatus, setConnectionStatus] = useState('Menunggu untuk memulai...');
     const [chatLog, setChatLog] = useState<string[]>([]);
     
-    const [shouldConnect, setShouldConnect] = useState(false);
+    // Menggunakan objek dengan timestamp untuk memastikan referensi baru dibuat setiap kali,
+    // yang akan memicu useEffect dengan andal.
+    const [connectTrigger, setConnectTrigger] = useState<{ timestamp: number } | null>(null);
     const ws = useRef<WebSocket | null>(null);
 
     useEffect(() => {
-        if (!shouldConnect) {
+        // Jangan lakukan apa pun jika tidak ada pemicu
+        if (!connectTrigger) {
             return;
-        }
-
-        if (ws.current) {
-            ws.current.close();
         }
 
         setChatLog([]);
         setConnectionStatus(`Menghubungkan ke server echo...`);
 
         const newWs = new WebSocket(WEBSOCKET_URL);
+        ws.current = newWs;
+
+        console.log(`[Frontend] Dibuat (readyState: ${newWs.readyState})`);
 
         newWs.onopen = () => {
-            console.log('[Frontend] Terhubung ke server backend.');
+            console.log(`[Frontend] Terbuka (readyState: ${newWs.readyState})`);
             setConnectionStatus('Terhubung! Mengirim pesan tes...');
-            // Kirim pesan tes sederhana
             newWs.send("Halo server, ini tes dari frontend!");
         };
 
         newWs.onmessage = (event) => {
             const message = JSON.parse(event.data);
             console.log('[Frontend] Menerima pesan:', message);
-            // Tampilkan status atau pesan echo dari server
             setConnectionStatus(message.message);
             setChatLog(prev => [message.message, ...prev]);
         };
 
-        newWs.onclose = () => {
-            setConnectionStatus('Koneksi ke server backend ditutup.');
+        newWs.onclose = (event) => {
+            console.log(`[Frontend] Ditutup (readyState: ${newWs.readyState}). Kode: ${event.code}`);
+            // Hanya perbarui status jika ini bukan penutupan yang disengaja oleh efek baru
+            if (connectTrigger.timestamp === (connectTrigger?.timestamp || 0)) {
+                setConnectionStatus('Koneksi ke server backend ditutup.');
+            }
         };
 
         newWs.onerror = () => {
+            console.log(`[Frontend] Eror (readyState: ${newWs.readyState})`);
             setConnectionStatus('Gagal terhubung ke server backend. Periksa log Railway.');
         };
 
-        ws.current = newWs;
-        // Reset pemicu setelah koneksi dibuat
-        setShouldConnect(false);
-
+        // Ini adalah fungsi pembersihan untuk efek.
+        // Ia akan berjalan saat komponen dilepas, ATAU saat efek berjalan kembali.
         return () => {
+            console.log(`[Frontend] Membersihkan koneksi (readyState: ${newWs.readyState})`);
+            // Kita hapus event handler untuk mencegahnya berjalan pada soket yang sudah ditutup.
+            newWs.onopen = null;
+            newWs.onmessage = null;
+            newWs.onerror = null;
+            newWs.onclose = null;
             newWs.close();
         };
-    }, [shouldConnect]);
+    }, [connectTrigger]); // Efek ini hanya berjalan kembali saat pemicu berubah.
 
     const handleTestConnection = () => {
         if (!selectedUsername) {
             setConnectionStatus('Silakan pilih username terlebih dahulu.');
             return;
         }
-        // Memicu useEffect
-        setShouldConnect(true);
+        // Memicu useEffect dengan mengatur state baru.
+        setConnectTrigger({ timestamp: Date.now() });
     };
 
     return (
