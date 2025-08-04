@@ -1,7 +1,7 @@
 import { useContext, useState, useEffect, useRef } from 'react';
 import { AppContext, AppContextType } from '../App';
-// Menggunakan default import yang lebih umum, yang akan kita periksa di bawah
-import EulerSDK from '@eulerstream/euler-api-sdk';
+// --- PERUBAHAN UTAMA: Kembali ke metode impor resmi dari dokumentasi ---
+import { EulerAPI } from '@eulerstream/euler-api-sdk';
 
 // Kunci API EulerStream Anda
 const EULER_STREAM_API_KEY = "ZTlhMTg4YzcyMTRhNWY1ZTk2ZTNkODcwYTE0YTQyMDcwNGFiMGIwYjc4MmZmMjljZGE1ZmEw";
@@ -14,7 +14,7 @@ export default function LiveTestPage() {
     const [chatLog, setChatLog] = useState<string[]>([]);
     
     const [usernameToConnect, setUsernameToConnect] = useState<string | null>(null);
-    const api = useRef<any | null>(null);
+    const api = useRef<EulerAPI | null>(null);
 
     // useEffect ini mengelola seluruh siklus hidup koneksi menggunakan SDK
     useEffect(() => {
@@ -22,10 +22,7 @@ export default function LiveTestPage() {
             return;
         }
 
-        // --- PERUBAHAN UTAMA: Pola impor yang tangguh ---
-        // Pola ini menangani masalah interoperabilitas antara modul CommonJS dan ES Modules
-        // dengan memeriksa apakah konstruktor yang benar ada di .default atau di objek utama.
-        const EulerAPI = (EulerSDK as any).default || EulerSDK;
+        // --- PERUBAHAN UTAMA: Menggunakan kelas yang diimpor secara langsung ---
         const eulerApi = new EulerAPI(EULER_STREAM_API_KEY);
         api.current = eulerApi;
 
