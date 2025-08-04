@@ -136,8 +136,8 @@ function TiktokTable({ onEdit, onDelete, searchQuery }: { onEdit: (account: any)
         
         const statusPromises = activeAccounts.map(async (account) => {
             try {
-                // --- PERBAIKAN: Menggunakan endpoint yang benar ---
-                const response = await fetch(`${EULER_STREAM_API_URL}${account.username}`, {
+                // --- PERBAIKAN: Menambahkan '@' di depan username ---
+                const response = await fetch(`${EULER_STREAM_API_URL}@${account.username}`, {
                     method: 'GET',
                     headers: { 'X-API-Key': EULER_STREAM_API_KEY }
                 });
