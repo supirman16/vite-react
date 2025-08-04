@@ -15,24 +15,29 @@ export default function LiveTestPage() {
     
     const [usernameToConnect, setUsernameToConnect] = useState<string | null>(null);
     // Ref sekarang akan menyimpan instance dari EulerAPI
-    const api = useRef<any | null>(null);
+    const api = useRef<any | null>(null); // Menggunakan 'any' untuk sementara karena masalah import
 
+    // useEffect ini mengelola seluruh siklus hidup koneksi menggunakan SDK
     useEffect(() => {
         if (!usernameToConnect) {
             return;
         }
 
-        // --- PERUBAHAN UTAMA: Mengakses kelas dari namespace ---
-        // Ini adalah cara yang paling andal untuk menginstansiasi kelas dari library
-        const eulerApi = new EulerSDK.EulerAPI(EULER_STREAM_API_KEY);
+        // --- PERUBAHAN UTAMA: Menggunakan EulerSDK.default ---
+        // 'default' adalah cara mengakses default export saat menggunakan namespace import
+        const EulerAPI = (EulerSDK as any).default;
+        const eulerApi = new EulerAPI(EULER_STREAM_API_KEY);
         api.current = eulerApi;
 
         setChatLog([]);
         setConnectionStatus(`Menghubungkan ke EulerStream untuk @${usernameToConnect}...`);
 
+        // --- Menggunakan event handler dari SDK ---
+
         eulerApi.on('open', () => {
             console.log('[SDK] WebSocket terhubung dan terotorisasi.');
             setConnectionStatus(`Otorisasi berhasil. Berlangganan ke @${usernameToConnect}...`);
+            // Setelah terhubung dan terotorisasi, langsung subscribe
             eulerApi.subscribe(usernameToConnect);
         });
 
@@ -42,6 +47,7 @@ export default function LiveTestPage() {
         });
 
         eulerApi.on('event', (event: any) => {
+            // Menangani semua event dari TikTok (chat, gift, dll.)
             switch (event.type) {
                 case 'chat':
                     const chatText = `${event.data.user.uniqueId}: ${event.data.comment}`;
@@ -70,19 +76,22 @@ export default function LiveTestPage() {
             setConnectionStatus(`Terjadi eror: ${error.message}`);
         });
 
+        // Memulai koneksi
         eulerApi.connect();
 
+        // Fungsi pembersihan untuk efek ini
         return () => {
             console.log(`[SDK] Membersihkan koneksi untuk @${usernameToConnect}`);
             eulerApi.disconnect();
         };
-    }, [usernameToConnect]);
+    }, [usernameToConnect]); // Jalankan ulang efek ini setiap kali usernameToConnect berubah
 
     const handleTestConnection = () => {
         if (!selectedUsername) {
             setConnectionStatus('Silakan pilih username terlebih dahulu.');
             return;
         }
+        // Memicu useEffect dengan mengatur state
         setUsernameToConnect(selectedUsername);
     };
 
