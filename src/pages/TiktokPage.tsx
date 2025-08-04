@@ -7,7 +7,6 @@ import DropdownMenu from '../components/DropdownMenu';
 import Skeleton from '../components/Skeleton';
 
 // --- KONFIGURASI EULERSTREAM (REST API) ---
-// Menggunakan endpoint yang sudah terverifikasi benar
 const EULER_STREAM_API_URL = "https://tiktok.eulerstream.com/api/v1/user/"; 
 const EULER_STREAM_API_KEY = "ZTlhMTg4YzcyMTRhNWY1ZTk2ZTNkODcwYTE0YTQyMDcwNGFiMGIwYjc4MmZmMjljZGE1ZmEw";
 
@@ -136,8 +135,9 @@ function TiktokTable({ onEdit, onDelete, searchQuery }: { onEdit: (account: any)
         
         const statusPromises = activeAccounts.map(async (account) => {
             try {
-                // --- PERBAIKAN: Menambahkan '@' di depan username ---
-                const response = await fetch(`${EULER_STREAM_API_URL}@${account.username}`, {
+                // --- PERBAIKAN: Menggunakan encodeURIComponent untuk nama pengguna yang aman ---
+                const safeUsername = encodeURIComponent(account.username);
+                const response = await fetch(`${EULER_STREAM_API_URL}${safeUsername}`, {
                     method: 'GET',
                     headers: { 'X-API-Key': EULER_STREAM_API_KEY }
                 });
