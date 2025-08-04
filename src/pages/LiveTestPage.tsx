@@ -1,7 +1,7 @@
 import { useContext, useState, useEffect, useRef } from 'react';
 import { AppContext, AppContextType } from '../App';
-// --- PERUBAHAN UTAMA: Menggunakan namespace import untuk stabilitas ---
-import * as EulerSDK from '@eulerstream/euler-api-sdk';
+// Menggunakan default import yang lebih umum, yang akan kita periksa di bawah
+import EulerSDK from '@eulerstream/euler-api-sdk';
 
 // Kunci API EulerStream Anda
 const EULER_STREAM_API_KEY = "ZTlhMTg4YzcyMTRhNWY1ZTk2ZTNkODcwYTE0YTQyMDcwNGFiMGIwYjc4MmZmMjljZGE1ZmEw";
@@ -14,8 +14,7 @@ export default function LiveTestPage() {
     const [chatLog, setChatLog] = useState<string[]>([]);
     
     const [usernameToConnect, setUsernameToConnect] = useState<string | null>(null);
-    // Ref sekarang akan menyimpan instance dari EulerAPI
-    const api = useRef<any | null>(null); // Menggunakan 'any' untuk sementara karena masalah import
+    const api = useRef<any | null>(null);
 
     // useEffect ini mengelola seluruh siklus hidup koneksi menggunakan SDK
     useEffect(() => {
@@ -23,21 +22,19 @@ export default function LiveTestPage() {
             return;
         }
 
-        // --- PERUBAHAN UTAMA: Menggunakan EulerSDK.default ---
-        // 'default' adalah cara mengakses default export saat menggunakan namespace import
-        const EulerAPI = (EulerSDK as any).default;
+        // --- PERUBAHAN UTAMA: Pola impor yang tangguh ---
+        // Pola ini menangani masalah interoperabilitas antara modul CommonJS dan ES Modules
+        // dengan memeriksa apakah konstruktor yang benar ada di .default atau di objek utama.
+        const EulerAPI = (EulerSDK as any).default || EulerSDK;
         const eulerApi = new EulerAPI(EULER_STREAM_API_KEY);
         api.current = eulerApi;
 
         setChatLog([]);
         setConnectionStatus(`Menghubungkan ke EulerStream untuk @${usernameToConnect}...`);
 
-        // --- Menggunakan event handler dari SDK ---
-
         eulerApi.on('open', () => {
             console.log('[SDK] WebSocket terhubung dan terotorisasi.');
             setConnectionStatus(`Otorisasi berhasil. Berlangganan ke @${usernameToConnect}...`);
-            // Setelah terhubung dan terotorisasi, langsung subscribe
             eulerApi.subscribe(usernameToConnect);
         });
 
@@ -47,7 +44,6 @@ export default function LiveTestPage() {
         });
 
         eulerApi.on('event', (event: any) => {
-            // Menangani semua event dari TikTok (chat, gift, dll.)
             switch (event.type) {
                 case 'chat':
                     const chatText = `${event.data.user.uniqueId}: ${event.data.comment}`;
@@ -76,22 +72,19 @@ export default function LiveTestPage() {
             setConnectionStatus(`Terjadi eror: ${error.message}`);
         });
 
-        // Memulai koneksi
         eulerApi.connect();
 
-        // Fungsi pembersihan untuk efek ini
         return () => {
             console.log(`[SDK] Membersihkan koneksi untuk @${usernameToConnect}`);
             eulerApi.disconnect();
         };
-    }, [usernameToConnect]); // Jalankan ulang efek ini setiap kali usernameToConnect berubah
+    }, [usernameToConnect]);
 
     const handleTestConnection = () => {
         if (!selectedUsername) {
             setConnectionStatus('Silakan pilih username terlebih dahulu.');
             return;
         }
-        // Memicu useEffect dengan mengatur state
         setUsernameToConnect(selectedUsername);
     };
 
