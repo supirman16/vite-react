@@ -1,12 +1,11 @@
 import { useContext, useState, useEffect, useRef } from 'react';
 import { AppContext, AppContextType } from '../App';
-// --- PERUBAHAN UTAMA: Kembali ke metode impor resmi dari dokumentasi ---
-import { EulerAPI } from '@eulerstream/euler-api-sdk';
 
-// Kunci API EulerStream Anda
+// Kunci API dan URL WebSocket EulerStream
 const EULER_STREAM_API_KEY = "ZTlhMTg4YzcyMTRhNWY1ZTk2ZTNkODcwYTE0YTQyMDcwNGFiMGIwYjc4MmZmMjljZGE1ZmEw";
+const EULER_STREAM_WEBSOCKET_URL = "wss://tiktok.eulerstream.com/ws";
 
-// Komponen ini sekarang menggunakan SDK resmi EulerStream
+// Komponen ini sekarang terhubung langsung ke EulerStream tanpa SDK
 export default function LiveTestPage() {
     const { data } = useContext(AppContext) as AppContextType;
     const [selectedUsername, setSelectedUsername] = useState<string>('');
@@ -14,66 +13,84 @@ export default function LiveTestPage() {
     const [chatLog, setChatLog] = useState<string[]>([]);
     
     const [usernameToConnect, setUsernameToConnect] = useState<string | null>(null);
-    const api = useRef<EulerAPI | null>(null);
+    const ws = useRef<WebSocket | null>(null);
 
-    // useEffect ini mengelola seluruh siklus hidup koneksi menggunakan SDK
+    // useEffect ini sekarang mengelola seluruh siklus hidup WebSocket secara manual
     useEffect(() => {
         if (!usernameToConnect) {
             return;
         }
 
-        // --- PERUBAHAN UTAMA: Menggunakan kelas yang diimpor secara langsung ---
-        const eulerApi = new EulerAPI(EULER_STREAM_API_KEY);
-        api.current = eulerApi;
+        // Pastikan koneksi sebelumnya benar-benar bersih
+        if (ws.current) {
+            ws.current.close();
+        }
 
         setChatLog([]);
         setConnectionStatus(`Menghubungkan ke EulerStream untuk @${usernameToConnect}...`);
 
-        eulerApi.on('open', () => {
-            console.log('[SDK] WebSocket terhubung dan terotorisasi.');
-            setConnectionStatus(`Otorisasi berhasil. Berlangganan ke @${usernameToConnect}...`);
-            eulerApi.subscribe(usernameToConnect);
-        });
+        const newWs = new WebSocket(EULER_STREAM_WEBSOCKET_URL);
 
-        eulerApi.on('subscribed', (username: string) => {
-            console.log(`[SDK] Berhasil berlangganan ke ${username}`);
-            setConnectionStatus(`Berhasil memantau @${username}. Menunggu data...`);
-        });
+        newWs.onopen = () => {
+            console.log('[Manual WS] Terhubung. Mengirim otorisasi...');
+            setConnectionStatus('Terhubung ke server. Mengautentikasi...');
+            newWs.send(JSON.stringify({
+                action: "authorize",
+                data: EULER_STREAM_API_KEY,
+            }));
+        };
 
-        eulerApi.on('event', (event: any) => {
-            switch (event.type) {
-                case 'chat':
-                    const chatText = `${event.data.user.uniqueId}: ${event.data.comment}`;
-                    setChatLog(prev => [chatText, ...prev].slice(0, 100));
-                    break;
-                case 'gift':
-                    const gift = event.data.gift;
-                    if (gift && gift.gift_name) {
-                        const giftText = `🎁 ${event.data.user.uniqueId} mengirim ${gift.gift_name} x${gift.repeat_count}`;
-                        setChatLog(prev => [giftText, ...prev].slice(0, 100));
-                    }
-                    break;
-                case 'disconnected':
-                    setConnectionStatus(`Siaran langsung untuk @${usernameToConnect} telah berakhir.`);
-                    break;
+        newWs.onmessage = (event) => {
+            const message = JSON.parse(event.data);
+
+            if (message.action === "authorized") {
+                console.log("[Manual WS] Otorisasi berhasil. Mengirim subscribe...");
+                setConnectionStatus(`Otorisasi berhasil. Berlangganan ke @${usernameToConnect}...`);
+                newWs.send(JSON.stringify({
+                    action: "subscribe",
+                    data: { username: usernameToConnect }
+                }));
+            } else if (message.action === "subscribed") {
+                console.log(`[Manual WS] Berhasil berlangganan ke ${message.data.username}`);
+                setConnectionStatus(`Berhasil memantau @${message.data.username}. Menunggu data...`);
+            } else if (message.event) {
+                switch (message.event.type) {
+                    case 'chat':
+                        const chatText = `${message.event.data.user.uniqueId}: ${message.event.data.comment}`;
+                        setChatLog(prev => [chatText, ...prev].slice(0, 100));
+                        break;
+                    case 'gift':
+                        const gift = message.event.data.gift;
+                        if (gift && gift.gift_name) {
+                            const giftText = `🎁 ${message.event.data.user.uniqueId} mengirim ${gift.gift_name} x${gift.repeat_count}`;
+                            setChatLog(prev => [giftText, ...prev].slice(0, 100));
+                        }
+                        break;
+                    case 'disconnected':
+                        setConnectionStatus(`Siaran langsung untuk @${usernameToConnect} telah berakhir.`);
+                        break;
+                }
+            } else if (message.error) {
+                console.error("[Manual WS] Error dari EulerStream:", message.error);
+                setConnectionStatus(`Error: ${message.error}`);
             }
-        });
+        };
 
-        eulerApi.on('close', (event: any) => {
-            console.log(`[SDK] Koneksi ditutup. Kode: ${event.code}, Alasan: ${event.reason}`);
+        newWs.onclose = (event) => {
+            console.log(`[Manual WS] Koneksi ditutup. Kode: ${event.code}`);
             setConnectionStatus('Koneksi ditutup. Silakan coba lagi.');
-        });
+        };
 
-        eulerApi.on('error', (error: Error) => {
-            console.error('[SDK] Error:', error);
-            setConnectionStatus(`Terjadi eror: ${error.message}`);
-        });
+        newWs.onerror = (error) => {
+            console.error('[Manual WS] Error:', error);
+            setConnectionStatus('Terjadi eror pada koneksi WebSocket. Periksa konsol untuk detail.');
+        };
 
-        eulerApi.connect();
+        ws.current = newWs;
 
         return () => {
-            console.log(`[SDK] Membersihkan koneksi untuk @${usernameToConnect}`);
-            eulerApi.disconnect();
+            console.log(`[Manual WS] Membersihkan koneksi untuk @${usernameToConnect}`);
+            newWs.close();
         };
     }, [usernameToConnect]);
 
