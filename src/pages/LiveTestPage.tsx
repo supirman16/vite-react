@@ -1,11 +1,9 @@
 import { useContext, useState, useEffect, useRef } from 'react';
 import { AppContext, AppContextType } from '../App';
 
-// Kunci API dan URL WebSocket EulerStream yang BENAR
-const EULER_STREAM_API_KEY = "ZTlhMTg4YzcyMTRhNWY1ZTk2ZTNkODcwYTE0YTQyMDcwNGFiMGIwYjc4MmZmMjljZGE1ZmEw";
-const EULER_STREAM_WEBSOCKET_URL = "wss://ws.eulerstream.com";
+// Ganti URL ini saat deployment nanti
+const WEBSOCKET_URL = "wss://vite-react-production-4165.up.railway.app"; 
 
-// Komponen ini sekarang terhubung langsung ke EulerStream dengan metode yang benar
 export default function LiveTestPage() {
     const { data } = useContext(AppContext) as AppContextType;
     const [selectedUsername, setSelectedUsername] = useState<string>('');
@@ -15,71 +13,60 @@ export default function LiveTestPage() {
     const [usernameToConnect, setUsernameToConnect] = useState<string | null>(null);
     const ws = useRef<WebSocket | null>(null);
 
-    // useEffect ini sekarang mengelola seluruh siklus hidup WebSocket
     useEffect(() => {
         if (!usernameToConnect) {
             return;
         }
 
-        // Pastikan koneksi sebelumnya benar-benar bersih
         if (ws.current) {
             ws.current.close();
         }
 
         setChatLog([]);
-        setConnectionStatus(`Menghubungkan ke EulerStream untuk @${usernameToConnect}...`);
+        setConnectionStatus(`Menghubungkan ke server backend untuk @${usernameToConnect}...`);
 
-        // --- PERUBAHAN UTAMA: Menggunakan URL dan parameter yang benar ---
-        const connectionUrl = `${EULER_STREAM_WEBSOCKET_URL}?uniqueId=${usernameToConnect}&apiKey=${EULER_STREAM_API_KEY}`;
-        const newWs = new WebSocket(connectionUrl);
+        const newWs = new WebSocket(WEBSOCKET_URL);
 
         newWs.onopen = () => {
-            console.log('[WS] Terhubung ke EulerStream.');
-            setConnectionStatus(`Berhasil terhubung! Memantau @${usernameToConnect}. Menunggu data...`);
+            console.log('[Frontend] Terhubung ke server backend.');
+            // Kirim permintaan untuk terhubung ke TikTok
+            newWs.send(JSON.stringify({
+                action: "connect",
+                username: usernameToConnect,
+            }));
         };
 
         newWs.onmessage = (event) => {
             const message = JSON.parse(event.data);
-
-            // Dokumentasi ini tidak menyebutkan pesan 'authorized' atau 'subscribed',
-            // jadi kita langsung menangani 'event'.
-            if (message.event) {
-                switch (message.event.type) {
-                    case 'chat':
-                        const chatText = `${message.event.data.user.uniqueId}: ${message.event.data.comment}`;
-                        setChatLog(prev => [chatText, ...prev].slice(0, 100));
-                        break;
-                    case 'gift':
-                        const gift = message.event.data.gift;
-                        if (gift && gift.gift_name) {
-                            const giftText = `🎁 ${message.event.data.user.uniqueId} mengirim ${gift.gift_name} x${gift.repeat_count}`;
-                            setChatLog(prev => [giftText, ...prev].slice(0, 100));
-                        }
-                        break;
-                    case 'disconnected':
-                        setConnectionStatus(`Siaran langsung untuk @${usernameToConnect} telah berakhir.`);
-                        break;
-                }
-            } else if (message.error) {
-                console.error("[WS] Error dari EulerStream:", message.error);
-                setConnectionStatus(`Error: ${message.error}`);
+            switch (message.type) {
+                case 'status':
+                case 'connected':
+                case 'disconnected':
+                case 'error':
+                    setConnectionStatus(message.message);
+                    break;
+                case 'chat':
+                    const chatText = `${message.data.uniqueId}: ${message.data.comment}`;
+                    setChatLog(prev => [chatText, ...prev].slice(0, 100));
+                    break;
+                case 'gift':
+                    const giftText = `🎁 ${message.data.uniqueId} mengirim ${message.data.giftName} x${message.data.repeatCount}`;
+                    setChatLog(prev => [giftText, ...prev].slice(0, 100));
+                    break;
             }
         };
 
-        newWs.onclose = (event) => {
-            console.log(`[WS] Koneksi ditutup. Kode: ${event.code}`);
-            setConnectionStatus(`Koneksi ditutup. Kode: ${event.code}. Silakan coba lagi.`);
+        newWs.onclose = () => {
+            setConnectionStatus('Koneksi ke server backend ditutup.');
         };
 
-        newWs.onerror = (error) => {
-            console.error('[WS] Error:', error);
-            setConnectionStatus('Terjadi eror pada koneksi WebSocket. Periksa konsol untuk detail.');
+        newWs.onerror = () => {
+            setConnectionStatus('Gagal terhubung ke server backend. Pastikan server sudah berjalan.');
         };
 
         ws.current = newWs;
 
         return () => {
-            console.log(`[WS] Membersihkan koneksi untuk @${usernameToConnect}`);
             newWs.close();
         };
     }, [usernameToConnect]);
