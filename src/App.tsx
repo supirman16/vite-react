@@ -71,12 +71,15 @@ export default function App() {
             const { data: hosts } = await supabase.from('hosts').select('*');
             const { data: tiktokAccounts } = await supabase.from('tiktok_accounts').select('*');
             
-            // --- PERBAIKAN: Menonaktifkan sementara query ke tabel 'users' yang tidak ada ---
-            // const { data: users } = await supabase.from('users').select('*');
-            const users: any[] = []; // Mengatur users sebagai array kosong untuk sementara
-            
+            let users: any[] = [];
             let rekapLive;
+
             if (userRole === 'superadmin') {
+                // --- PERBAIKAN: Memanggil Edge Function untuk mendapatkan daftar pengguna ---
+                const { data: userList, error: userError } = await supabase.functions.invoke('list-all-users');
+                if (userError) throw userError;
+                users = userList;
+
                 const { data } = await supabase.from('rekap_live').select('*');
                 rekapLive = data;
             } else {
