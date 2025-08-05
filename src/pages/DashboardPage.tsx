@@ -29,21 +29,22 @@ interface HostPerformance {
 
 // Komponen ini adalah halaman utama Dashboard.
 export default function DashboardPage() {
-    const { data } = useContext(AppContext) as AppContextType;
+    // --- PERBAIKAN: Menggunakan 'session' dari AppContext ---
+    const { data, session } = useContext(AppContext) as AppContextType;
     
-    // Tampilkan kerangka pemuatan jika data pengguna belum siap
-    if (data.loading || !data.user) {
+    // Tampilkan kerangka pemuatan jika data inti (sesi & peran) belum siap.
+    if (data.loading || !session || typeof session.user.user_metadata.role === 'undefined') {
         return <DashboardSkeleton />;
     }
 
-    // --- PERBAIKAN: Menggunakan logika peran yang sama dengan Navigasi ---
-    const isSuperAdmin = data.user.user_metadata?.role === 'superadmin';
+    // Sekarang kita bisa dengan aman mengakses peran pengguna dari session
+    const userRole = session.user.user_metadata.role;
 
-    if (isSuperAdmin) {
-        return <SuperadminDashboard />;
-    } else {
-        // Jika bukan superadmin, tampilkan dasbor Host
+    if (userRole === 'Host') {
         return <HostDashboard />;
+    } else {
+        // Asumsikan sebagai Superadmin jika peran bukan 'Host'
+        return <SuperadminDashboard />;
     }
 }
 
@@ -119,13 +120,15 @@ function SuperadminDashboard() {
 // TAMPILAN DASHBOARD UNTUK HOST
 // ==================================================================
 function HostDashboard() {
-    const { data } = useContext(AppContext) as AppContextType;
+    // --- PERBAIKAN: Menggunakan 'session' dari AppContext ---
+    const { data, session } = useContext(AppContext) as AppContextType;
     const [dateRange, setDateRange] = useState<DateRange>('30d');
 
     // Dapatkan data host yang sedang login
     const currentHost = useMemo(() => {
-        return data.hosts.find(h => h.user_id === data.user?.id);
-    }, [data.hosts, data.user]);
+        // --- PERBAIKAN: Menggunakan 'session.user.id' ---
+        return data.hosts.find(h => h.user_id === session?.user?.id);
+    }, [data.hosts, session]);
 
     // Saring rekap hanya untuk host yang sedang login
     const filteredRekap = useMemo(() => {
