@@ -1,120 +1,233 @@
 import { useContext, useState, useMemo } from 'react';
 import { AppContext, AppContextType } from '../App';
-import { Trophy, Star, Zap } from 'lucide-react';
+import { Trophy, ArrowUpCircle } from 'lucide-react';
+import Skeleton from '../components/Skeleton';
 
-// Tipe data untuk data peringkat
-interface LeaderboardData {
-    hostId: number;
-    hostName: string;
+// Tipe data untuk rentang waktu dan data peringkat
+type DateRange = 'all' | 'thisWeek' | 'thisMonth';
+interface LeaderboardEntry {
+    id: number;
+    nama_host: string;
     totalDiamonds: number;
-    totalMinutes: number;
-    efficiency: number;
+    rank: number;
 }
 
-// Komponen ini adalah halaman Papan Peringkat (Leaderboard).
+// Komponen utama Papan Peringkat
 export default function LeaderboardPage() {
-    const [month, setMonth] = useState(new Date().getMonth());
-    const [year, setYear] = useState(new Date().getFullYear());
+    const { data, session } = useContext(AppContext) as AppContextType;
 
-    const years = Array.from({ length: 6 }, (_, i) => new Date().getFullYear() - i);
-    const months = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
+    if (data.loading || !session) {
+        return <LeaderboardSkeleton />;
+    }
+
+    const isSuperAdmin = session.user.user_metadata?.role === 'superadmin';
+
+    if (isSuperAdmin) {
+        return <SuperadminLeaderboard />;
+    } else {
+        return <HostLeaderboard />;
+    }
+}
+
+// ==================================================================
+// TAMPILAN PAPAN PERINGKAT UNTUK SUPERADMIN
+// ==================================================================
+function SuperadminLeaderboard() {
+    const { data } = useContext(AppContext) as AppContextType;
+    const [dateRange, setDateRange] = useState<DateRange>('all');
+
+    const leaderboardData = useMemo(() => {
+        return calculateLeaderboard(data.hosts, data.rekapLive, dateRange);
+    }, [data.hosts, data.rekapLive, dateRange]);
 
     return (
         <section>
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6">
-                <div>
-                    <h2 className="text-xl font-semibold text-stone-800 dark:text-stone-100">Papan Peringkat Host</h2>
-                    <p className="text-sm text-stone-500 dark:text-stone-400 mt-1">Lihat peringkat host berdasarkan performa bulanan.</p>
-                </div>
-                <div className="flex items-center space-x-2 mt-4 sm:mt-0">
-                     <select value={month} onChange={(e) => setMonth(parseInt(e.target.value))} className="bg-stone-50 border border-stone-300 text-stone-900 text-sm rounded-lg focus:ring-purple-500 focus:border-purple-500 block w-full p-2.5 dark:bg-stone-700 dark:border-stone-600 dark:placeholder-stone-400 dark:text-white">
-                        {months.map((m, i) => <option key={i} value={i}>{m}</option>)}
-                     </select>
-                     <select value={year} onChange={(e) => setYear(parseInt(e.target.value))} className="bg-stone-50 border border-stone-300 text-stone-900 text-sm rounded-lg focus:ring-purple-500 focus:border-purple-500 block w-full p-2.5 dark:bg-stone-700 dark:border-stone-600 dark:placeholder-stone-400 dark:text-white">
-                        {years.map(y => <option key={y} value={y}>{y}</option>)}
-                     </select>
-                </div>
+            <h2 className="text-xl font-semibold text-stone-800 dark:text-stone-100 mb-4">Papan Peringkat Agensi</h2>
+            <DateRangeFilter selectedRange={dateRange} onSelectRange={setDateRange} />
+            <div className="bg-white dark:bg-stone-800 rounded-xl shadow-sm border border-stone-100 dark:border-stone-700 overflow-x-auto">
+                <table className="w-full text-sm text-left text-stone-600 dark:text-stone-300">
+                    <thead className="text-xs text-stone-700 dark:text-stone-400 uppercase bg-stone-100 dark:bg-stone-700">
+                        <tr>
+                            <th scope="col" className="px-6 py-3 text-center">Peringkat</th>
+                            <th scope="col" className="px-6 py-3">Nama Host</th>
+                            <th scope="col" className="px-6 py-3">Total Diamond (💎)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {leaderboardData.map((host) => (
+                            <tr key={host.id} className="bg-white dark:bg-stone-800 border-b dark:border-stone-700">
+                                <td className="px-6 py-4 font-medium text-stone-900 dark:text-white text-center">{host.rank}</td>
+                                <td className="px-6 py-4 font-semibold text-stone-900 dark:text-white">{host.nama_host}</td>
+                                <td className="px-6 py-4">{new Intl.NumberFormat().format(host.totalDiamonds)}</td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
             </div>
-            <LeaderboardTables month={month} year={year} />
         </section>
     );
 }
 
-// Komponen untuk menampilkan semua tabel peringkat
-function LeaderboardTables({ month, year }: { month: number, year: number }) {
-    const { data } = useContext(AppContext) as AppContextType;
+// ==================================================================
+// TAMPILAN PAPAN PERINGKAT UNTUK HOST
+// ==================================================================
+function HostLeaderboard() {
+    const { data, session } = useContext(AppContext) as AppContextType;
+    const [dateRange, setDateRange] = useState<DateRange>('all');
 
-    const leaderboardData: LeaderboardData[] = useMemo(() => {
-        return data.hosts
-            .filter(host => host.status === 'Aktif') // <-- HANYA HOST AKTIF
-            .map(host => {
-                const hostRekaps = data.rekapLive.filter(r => {
-                    const recDate = new Date(r.tanggal_live);
-                    return r.host_id === host.id && recDate.getFullYear() === year && recDate.getMonth() === month && r.status === 'approved';
-                });
+    const currentHostInfo = useMemo(() => {
+        return data.hosts.find(h => h.user_id === session?.user.id);
+    }, [data.hosts, session]);
+    
+    const leaderboardData = useMemo(() => {
+        return calculateLeaderboard(data.hosts, data.rekapLive, dateRange);
+    }, [data.hosts, data.rekapLive, dateRange]);
 
-                const totalMinutes = hostRekaps.reduce((sum, r) => sum + r.durasi_menit, 0);
-                const totalDiamonds = hostRekaps.reduce((sum, r) => sum + r.pendapatan, 0);
-                const efficiency = totalMinutes > 0 ? totalDiamonds / (totalMinutes / 60) : 0;
+    const currentUserRank = useMemo(() => {
+        return leaderboardData.find(h => h.id === currentHostInfo?.id);
+    }, [leaderboardData, currentHostInfo]);
 
-                return {
-                    hostId: host.id,
-                    hostName: host.nama_host,
-                    totalDiamonds,
-                    totalMinutes,
-                    efficiency,
-                };
-            });
-    }, [data.hosts, data.rekapLive, month, year]);
+    const top3 = leaderboardData.slice(0, 3);
+    const others = leaderboardData.slice(3);
 
-    const topByDiamonds = [...leaderboardData].sort((a, b) => b.totalDiamonds - a.totalDiamonds).slice(0, 10);
-    const topByHours = [...leaderboardData].sort((a, b) => b.totalMinutes - a.totalMinutes).slice(0, 10);
-    const topByEfficiency = [...leaderboardData].sort((a, b) => b.efficiency - a.efficiency).slice(0, 10);
+    const diamondsToNextRank = useMemo(() => {
+        if (!currentUserRank || currentUserRank.rank === 1) return 0;
+        const hostAbove = leaderboardData.find(h => h.rank === currentUserRank.rank - 1);
+        return hostAbove ? hostAbove.totalDiamonds - currentUserRank.totalDiamonds + 1 : 0;
+    }, [currentUserRank, leaderboardData]);
 
     return (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            <RankingCard title="Top Diamond" icon={Trophy} data={topByDiamonds} valueKey="totalDiamonds" unit="💎" />
-            <RankingCard title="Top Jam Live" icon={Star} data={topByHours} valueKey="totalMinutes" isDuration />
-            <RankingCard title="Top Efisiensi" icon={Zap} data={topByEfficiency} valueKey="efficiency" unit="💎/jam" />
+        <section>
+            <h2 className="text-xl font-semibold text-stone-800 dark:text-stone-100 mb-4">Arena Kompetisi</h2>
+            <DateRangeFilter selectedRange={dateRange} onSelectRange={setDateRange} />
+
+            {/* Kartu "Fokus pada Posisi Anda" */}
+            {currentUserRank && (
+                <div className="mb-8 p-6 bg-white dark:bg-stone-800 rounded-xl shadow-lg border border-purple-200 dark:border-purple-800 grid grid-cols-1 md:grid-cols-3 gap-4 text-center md:text-left">
+                    <div className="flex flex-col items-center md:items-start">
+                        <p className="text-sm text-stone-500 dark:text-stone-400">Peringkat Anda</p>
+                        <p className="text-5xl font-bold text-purple-600 dark:text-purple-400">#{currentUserRank.rank}</p>
+                    </div>
+                    <div className="flex flex-col items-center md:items-start">
+                        <p className="text-sm text-stone-500 dark:text-stone-400">Total Diamond Anda</p>
+                        <p className="text-3xl font-semibold">{new Intl.NumberFormat().format(currentUserRank.totalDiamonds)} 💎</p>
+                    </div>
+                    {currentUserRank.rank > 1 && (
+                         <div className="flex flex-col items-center md:items-start">
+                            <p className="text-sm text-stone-500 dark:text-stone-400">Menuju Peringkat Berikutnya</p>
+                            <p className="text-3xl font-semibold text-green-500 flex items-center">
+                                <ArrowUpCircle className="h-6 w-6 mr-2"/>
+                                {new Intl.NumberFormat().format(diamondsToNextRank)} 💎
+                            </p>
+                        </div>
+                    )}
+                </div>
+            )}
+
+            {/* Panggung Juara (Top 3) */}
+            <Top3Showcase hosts={top3} />
+
+            {/* Daftar Peringkat Lainnya */}
+            <div className="mt-8 bg-white dark:bg-stone-800 rounded-xl shadow-sm border border-stone-100 dark:border-stone-700 overflow-x-auto">
+                 <table className="w-full text-sm text-left text-stone-600 dark:text-stone-300">
+                    <thead className="text-xs text-stone-700 dark:text-stone-400 uppercase bg-stone-100 dark:bg-stone-700">
+                        <tr>
+                            <th scope="col" className="px-6 py-3 text-center">Peringkat</th>
+                            <th scope="col" className="px-6 py-3">Nama Host</th>
+                            <th scope="col" className="px-6 py-3">Total Diamond (💎)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {others.map((host) => (
+                            <tr key={host.id} className={`border-b dark:border-stone-700 ${host.id === currentHostInfo?.id ? 'bg-purple-50 dark:bg-purple-900/30' : 'bg-white dark:bg-stone-800'}`}>
+                                <td className="px-6 py-4 font-medium text-stone-900 dark:text-white text-center">{host.rank}</td>
+                                <td className="px-6 py-4 font-semibold text-stone-900 dark:text-white">{host.nama_host}</td>
+                                <td className="px-6 py-4">{new Intl.NumberFormat().format(host.totalDiamonds)}</td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    );
+}
+
+// Komponen untuk Panggung Juara Top 3
+function Top3Showcase({ hosts }: { hosts: LeaderboardEntry[] }) {
+    const medalColors = ['text-yellow-400', 'text-stone-400', 'text-yellow-600'];
+    return (
+        <div>
+            <h3 className="text-lg font-semibold mb-4">Panggung Juara</h3>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {hosts.map((host, index) => (
+                    <div key={host.id} className={`p-4 rounded-lg text-center bg-stone-50 dark:bg-stone-800/50 border-2 ${index === 0 ? 'border-yellow-400' : index === 1 ? 'border-stone-400' : 'border-yellow-600'}`}>
+                        <Trophy className={`h-8 w-8 mx-auto ${medalColors[index]}`} />
+                        <p className="font-bold text-lg mt-2">{host.nama_host}</p>
+                        <p className="text-sm text-stone-500 dark:text-stone-400">Peringkat #{host.rank}</p>
+                        <p className="font-semibold mt-1">{new Intl.NumberFormat().format(host.totalDiamonds)} 💎</p>
+                    </div>
+                ))}
+            </div>
         </div>
     );
 }
 
-// Komponen kartu peringkat individual
-function RankingCard({ title, icon: Icon, data, valueKey, unit, isDuration }: { title: string, icon: React.ElementType, data: LeaderboardData[], valueKey: keyof LeaderboardData, unit?: string, isDuration?: boolean }) {
-    const formatValue = (value: number) => {
-        if (isDuration) {
-            const hours = Math.floor(value / 60);
-            const minutes = value % 60;
-            return `${hours}j ${minutes}m`;
-        }
-        return `${new Intl.NumberFormat().format(Math.round(value))} ${unit || ''}`;
-    };
-
-    const getMedalColor = (index: number) => {
-        if (index === 0) return 'text-yellow-400';
-        if (index === 1) return 'text-stone-400';
-        if (index === 2) return 'text-yellow-600';
-        return 'text-stone-500';
-    };
-
+// Komponen filter waktu
+function DateRangeFilter({ selectedRange, onSelectRange }: { selectedRange: DateRange, onSelectRange: (range: DateRange) => void }) {
+    const ranges: { id: DateRange; label: string }[] = [
+        { id: 'all', label: 'Semua Waktu' },
+        { id: 'thisWeek', label: 'Minggu Ini' },
+        { id: 'thisMonth', label: 'Bulan Ini' },
+    ];
     return (
-        <div className="bg-white dark:bg-stone-800 rounded-xl shadow-sm border border-stone-100 dark:border-stone-700 p-6">
-            <div className="flex items-center mb-4">
-                <Icon className="h-6 w-6 text-purple-600 dark:text-purple-400 mr-3" />
-                <h3 className="text-lg font-semibold">{title}</h3>
-            </div>
-            <ul className="space-y-3">
-                {data.map((item, index) => (
-                    <li key={item.hostId} className="flex items-center justify-between text-sm p-2 rounded-md hover:bg-stone-50 dark:hover:bg-stone-700/50">
-                        <div className="flex items-center">
-                            <span className={`w-6 font-bold ${getMedalColor(index)}`}>{index + 1}</span>
-                            <span className="font-medium text-stone-800 dark:text-stone-200">{item.hostName}</span>
-                        </div>
-                        <span className="font-semibold text-purple-700 dark:text-purple-400">{formatValue(item[valueKey] as number)}</span>
-                    </li>
-                ))}
-            </ul>
+        <div className="flex flex-wrap items-center gap-2 mb-6">
+            {ranges.map(range => ( <button key={range.id} onClick={() => onSelectRange(range.id)} className={`px-3 py-1.5 text-sm font-semibold rounded-lg transition-colors ${ selectedRange === range.id ? 'unity-gradient-bg text-white shadow-sm' : 'bg-stone-100 text-stone-600 hover:bg-stone-200 dark:bg-stone-800 dark:text-stone-300 dark:hover:bg-stone-700' }`}>{range.label}</button>))}
         </div>
+    );
+}
+
+// Fungsi bantuan untuk menghitung data papan peringkat
+function calculateLeaderboard(hosts: any[], rekapLive: any[], dateRange: DateRange): LeaderboardEntry[] {
+    const now = new Date();
+    let filteredRekap = rekapLive;
+
+    if (dateRange === 'thisWeek') {
+        const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        const dayOfWeek = today.getDay();
+        const startOfWeek = new Date(today);
+        startOfWeek.setDate(today.getDate() - dayOfWeek + (dayOfWeek === 0 ? -6 : 1)); // Minggu dimulai hari Senin
+        filteredRekap = rekapLive.filter(r => new Date(r.tanggal_live) >= startOfWeek);
+    } else if (dateRange === 'thisMonth') {
+        const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+        filteredRekap = rekapLive.filter(r => new Date(r.tanggal_live) >= startOfMonth);
+    }
+
+    const hostTotals = hosts.map(host => {
+        const hostRekap = filteredRekap.filter(r => r.host_id === host.id);
+        return {
+            id: host.id,
+            nama_host: host.nama_host,
+            totalDiamonds: hostRekap.reduce((sum, r) => sum + r.pendapatan, 0),
+        };
+    });
+
+    return hostTotals
+        .sort((a, b) => b.totalDiamonds - a.totalDiamonds)
+        .map((host, index) => ({ ...host, rank: index + 1 }));
+}
+
+
+// Komponen kerangka pemuatan
+function LeaderboardSkeleton() {
+    return (
+        <section>
+            <Skeleton className="h-8 w-48 mb-4" />
+            <div className="flex items-center space-x-2 mb-6">
+                <Skeleton className="h-9 w-28 rounded-lg" />
+                <Skeleton className="h-9 w-24 rounded-lg" />
+                <Skeleton className="h-9 w-32 rounded-lg" />
+            </div>
+            <Skeleton className="h-96" />
+        </section>
     );
 }
