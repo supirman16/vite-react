@@ -37,7 +37,7 @@ export default function DashboardPage() {
 
     const userRole = session.user.user_metadata.role;
 
-    if (userRole === 'Host') {
+    if (userRole === 'host') {
         return <HostDashboard />;
     } else {
         return <SuperadminDashboard />;
@@ -54,7 +54,7 @@ function SuperadminDashboard() {
 
     // --- PERBAIKAN: Hanya gunakan rekap yang sudah disetujui ---
     const approvedRekap = useMemo(() => {
-        return data.rekapLive.filter(r => r.status === 'Approved');
+        return data.rekapLive.filter(r => r.status === 'approved');
     }, [data.rekapLive]);
 
     const filteredRekap = useMemo(() => {
