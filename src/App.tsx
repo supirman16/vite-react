@@ -1,180 +1,143 @@
-import React, { useState, useEffect, useCallback, createContext } from 'react';
+import { useState, useEffect, createContext } from 'react';
 import { createClient, Session } from '@supabase/supabase-js';
-import LoginPage from './components/LoginPage';
 import DashboardLayout from './components/DashboardLayout';
-import MobileMenu from './components/MobileMenu';
+import LoginPage from './components/LoginPage';
+import { LayoutDashboard } from 'lucide-react';
 
-// -- 1. KONFIGURASI & KLIEN SUPABASE --
-const supabaseUrl = 'https://zorudwncbfietuzxrerd.supabase.co'; 
-const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpvcnVkd25jYmZpZXR1enhyZXJkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTI2NzMzNTUsImV4cCI6MjA2ODI0OTM1NX0.d6YJ8qj3Uegmei6ip52fQ0gnjJltqVDlrlbu6VXk7Ks'; 
+// Konfigurasi Supabase
+const supabaseUrl = 'https://zorudwncbfietuzxrerd.supabase.co';
+const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpvcnVkd25jYmZpZXR1enhyZXJkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MjA2MTE5MjUsImV4cCI6MjAzNjE4NzkyNX0.R-CM842n10Mptw08_W5p3yVnB35o2qILB342c2c5cVA';
 export const supabase = createClient(supabaseUrl, supabaseKey);
 
-// -- 2. TIPE DATA (UNTUK TYPESCRIPT) --
-interface Host { id: number; nama_host: string; status: string; [key: string]: any; }
-interface Rekap { id: number; host_id: number; durasi_menit: number; pendapatan: number; tanggal_live: string; [key: string]: any; }
-interface AppData {
-    hosts: Host[];
-    tiktokAccounts: any[];
-    rekapLive: Rekap[];
-    users: any[];
-    loading: boolean;
-}
+// Tipe data untuk konteks aplikasi
 export interface AppContextType {
+    page: string;
+    setPage: (page: string) => void;
     session: Session | null;
+    logout: () => void;
     data: AppData;
     setData: React.Dispatch<React.SetStateAction<AppData>>;
-    fetchData: () => void;
-    page: string;
-    setPage: React.Dispatch<React.SetStateAction<string>>;
-    theme: string;
-    setTheme: React.Dispatch<React.SetStateAction<string>>;
-    isMenuOpen: boolean;
-    setIsMenuOpen: React.Dispatch<React.SetStateAction<boolean>>;
-    handleLogout: () => void;
     showNotification: (message: string, isError?: boolean) => void;
 }
 
-// -- 3. KONTEKS UNTUK STATE MANAGEMENT --
+export interface AppData {
+    loading: boolean;
+    hosts: any[];
+    rekapLive: any[];
+    tiktokAccounts: any[];
+    users: any[];
+    user: any | null;
+}
+
 export const AppContext = createContext<AppContextType | null>(null);
 
-// -- 4. KOMPONEN UTAMA: App --
+// Komponen utama aplikasi
 export default function App() {
     const [session, setSession] = useState<Session | null>(null);
     const [page, setPage] = useState('dashboard');
-    const [theme, setTheme] = useState(() => localStorage.getItem('theme') || 'light');
-    const [isMenuOpen, setIsMenuOpen] = useState(false);
+    const [notification, setNotification] = useState<{ message: string; isError: boolean } | null>(null);
     const [data, setData] = useState<AppData>({
-        hosts: [],
-        tiktokAccounts: [],
-        rekapLive: [],
-        users: [],
         loading: true,
+        hosts: [],
+        rekapLive: [],
+        tiktokAccounts: [],
+        users: [],
+        user: null,
     });
-    const [notification, setNotification] = useState<{ message: string; isError: boolean; visible: boolean } | null>(null);
-
-    const showNotification = (message: string, isError = false) => {
-        setNotification({ message, isError, visible: true });
-        setTimeout(() => {
-            setNotification(prev => prev ? { ...prev, visible: false } : null);
-        }, 3000);
-    };
-
-    const handleLogout = async () => {
-        await supabase.auth.signOut();
-    };
-
-    const fetchData = useCallback(async (currentSession: Session) => {
-        setData(prev => ({ ...prev, loading: true }));
-        try {
-            const { data: hosts, error: hostsError } = await supabase.from('hosts').select('*');
-            if (hostsError) throw hostsError;
-
-            const { data: tiktokAccounts, error: tiktokError } = await supabase.from('tiktok_accounts').select('*');
-            if (tiktokError) throw tiktokError;
-
-            const { data: rekapLive, error: rekapError } = await supabase.from('rekap_live').select('*');
-            if (rekapError) throw rekapError;
-
-            let users: any[] = [];
-            if (currentSession.user.user_metadata?.role === 'superadmin') {
-                const { data: usersResponse, error: usersError } = await supabase.functions.invoke('list-all-users');
-                if (usersError) throw usersError;
-                if (Array.isArray(usersResponse)) {
-                    users = usersResponse;
-                }
-            }
-
-            setData({ hosts: hosts || [], tiktokAccounts: tiktokAccounts || [], rekapLive: rekapLive || [], users, loading: false });
-        } catch (error) {
-            console.error("Error fetching data:", error);
-            setData(prev => ({ ...prev, loading: false }));
-            throw error;
-        }
-    }, []);
+    
+    // --- PERBAIKAN: State baru untuk menangani pemuatan autentikasi ---
+    const [authLoading, setAuthLoading] = useState(true);
 
     useEffect(() => {
-        const body = document.body;
-        if (theme === 'dark') {
-            document.documentElement.classList.add('dark');
-            body.classList.remove('bg-stone-50', 'text-stone-800');
-            body.classList.add('bg-stone-900', 'text-stone-200');
-        } else {
-            document.documentElement.classList.remove('dark');
-            body.classList.remove('bg-stone-900', 'text-stone-200');
-            body.classList.add('bg-stone-50', 'text-stone-800');
-        }
-        localStorage.setItem('theme', theme);
-    }, [theme]);
-
-    useEffect(() => {
-        const handleSession = async (session: Session | null) => {
-            if (session) {
-                const userRole = session.user.user_metadata?.role;
-                const hostId = session.user.user_metadata?.host_id;
-
-                if (userRole === 'host' && hostId) {
-                    const { data: hostData, error } = await supabase
-                        .from('hosts')
-                        .select('status')
-                        .eq('id', hostId)
-                        .single();
-
-                    if (error || !hostData || hostData.status === 'Tidak Aktif') {
-                        showNotification('Akun Anda telah dinonaktifkan oleh admin.', true);
-                        handleLogout();
-                        setData(prev => ({ ...prev, loading: false }));
-                        return;
-                    }
-                }
-                
-                setSession(session);
-                await fetchData(session);
-
-            } else {
-                setSession(null);
-                setData(prev => ({ ...prev, loading: false, users: [] }));
-            }
-        };
-
+        // Mengambil sesi saat aplikasi dimuat
         supabase.auth.getSession().then(({ data: { session } }) => {
-            handleSession(session);
+            setSession(session);
+            setAuthLoading(false); // Selesai memeriksa sesi awal
         });
 
+        // Mendengarkan perubahan status autentikasi
         const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-            handleSession(session);
+            setSession(session);
+            // Jika ada perubahan (misalnya, logout), pastikan authLoading juga false
+            if (authLoading) setAuthLoading(false); 
         });
 
         return () => subscription.unsubscribe();
-    }, [fetchData]);
+    }, [authLoading]); // Menambahkan authLoading sebagai dependensi
 
-    const value: AppContextType = {
-        session, data, setData, fetchData: () => session && fetchData(session), page, setPage, theme, setTheme, isMenuOpen, setIsMenuOpen, handleLogout, showNotification
+    // Fungsi untuk mengambil data utama aplikasi
+    const fetchData = async (currentSession: Session) => {
+        setData(prev => ({ ...prev, loading: true }));
+        try {
+            const user = currentSession.user;
+            const userRole = user.user_metadata?.role;
+            
+            const { data: hosts } = await supabase.from('hosts').select('*');
+            const { data: tiktokAccounts } = await supabase.from('tiktok_accounts').select('*');
+            const { data: users } = await supabase.from('users').select('*');
+            
+            let rekapLive;
+            if (userRole === 'superadmin') {
+                const { data } = await supabase.from('rekap_live').select('*');
+                rekapLive = data;
+            } else {
+                const host = hosts?.find(h => h.user_id === user.id);
+                if (host) {
+                    const { data } = await supabase.from('rekap_live').select('*').eq('host_id', host.id);
+                    rekapLive = data;
+                }
+            }
+
+            setData({
+                loading: false,
+                hosts: hosts || [],
+                rekapLive: rekapLive || [],
+                tiktokAccounts: tiktokAccounts || [],
+                users: users || [],
+                user: user,
+            });
+        } catch (error) {
+            console.error("Error fetching data:", error);
+            setData(prev => ({ ...prev, loading: false }));
+        }
+    };
+    
+    useEffect(() => {
+        if (session) {
+            fetchData(session);
+        } else {
+            // Jika tidak ada sesi, pastikan data direset dan tidak dalam status loading
+            setData({ loading: false, hosts: [], rekapLive: [], tiktokAccounts: [], users: [], user: null });
+        }
+    }, [session]);
+
+    const logout = async () => {
+        await supabase.auth.signOut();
+        setPage('dashboard'); // Reset halaman ke dashboard setelah logout
     };
 
-    if (data.loading) {
-        return <div className="flex items-center justify-center min-h-screen"></div>;
+    const showNotification = (message: string, isError = false) => {
+        setNotification({ message, isError });
+        setTimeout(() => setNotification(null), 3000);
+    };
+
+    // --- PERBAIKAN: Logika render yang lebih tangguh ---
+    if (authLoading) {
+        return (
+            <div className="flex h-screen items-center justify-center bg-stone-100 dark:bg-stone-900">
+                <LayoutDashboard className="h-8 w-8 animate-spin text-purple-500" />
+            </div>
+        );
     }
-
+    
     return (
-        <AppContext.Provider value={value}>
-            {session ? <DashboardLayout /> : <LoginPage />}
-            <Notification notification={notification} />
-            <MobileMenu />
+        <AppContext.Provider value={{ page, setPage, session, logout, data, setData, showNotification }}>
+            {!session ? <LoginPage /> : <DashboardLayout />}
+            {notification && (
+                <div className={`fixed bottom-5 right-5 p-4 rounded-lg shadow-lg text-white ${notification.isError ? 'bg-red-500' : 'bg-green-500'}`}>
+                    {notification.message}
+                </div>
+            )}
         </AppContext.Provider>
-    );
-}
-
-// Komponen Notifikasi
-function Notification({ notification }: { notification: { message: string; isError: boolean; visible: boolean } | null }) {
-    if (!notification) return null;
-
-    const baseClasses = "fixed top-5 right-5 p-4 rounded-lg shadow-lg text-white transform transition-transform duration-300 ease-in-out z-[100]";
-    const colorClasses = notification.isError ? "bg-red-500" : "bg-green-500";
-    const visibilityClasses = notification.visible ? "translate-x-0" : "translate-x-[120%]";
-
-    return (
-        <div className={`${baseClasses} ${colorClasses} ${visibilityClasses}`}>
-            {notification.message}
-        </div>
     );
 }
