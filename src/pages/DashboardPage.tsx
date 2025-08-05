@@ -1,4 +1,4 @@
-import { useContext, useState, useMemo } from 'react';
+import { useContext, useState, useMemo, useEffect } from 'react';
 import { AppContext, AppContextType } from '../App';
 import { Line } from 'react-chartjs-2';
 import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, PointElement, LineElement, Title, Tooltip, Legend, Filler } from 'chart.js';
@@ -36,10 +36,15 @@ export default function DashboardPage() {
         return <DashboardSkeleton />;
     }
 
-    // Tentukan tampilan mana yang akan dirender berdasarkan peran pengguna
-    if (data.user?.role === 'Host') {
+    // --- PERBAIKAN: Logika yang lebih andal untuk menentukan peran pengguna ---
+    // Periksa apakah ID pengguna yang login ada di dalam daftar host
+    const isUserAHost = data.user && data.hosts.some(host => host.user_id === data.user.id);
+
+    // Tentukan tampilan mana yang akan dirender
+    if (isUserAHost) {
         return <HostDashboard />;
     } else {
+        // Asumsikan sebagai Superadmin jika bukan host (atau jika tidak ada user)
         return <SuperadminDashboard />;
     }
 }
@@ -142,17 +147,18 @@ function HostDashboard() {
 
     // Hitung statistik personal host
     const personalStats = useMemo(() => {
-        if (!currentHost || filteredRekap.length === 0) return { totalMinutes: 0, totalDiamonds: 0, efficiency: 0, rank: 'N/A' };
-
+        if (!currentHost || !data.rekapLive) return { totalMinutes: 0, totalDiamonds: 0, efficiency: 0, rank: 'N/A' };
+        
         const totalMinutes = filteredRekap.reduce((sum, r) => sum + r.durasi_menit, 0);
         const totalDiamonds = filteredRekap.reduce((sum, r) => sum + r.pendapatan, 0);
         const totalHours = totalMinutes / 60;
         const efficiency = totalHours > 0 ? Math.round(totalDiamonds / totalHours) : 0;
 
-        // Hitung peringkat
+        // Hitung peringkat berdasarkan data rekap KESELURUHAN (bukan yang difilter)
+        const allTimeRekap = data.rekapLive;
         const hostTotals = data.hosts.map(host => {
-            const hostRekap = data.rekapLive.filter(r => r.host_id === host.id);
-            return { id: host.id, totalDiamonds: hostRekap.reduce((sum, r) => sum + r.pendapatan, 0) };
+            const hostAllTimeRekap = allTimeRekap.filter(r => r.host_id === host.id);
+            return { id: host.id, totalDiamonds: hostAllTimeRekap.reduce((sum, r) => sum + r.pendapatan, 0) };
         });
         hostTotals.sort((a, b) => b.totalDiamonds - a.totalDiamonds);
         const rank = hostTotals.findIndex(h => h.id === currentHost.id) + 1;
