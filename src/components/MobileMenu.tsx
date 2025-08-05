@@ -1,53 +1,58 @@
 import { useContext, useState } from 'react';
 import { AppContext, AppContextType } from '../App';
-import { LayoutDashboard, Star, FileText, User, DollarSign, Settings, Users, TestTube2, Ticket, MoreHorizontal, X, BarChart3, Building2 } from 'lucide-react';
+import { LayoutDashboard, Star, FileText, User, DollarSign, Settings, Users, TestTube2, Ticket, MoreHorizontal, X, BarChart3 } from 'lucide-react';
 import Modal from './Modal';
 
 // Komponen ini adalah menu navigasi bawah untuk tampilan mobile.
 export default function MobileMenu() {
-    const { page, setPage, session } = useContext(AppContext) as AppContextType;
+    const context = useContext(AppContext);
     const [isMoreMenuOpen, setIsMoreMenuOpen] = useState(false);
     
-    const isSuperAdmin = session!.user.user_metadata?.role === 'superadmin';
+    // Penjaga untuk mencegah crash saat sesi belum siap
+    if (!context || !context.session) {
+        return null;
+    }
 
-    // --- PERBAIKAN: Mendefinisikan ulang item menu untuk Host dan Superadmin ---
+    const { page, setPage, session } = context as AppContextType;
+
+    // --- PERBAIKAN: Logika peran yang disederhanakan dan diperbaiki ---
+    const userRole = session.user.user_metadata?.role;
+
     const hostNavItems = [
         { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-        { id: 'leaderboard', label: 'Papan Peringkat', icon: Star },
-        { id: 'rekap', label: 'Rekap Live', icon: FileText },
-        { id: 'salary', label: 'Gaji Saya', icon: DollarSign },
-        { id: 'profile', label: 'Profil Saya', icon: User },
-        { id: 'settings', label: 'Pengaturan Akun', icon: Settings },
+        { id: 'leaderboard', label: 'Peringkat', icon: Star },
+        { id: 'rekap', label: 'Rekap', icon: FileText },
+        { id: 'salary', label: 'Gaji', icon: DollarSign },
+        { id: 'profile', label: 'Profil', icon: User },
+        { id: 'settings', label: 'Pengaturan', icon: Settings },
     ];
 
     const superAdminNavItems = [
-        ...hostNavItems,
-        // Menambahkan menu khusus Superadmin
-        { id: 'livetest', label: 'Uji Coba Live', icon: TestTube2 },
-        { id: 'hosts', label: 'Manajemen Host', icon: Users },
-        { id: 'users', label: 'Manajemen Pengguna', icon: Users },
-        { id: 'tiktok', label: 'Manajemen Akun', icon: Ticket },
-        { id: 'payroll', label: 'Sistem Gaji', icon: DollarSign },
-        { id: 'analysis', label: 'Analisis Kinerja', icon: BarChart3 },
+        { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
+        { id: 'hosts', label: 'Host', icon: Users },
+        { id: 'rekap', label: 'Rekap', icon: FileText },
+        { id: 'payroll', label: 'Gaji', icon: DollarSign },
+        { id: 'leaderboard', label: 'Peringkat', icon: Star },
+        { id: 'analysis', label: 'Analisis', icon: BarChart3 },
+        { id: 'users', label: 'Pengguna', icon: Users },
+        { id: 'tiktok', label: 'Akun', icon: Ticket },
+        { id: 'livetest', label: 'Uji Live', icon: TestTube2 },
+        { id: 'settings', label: 'Pengaturan', icon: Settings },
     ];
 
-    const allItems = isSuperAdmin ? superAdminNavItems : hostNavItems;
+    const allItems = userRole === 'superadmin' ? superAdminNavItems : hostNavItems;
     
-    // Tentukan item mana yang akan ditampilkan di bar utama (maksimal 3 + "Lainnya")
-    const mainItems = isSuperAdmin 
-        ? allItems.filter(item => ['dashboard', 'hosts', 'rekap'].includes(item.id))
-        : allItems.filter(item => ['dashboard', 'rekap', 'salary'].includes(item.id));
-        
-    const moreItems = allItems.filter(item => !mainItems.some(mainItem => mainItem.id === item.id));
+    // Tentukan item mana yang akan ditampilkan di bar utama
+    const mainItems = allItems.slice(0, 3);
+    const moreItems = allItems.slice(3);
 
     const handleMenuClick = (pageId: string) => {
         setPage(pageId);
-        setIsMoreMenuOpen(false); // Tutup modal setelah item dipilih
+        setIsMoreMenuOpen(false);
     };
 
     return (
         <>
-            {/* Bar Navigasi Bawah */}
             <div className="fixed bottom-0 left-0 z-50 w-full h-16 bg-white border-t border-stone-200 dark:bg-stone-800 dark:border-stone-700 md:hidden">
                 <div className="grid h-full max-w-lg grid-cols-4 mx-auto font-medium">
                     {mainItems.map(item => (
@@ -63,7 +68,6 @@ export default function MobileMenu() {
                 </div>
             </div>
 
-            {/* Modal untuk Menu "Lainnya" */}
             {isMoreMenuOpen && (
                 <div className="fixed inset-0 z-[100] flex items-end bg-black/60 md:hidden" onClick={() => setIsMoreMenuOpen(false)}>
                     <div className="w-full bg-white dark:bg-stone-800 rounded-t-2xl p-4 animate-slide-up-fast" onClick={(e) => e.stopPropagation()}>
