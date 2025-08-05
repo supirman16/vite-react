@@ -32,21 +32,23 @@ export default function DashboardPage() {
     const { data } = useContext(AppContext) as AppContextType;
     
     // Tampilkan kerangka pemuatan jika data belum siap
-    if (data.loading) {
+    if (data.loading || !data.user) {
         return <DashboardSkeleton />;
     }
 
     // --- PERBAIKAN: Logika yang lebih andal untuk menentukan peran pengguna ---
-    // Periksa apakah ID pengguna yang login ada di dalam daftar host
-    const isUserAHost = data.user && data.hosts.some(host => host.user_id === data.user.id);
-
-    // Tentukan tampilan mana yang akan dirender
-    if (isUserAHost) {
-        return <HostDashboard />;
-    } else {
-        // Asumsikan sebagai Superadmin jika bukan host (atau jika tidak ada user)
-        return <SuperadminDashboard />;
+    // Pastikan data.hosts sudah ada sebelum melakukan pengecekan
+    if (data.hosts.length > 0) {
+        const isUserAHost = data.hosts.some(host => host.user_id === data.user!.id);
+        if (isUserAHost) {
+            return <HostDashboard />;
+        } else {
+            return <SuperadminDashboard />;
+        }
     }
+    
+    // Tampilkan kerangka pemuatan jika data host belum siap, untuk mencegah race condition
+    return <DashboardSkeleton />;
 }
 
 // ==================================================================
