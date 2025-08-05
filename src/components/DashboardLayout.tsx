@@ -1,63 +1,75 @@
-import { useContext } from 'react';
+import { useState, useContext } from 'react';
 import { AppContext, AppContextType } from '../App';
 import Header from './Header';
 import Navigation from './Navigation';
+import MobileMenu from './MobileMenu';
 import DashboardPage from '../pages/DashboardPage';
+import LeaderboardPage from '../pages/LeaderboardPage';
 import AnalysisPage from '../pages/AnalysisPage';
 import RekapPage from '../pages/RekapPage';
 import ProfilePage from '../pages/ProfilePage';
 import MySalaryPage from '../pages/MySalaryPage';
-import SettingsPage from '../pages/SettingsPage';
 import PayrollPage from '../pages/PayrollPage';
 import HostsPage from '../pages/HostsPage';
-import TiktokPage from '../pages/TiktokPage';
 import UsersPage from '../pages/UsersPage';
-import LeaderboardPage from '../pages/LeaderboardPage';
-import LiveTestPage from '../pages/LiveTestPage'; // <-- Impor baru
+import TiktokPage from '../pages/TiktokPage';
+import LiveTestPage from '../pages/LiveTestPage';
+import SettingsPage from '../pages/SettingsPage';
 
-// Komponen ini bertanggung jawab untuk mengatur layout utama aplikasi setelah login,
-// termasuk Header, Navigasi, dan konten halaman yang aktif.
+// Komponen ini mengatur tata letak utama dasbor.
 export default function DashboardLayout() {
     const { page } = useContext(AppContext) as AppContextType;
+    const [isSidebarOpen, setSidebarOpen] = useState(false);
 
-    // Fungsi ini menentukan komponen halaman mana yang akan ditampilkan
-    // berdasarkan state 'page' saat ini.
     const renderPage = () => {
         switch (page) {
-            case 'dashboard':
-                return <DashboardPage />;
-            case 'leaderboard':
-                return <LeaderboardPage />;
-            case 'analysis':
-                return <AnalysisPage />;
-            case 'rekap':
-                return <RekapPage />;
-            case 'profile':
-                return <ProfilePage />;
-            case 'my-salary':
-                return <MySalaryPage />;
-            case 'settings':
-                return <SettingsPage />;
-            case 'payroll':
-                return <PayrollPage />;
-            case 'hosts':
-                return <HostsPage />;
-            case 'tiktok':
-                return <TiktokPage />;
-            case 'users':
-                return <UsersPage />;
-            case 'livetest':
-                return <LiveTestPage />; // <-- Case baru ditambahkan
-            default:
-                return <DashboardPage />;
+            case 'dashboard': return <DashboardPage />;
+            case 'leaderboard': return <LeaderboardPage />;
+            case 'analysis': return <AnalysisPage />;
+            case 'rekap': return <RekapPage />;
+            case 'profile': return <ProfilePage />;
+            case 'salary': return <MySalaryPage />;
+            case 'payroll': return <PayrollPage />;
+            case 'hosts': return <HostsPage />;
+            case 'users': return <UsersPage />;
+            case 'tiktok': return <TiktokPage />;
+            case 'livetest': return <LiveTestPage />;
+            case 'settings': return <SettingsPage />;
+            default: return <DashboardPage />;
         }
     };
 
     return (
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-            <Header />
-            <Navigation />
-            <main>{renderPage()}</main>
+        <div className="relative min-h-screen md:flex bg-stone-100 dark:bg-stone-900">
+            {/* Overlay untuk menu mobile */}
+            <div
+                className={`fixed inset-0 z-20 bg-black/60 transition-opacity md:hidden ${
+                    isSidebarOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'
+                }`}
+                onClick={() => setSidebarOpen(false)}
+                aria-hidden="true"
+            ></div>
+
+            {/* Bilah Navigasi (Sidebar) */}
+            <div
+                className={`fixed inset-y-0 left-0 z-30 w-64 transform transition-transform md:relative md:translate-x-0 ${
+                    isSidebarOpen ? 'translate-x-0' : '-translate-x-full'
+                }`}
+            >
+                {/* Mengirim fungsi untuk menutup sidebar di mobile */}
+                <Navigation onClose={() => setSidebarOpen(false)} />
+            </div>
+
+            {/* Konten Utama */}
+            <div className="flex flex-1 flex-col">
+                <Header onMenuClick={() => setSidebarOpen(true)} />
+                <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
+                    {renderPage()}
+                </main>
+            </div>
+
+            {/* Menu Bawah untuk Mobile */}
+            <MobileMenu />
         </div>
     );
 }
