@@ -4,6 +4,8 @@ import { Line } from 'react-chartjs-2';
 import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, PointElement, LineElement, Title, Tooltip, Legend, Filler } from 'chart.js';
 import Skeleton from '../components/Skeleton';
 import { Clock, BarChart, Gem, Crown, ArrowUpDown, Sparkles } from 'lucide-react';
+// Impor library 'marked'
+import { marked } from 'marked';
 
 // Registrasi komponen Chart.js yang dibutuhkan, termasuk Filler
 ChartJS.register(CategoryScale, LinearScale, BarElement, PointElement, LineElement, Title, Tooltip, Legend, Filler);
@@ -166,12 +168,11 @@ function GeminiAnalysisCard({ filteredRekap, hosts, dateRange }: { filteredRekap
             - Satu saran konkret yang bisa ditindaklanjuti untuk meningkatkan kinerja agensi.
         `;
 
-        // --- PERUBAHAN UTAMA: Memanggil API backend Anda, bukan Google ---
         try {
             const response = await fetch('/api/generate-analysis', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ prompt }) // Kirim prompt ke backend
+                body: JSON.stringify({ prompt })
             });
 
             if (!response.ok) {
@@ -180,7 +181,8 @@ function GeminiAnalysisCard({ filteredRekap, hosts, dateRange }: { filteredRekap
             }
 
             const result = await response.json();
-            setAnalysis(result.analysis);
+            // --- PERBAIKAN: Gunakan 'marked' untuk mem-parse Markdown ---
+            setAnalysis(marked(result.analysis) as string);
             
         } catch (error) {
             console.error("Error calling local API:", error);
@@ -188,13 +190,6 @@ function GeminiAnalysisCard({ filteredRekap, hosts, dateRange }: { filteredRekap
         } finally {
             setLoading(false);
         }
-    };
-    
-    const renderMarkdown = (text: string) => {
-        return text
-            .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-            .replace(/\*(.*?)\*/g, '<em>$1</em>')
-            .replace(/^- (.*?)(\n|$)/gm, '<li class="ml-4 list-disc">$1</li>');
     };
 
     return (
@@ -215,7 +210,7 @@ function GeminiAnalysisCard({ filteredRekap, hosts, dateRange }: { filteredRekap
             </div>
             {analysis && (
                 <div className="mt-4 pt-4 border-t dark:border-stone-700 prose prose-sm dark:prose-invert max-w-none"
-                     dangerouslySetInnerHTML={{ __html: renderMarkdown(analysis) }} />
+                     dangerouslySetInnerHTML={{ __html: analysis }} />
             )}
         </div>
     );
@@ -226,7 +221,7 @@ function DashboardSkeleton() {
     return (
         <section>
             <div className="flex items-center space-x-2 mb-6"><Skeleton className="h-9 w-28 rounded-lg" /><Skeleton className="h-9 w-24 rounded-lg" /><Skeleton className="h-9 w-32 rounded-lg" /></div>
-            <Skeleton className="h-48 mb-8" /> {/* Skeleton untuk kartu Gemini */}
+            <Skeleton className="h-48 mb-8" />
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8"><Skeleton className="h-28" /><Skeleton className="h-28" /><Skeleton className="h-28" /></div>
             <Skeleton className="h-96" />
             <div className="mt-8"><Skeleton className="h-96" /></div>
