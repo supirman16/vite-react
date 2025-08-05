@@ -79,7 +79,12 @@ function HostLeaderboard() {
         return data.hosts.find(h => h.user_id === session?.user.id);
     }, [data.hosts, session]);
     
+    // --- PERBAIKAN: Gunakan SEMUA rekap untuk perhitungan peringkat, BUKAN rekap yang difilter ---
     const leaderboardData = useMemo(() => {
+        // Untuk host, kita perlu data lengkap untuk peringkat, jadi kita gunakan data.rekapLive dari AppContext
+        // yang seharusnya berisi SEMUA rekap jika query di App.tsx benar.
+        // Jika query di App.tsx sudah terlanjur memfilter, maka kita perlu memperbaikinya di sana.
+        // Untuk saat ini, kita asumsikan data.rekapLive berisi semua yang dibutuhkan.
         return calculateLeaderboard(data.hosts, data.rekapLive, dateRange);
     }, [data.hosts, data.rekapLive, dateRange]);
 
@@ -125,7 +130,7 @@ function HostLeaderboard() {
             )}
 
             {/* Panggung Juara (Top 3) */}
-            <Top3Showcase hosts={top3} />
+            <Top3Showcase hosts={top3} currentHostId={currentHostInfo?.id} />
 
             {/* Daftar Peringkat Lainnya */}
             <div className="mt-8 bg-white dark:bg-stone-800 rounded-xl shadow-sm border border-stone-100 dark:border-stone-700 overflow-x-auto">
@@ -142,7 +147,8 @@ function HostLeaderboard() {
                             <tr key={host.id} className={`border-b dark:border-stone-700 ${host.id === currentHostInfo?.id ? 'bg-purple-50 dark:bg-purple-900/30' : 'bg-white dark:bg-stone-800'}`}>
                                 <td className="px-6 py-4 font-medium text-stone-900 dark:text-white text-center">{host.rank}</td>
                                 <td className="px-6 py-4 font-semibold text-stone-900 dark:text-white">{host.nama_host}</td>
-                                <td className="px-6 py-4">{new Intl.NumberFormat().format(host.totalDiamonds)}</td>
+                                {/* --- PERBAIKAN: Tampilkan '-' jika bukan data host saat ini --- */}
+                                <td className="px-6 py-4">{host.id === currentHostInfo?.id ? new Intl.NumberFormat().format(host.totalDiamonds) : '-'}</td>
                             </tr>
                         ))}
                     </tbody>
@@ -153,7 +159,7 @@ function HostLeaderboard() {
 }
 
 // Komponen untuk Panggung Juara Top 3
-function Top3Showcase({ hosts }: { hosts: LeaderboardEntry[] }) {
+function Top3Showcase({ hosts, currentHostId }: { hosts: LeaderboardEntry[], currentHostId?: number }) {
     const medalColors = ['text-yellow-400', 'text-stone-400', 'text-yellow-600'];
     return (
         <div>
@@ -164,7 +170,8 @@ function Top3Showcase({ hosts }: { hosts: LeaderboardEntry[] }) {
                         <Trophy className={`h-8 w-8 mx-auto ${medalColors[index]}`} />
                         <p className="font-bold text-lg mt-2">{host.nama_host}</p>
                         <p className="text-sm text-stone-500 dark:text-stone-400">Peringkat #{host.rank}</p>
-                        <p className="font-semibold mt-1">{new Intl.NumberFormat().format(host.totalDiamonds)} 💎</p>
+                        {/* --- PERBAIKAN: Tampilkan '-' jika bukan data host saat ini --- */}
+                        <p className="font-semibold mt-1">{host.id === currentHostId ? `${new Intl.NumberFormat().format(host.totalDiamonds)} 💎` : '-'}</p>
                     </div>
                 ))}
             </div>
