@@ -6,8 +6,7 @@ import ConfirmationModal from '../components/ConfirmationModal';
 import DropdownMenu from '../components/DropdownMenu';
 import Skeleton from '../components/Skeleton';
 
-// --- URL ke server backend Heroku Anda ---
-const API_URL = "https://unity-host-dashboard-bfc030a0ba69.herokuapp.com"; 
+// --- Tidak perlu URL Heroku lagi ---
 
 // Komponen ini adalah halaman Manajemen Akun TikTok untuk superadmin.
 export default function TiktokPage() {
@@ -127,27 +126,29 @@ function TiktokTable({ onEdit, onDelete, searchQuery }: { onEdit: (account: any)
         });
     }, [data.tiktokAccounts, sortKey, sortDirection, searchQuery]);
 
-    // --- PERUBAHAN UTAMA: Membuat permintaan API secara sekuensial ---
     const checkAllStatuses = useCallback(async () => {
         setLoadingStatuses(true);
         const activeAccounts = filteredAndSortedData.filter(acc => acc.status === 'Aktif');
         const newStatuses: { [key: string]: boolean } = {};
 
-        // Menggunakan loop for...of untuk membuat permintaan satu per satu
         for (const account of activeAccounts) {
             try {
-                const response = await fetch(`${API_URL}/check-status/${account.username}`);
+                // --- PERUBAHAN UTAMA: Memanggil API Vercel lokal ---
+                const response = await fetch(`/api/get-live-status`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username: account.username })
+                });
+                
                 if (response.ok) {
                     const result = await response.json();
                     newStatuses[account.username.toLowerCase()] = result.isLive;
                 } else {
                     newStatuses[account.username.toLowerCase()] = false;
                 }
-                // Perbarui state setelah setiap panggilan agar UI terasa lebih responsif
                 setLiveStatuses(prev => ({ ...prev, ...newStatuses }));
                 
-                // Tambahkan jeda singkat untuk tidak membebani server
-                await new Promise(resolve => setTimeout(resolve, 200)); // jeda 200ms
+                await new Promise(resolve => setTimeout(resolve, 200));
             } catch (error) {
                 console.error(`Error fetching status for ${account.username}:`, error);
                 newStatuses[account.username.toLowerCase()] = false;
