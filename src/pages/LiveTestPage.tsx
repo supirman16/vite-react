@@ -51,14 +51,15 @@ export default function LiveTestPage() {
                     setConnectionStatus(message.message);
                     break;
                 case 'chat':
-                    const chatText = `${message.data.uniqueId}: ${message.data.comment}`;
+                    // --- PERBAIKAN: Menggunakan properti yang benar ---
+                    const chatText = `${message.data.user.uniqueId}: ${message.data.comment}`;
                     setChatLog(prev => [chatText, ...prev].slice(0, 100));
                     break;
                 case 'gift':
-                    const giftText = `🎁 ${message.data.uniqueId} mengirim ${message.data.giftName} x${message.data.repeatCount}`;
+                     // --- PERBAIKAN: Menggunakan properti yang benar ---
+                    const giftText = `🎁 ${message.data.user.uniqueId} mengirim ${message.data.giftName} x${message.data.repeatCount}`;
                     setChatLog(prev => [giftText, ...prev].slice(0, 100));
                     break;
-                // --- LOGIKA BARU UNTUK MENANGANI EVENT ---
                 case 'stats':
                     setRoomStats(prev => ({
                         viewerCount: message.data.viewerCount ?? prev.viewerCount,
@@ -69,7 +70,6 @@ export default function LiveTestPage() {
                     const socialText = `✨ ${message.data.label}`;
                     setChatLog(prev => [socialText, ...prev].slice(0, 100));
                     break;
-                // ------------------------------------------
             }
         };
 
