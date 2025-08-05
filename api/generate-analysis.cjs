@@ -1,6 +1,5 @@
-// Menggunakan sintaks require() untuk semua modul
+// Menggunakan sintaks require() untuk semua modul dalam file .cjs
 const axios = require('axios');
-const { VercelRequest, VercelResponse } = require('@vercel/node');
 
 // Handler untuk serverless function
 module.exports = async (request, response) => {
