@@ -4,7 +4,7 @@ import express from 'express';
 import http from 'http';
 import { WebSocketServer } from 'ws';
 import { TikTokLiveConnection, WebcastEvent } from 'tiktok-live-connector';
-import cors from 'cors'; // Import CORS
+import cors from 'cors';
 
 // Penjaga Eror Fatal untuk stabilitas
 process.on('uncaughtException', (error, origin) => {
@@ -20,10 +20,7 @@ const app = express();
 const server = http.createServer(app);
 const wss = new WebSocketServer({ server });
 
-// --- PERUBAHAN UTAMA: Tambahkan CORS ---
-// Ini penting agar Vercel bisa memanggil API Heroku Anda
 app.use(cors());
-// ------------------------------------
 
 // Kunci API EulerStream Anda
 const EULER_STREAM_API_KEY = "ZTlhMTg4YzcyMTRhNWY1ZTk2ZTNkODcwYTE0YTQyMDcwNGFiMGIwYjc4MmZmMjljZGE1ZmEw";
@@ -33,14 +30,13 @@ app.get('/', (req, res) => {
   res.status(200).send('TikTok WebSocket Server is running.');
 });
 
-// --- API ENDPOINT BARU UNTUK MEMERIKSA STATUS LIVE ---
+// API Endpoint untuk memeriksa status live dengan cepat
 app.get('/check-status/:username', async (req, res) => {
     const { username } = req.params;
     if (!username) {
         return res.status(400).json({ error: 'Username is required' });
     }
 
-    console.log(`[API] Memeriksa status untuk @${username}`);
     try {
         const tiktokConnection = new TikTokLiveConnection(username, {
             signWebcastRequest: async (url, headers) => {
@@ -57,27 +53,21 @@ app.get('/check-status/:username', async (req, res) => {
 
         await tiktokConnection.connect();
         tiktokConnection.disconnect();
-        console.log(`[API] @${username} sedang live.`);
         res.status(200).json({ isLive: true });
     } catch (err) {
-        console.log(`[API] @${username} tidak live atau terjadi eror.`);
         res.status(200).json({ isLive: false });
     }
 });
-// ----------------------------------------------------
 
-// Logika WebSocket Server (Tidak berubah)
+// Logika WebSocket untuk halaman "Uji Coba Live"
 const activeConnections = new Map();
 wss.on('connection', (ws) => {
-    console.log('[Server] Klien baru terhubung.');
     ws.on('message', async (message) => {
         try {
             const data = JSON.parse(message);
             if (activeConnections.has(ws)) { activeConnections.get(ws).disconnect(); }
             if (data.action === 'connect' && data.username) {
-                const { username } = data;
-                ws.send(JSON.stringify({ type: 'status', message: `Menghubungkan ke @${username}...` }));
-                const tiktokConnection = new TikTokLiveConnection(username, {
+                const tiktokConnection = new TikTokLiveConnection(data.username, {
                      signWebcastRequest: async (url, headers) => {
                         const signResponse = await fetch('https://tiktok.eulerstream.com/api/v1/webcast/sign_url', {
                             method: 'POST',
@@ -90,7 +80,7 @@ wss.on('connection', (ws) => {
                     }
                 });
                 activeConnections.set(ws, tiktokConnection);
-                setupEventHandlers(tiktokConnection, ws, username);
+                setupEventHandlers(tiktokConnection, ws, data.username);
                 await tiktokConnection.connect();
             }
         } catch (error) {
