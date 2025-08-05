@@ -1,13 +1,10 @@
-import { useContext, useState } from 'react';
+import { useContext } from 'react';
 import { AppContext, AppContextType } from '../App';
-import { LayoutDashboard, Star, FileText, User, DollarSign, Settings, Users, TestTube2, Ticket, BarChart3, Building2, LogOut, Sun, Moon } from 'lucide-react';
-import DropdownMenu from './DropdownMenu';
-import MobileMenu from './MobileMenu';
+import { LayoutDashboard, Star, FileText, User, DollarSign, Settings, Users, TestTube2, Ticket, BarChart3, Building2, LogOut } from 'lucide-react';
 
 // ==================================================================
 // KOMPONEN BARU: AnimatedLogo
 // ==================================================================
-// Komponen ini membuat ulang ikon logo Anda sebagai SVG yang dianimasikan.
 function AnimatedLogo() {
     return (
         <svg width="32" height="32" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
@@ -44,18 +41,16 @@ function AnimatedLogo() {
 // ==================================================================
 // FILE YANG DIPERBARUI: Navigation.tsx
 // ==================================================================
-// Komponen ini adalah bilah navigasi samping.
 export default function Navigation() {
     const { page, setPage, session, logout } = useContext(AppContext) as AppContextType;
 
-    // --- PERBAIKAN: Tambahkan pemeriksaan untuk memastikan session tidak null ---
-    // Ini mencegah komponen crash saat data sesi belum dimuat atau saat logout.
+    // Penjaga untuk mencegah crash saat sesi belum siap
     if (!session) {
         return null; 
     }
-    // ------------------------------------------------------------------
 
-    const isSuperAdmin = session.user.user_metadata?.role === 'superadmin';
+    // --- PERBAIKAN: Logika peran yang disederhanakan dan diperbaiki ---
+    const userRole = session.user.user_metadata?.role;
 
     const navItems = [
         { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, roles: ['host', 'superadmin'] },
@@ -72,7 +67,9 @@ export default function Navigation() {
         { id: 'settings', label: 'Pengaturan Akun', icon: Settings, roles: ['host', 'superadmin'] },
     ];
 
-    const accessibleNavItems = navItems.filter(item => item.roles.includes(isSuperAdmin ? 'superadmin' : 'host'));
+    // Logika filter yang benar
+    const accessibleNavItems = navItems.filter(item => item.roles.includes(userRole));
+    // ------------------------------------------------------------------
 
     return (
         <aside className="hidden md:flex flex-col w-64 bg-white dark:bg-stone-800 border-r border-stone-200 dark:border-stone-700">
