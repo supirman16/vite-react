@@ -1,5 +1,5 @@
-import { useContext, useState, useMemo, useEffect } from 'react';
-import { AppContext, AppContextType, supabase } from '../App'; // Impor supabase
+import { useContext, useState, useMemo } from 'react';
+import { AppContext, AppContextType } from '../App';
 import { Trophy, ArrowUpCircle } from 'lucide-react';
 import Skeleton from '../components/Skeleton';
 
@@ -74,35 +74,14 @@ function SuperadminLeaderboard() {
 function HostLeaderboard() {
     const { data, session } = useContext(AppContext) as AppContextType;
     const [dateRange, setDateRange] = useState<DateRange>('all');
-    
-    // --- PERBAIKAN: State baru untuk menyimpan semua data rekap ---
-    const [allRekapData, setAllRekapData] = useState<any[] | null>(null);
-    const [isLoading, setIsLoading] = useState(true);
-
-    // Efek untuk mengambil semua data rekap saat komponen dimuat
-    useEffect(() => {
-        const fetchAllRekapData = async () => {
-            setIsLoading(true);
-            const { data: rekapData, error } = await supabase.from('rekap_live').select('*');
-            if (error) {
-                console.error("Gagal mengambil semua data rekap:", error);
-                setAllRekapData([]);
-            } else {
-                setAllRekapData(rekapData);
-            }
-            setIsLoading(false);
-        };
-        fetchAllRekapData();
-    }, []);
 
     const currentHostInfo = useMemo(() => {
         return data.hosts.find(h => h.user_id === session?.user.id);
     }, [data.hosts, session]);
     
     const leaderboardData = useMemo(() => {
-        if (!allRekapData) return []; // Jangan hitung jika data belum siap
-        return calculateLeaderboard(data.hosts, allRekapData, dateRange);
-    }, [data.hosts, allRekapData, dateRange]);
+        return calculateLeaderboard(data.hosts, data.rekapLive, dateRange);
+    }, [data.hosts, data.rekapLive, dateRange]);
 
     const currentUserRank = useMemo(() => {
         return leaderboardData.find(h => h.id === currentHostInfo?.id);
@@ -117,15 +96,12 @@ function HostLeaderboard() {
         return hostAbove ? hostAbove.totalDiamonds - currentUserRank.totalDiamonds + 1 : 0;
     }, [currentUserRank, leaderboardData]);
 
-    if (isLoading) {
-        return <LeaderboardSkeleton />;
-    }
-
     return (
         <section>
             <h2 className="text-xl font-semibold text-stone-800 dark:text-stone-100 mb-4">Arena Kompetisi</h2>
             <DateRangeFilter selectedRange={dateRange} onSelectRange={setDateRange} />
 
+            {/* Kartu "Fokus pada Posisi Anda" */}
             {currentUserRank && (
                 <div className="mb-8 p-6 bg-white dark:bg-stone-800 rounded-xl shadow-lg border border-purple-200 dark:border-purple-800 grid grid-cols-1 md:grid-cols-3 gap-4 text-center md:text-left">
                     <div className="flex flex-col items-center md:items-start">
@@ -148,8 +124,10 @@ function HostLeaderboard() {
                 </div>
             )}
 
+            {/* Panggung Juara (Top 3) */}
             <Top3Showcase hosts={top3} />
 
+            {/* Daftar Peringkat Lainnya */}
             <div className="mt-8 bg-white dark:bg-stone-800 rounded-xl shadow-sm border border-stone-100 dark:border-stone-700 overflow-x-auto">
                  <table className="w-full text-sm text-left text-stone-600 dark:text-stone-300">
                     <thead className="text-xs text-stone-700 dark:text-stone-400 uppercase bg-stone-100 dark:bg-stone-700">
