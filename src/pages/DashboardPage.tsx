@@ -31,24 +31,20 @@ interface HostPerformance {
 export default function DashboardPage() {
     const { data } = useContext(AppContext) as AppContextType;
     
-    // Tampilkan kerangka pemuatan jika data belum siap
+    // Tampilkan kerangka pemuatan jika data pengguna belum siap
     if (data.loading || !data.user) {
         return <DashboardSkeleton />;
     }
 
-    // --- PERBAIKAN: Logika yang lebih andal untuk menentukan peran pengguna ---
-    // Pastikan data.hosts sudah ada sebelum melakukan pengecekan
-    if (data.hosts.length > 0) {
-        const isUserAHost = data.hosts.some(host => host.user_id === data.user!.id);
-        if (isUserAHost) {
-            return <HostDashboard />;
-        } else {
-            return <SuperadminDashboard />;
-        }
+    // --- PERBAIKAN: Menggunakan user_metadata.role secara langsung ---
+    const userRole = data.user.user_metadata?.role;
+
+    if (userRole === 'Host') {
+        return <HostDashboard />;
+    } else {
+        // Asumsikan sebagai Superadmin jika peran bukan 'Host'
+        return <SuperadminDashboard />;
     }
-    
-    // Tampilkan kerangka pemuatan jika data host belum siap, untuk mencegah race condition
-    return <DashboardSkeleton />;
 }
 
 // ==================================================================
