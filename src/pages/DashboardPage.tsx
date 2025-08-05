@@ -29,20 +29,16 @@ interface HostPerformance {
 
 // Komponen ini adalah halaman utama Dashboard.
 export default function DashboardPage() {
+    // --- PERBAIKAN: Menggunakan 'session' dari AppContext ---
     const { data, session } = useContext(AppContext) as AppContextType;
     
-    // Tampilkan kerangka pemuatan jika sesi belum siap
-    if (data.loading || !session) {
+    // Tampilkan kerangka pemuatan jika data inti (sesi & peran) belum siap.
+    if (data.loading || !session || typeof session.user.user_metadata.role === 'undefined') {
         return <DashboardSkeleton />;
     }
 
-    // --- PERBAIKAN: Menggunakan optional chaining (?.) untuk keamanan ---
-    const userRole = session.user.user_metadata?.role;
-
-    // Tampilkan kerangka pemuatan jika peran belum terdefinisi (menunggu data)
-    if (typeof userRole === 'undefined') {
-        return <DashboardSkeleton />;
-    }
+    // Sekarang kita bisa dengan aman mengakses peran pengguna dari session
+    const userRole = session.user.user_metadata.role;
 
     if (userRole === 'host') {
         return <HostDashboard />;
@@ -173,7 +169,7 @@ function HostDashboard() {
     const formatDuration = (minutes: number) => `${Math.floor(minutes / 60)}j ${minutes % 60}m`;
 
     const kpiData = [
-        { title: 'Total Diamond Anda', value: `${formatDiamond(personalStats.totalDiamonds)} �`, icon: Gem },
+        { title: 'Total Diamond Anda', value: `${formatDiamond(personalStats.totalDiamonds)} 💎`, icon: Gem },
         { title: 'Total Jam Live Anda', value: formatDuration(personalStats.totalMinutes), icon: Clock },
         { title: 'Efisiensi Anda', value: `${formatDiamond(personalStats.efficiency)} 💎/jam`, icon: BarChart },
         { title: 'Peringkat Anda', value: personalStats.rank, icon: Trophy },
@@ -417,4 +413,3 @@ function RecentSessionsTable({ rekapData }: { rekapData: any[] }) {
         </div>
     );
 }
-�
