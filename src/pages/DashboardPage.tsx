@@ -29,21 +29,17 @@ interface HostPerformance {
 
 // Komponen ini adalah halaman utama Dashboard.
 export default function DashboardPage() {
-    // --- PERBAIKAN: Menggunakan 'session' dari AppContext ---
     const { data, session } = useContext(AppContext) as AppContextType;
     
-    // Tampilkan kerangka pemuatan jika data inti (sesi & peran) belum siap.
     if (data.loading || !session || typeof session.user.user_metadata.role === 'undefined') {
         return <DashboardSkeleton />;
     }
 
-    // Sekarang kita bisa dengan aman mengakses peran pengguna dari session
     const userRole = session.user.user_metadata.role;
 
-    if (userRole === 'host') {
+    if (userRole === 'Host') {
         return <HostDashboard />;
     } else {
-        // Asumsikan sebagai Superadmin jika peran bukan 'Host'
         return <SuperadminDashboard />;
     }
 }
@@ -56,18 +52,22 @@ function SuperadminDashboard() {
     const [dateRange, setDateRange] = useState<DateRange>('30d');
     const [feedbackState, setFeedbackState] = useState<{ isOpen: boolean; host: HostPerformance | null }>({ isOpen: false, host: null });
 
+    // --- PERBAIKAN: Hanya gunakan rekap yang sudah disetujui ---
+    const approvedRekap = useMemo(() => {
+        return data.rekapLive.filter(r => r.status === 'Approved');
+    }, [data.rekapLive]);
+
     const filteredRekap = useMemo(() => {
         const now = new Date();
         const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-        if (!data.rekapLive) return [];
         switch (dateRange) {
-            case 'today': return data.rekapLive.filter(r => new Date(r.tanggal_live).setHours(0,0,0,0) === today.getTime());
-            case '7d': const last7Days = new Date(today); last7Days.setDate(today.getDate() - 6); return data.rekapLive.filter(r => new Date(r.tanggal_live) >= last7Days);
-            case 'thisMonth': const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1); return data.rekapLive.filter(r => new Date(r.tanggal_live) >= startOfMonth);
-            case '30d': const last30Days = new Date(today); last30Days.setDate(today.getDate() - 29); return data.rekapLive.filter(r => new Date(r.tanggal_live) >= last30Days);
-            default: return data.rekapLive;
+            case 'today': return approvedRekap.filter(r => new Date(r.tanggal_live).setHours(0,0,0,0) === today.getTime());
+            case '7d': const last7Days = new Date(today); last7Days.setDate(today.getDate() - 6); return approvedRekap.filter(r => new Date(r.tanggal_live) >= last7Days);
+            case 'thisMonth': const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1); return approvedRekap.filter(r => new Date(r.tanggal_live) >= startOfMonth);
+            case '30d': const last30Days = new Date(today); last30Days.setDate(today.getDate() - 29); return approvedRekap.filter(r => new Date(r.tanggal_live) >= last30Days);
+            default: return approvedRekap;
         }
-    }, [data.rekapLive, dateRange]);
+    }, [approvedRekap, dateRange]);
 
     const dynamicStats = useMemo(() => {
         if (filteredRekap.length === 0) return { totalMinutes: 0, totalDiamonds: 0, totalSessions: 0, agencyEfficiency: 0, mostActiveHost: 'N/A' };
@@ -123,28 +123,29 @@ function HostDashboard() {
     const { data, session } = useContext(AppContext) as AppContextType;
     const [dateRange, setDateRange] = useState<DateRange>('30d');
 
-    // Dapatkan data host yang sedang login
     const currentHost = useMemo(() => {
-        return data.hosts.find(h => h.user_id === session?.user?.id);
+        return data.hosts.find(h => h.user_id === session?.user.id);
     }, [data.hosts, session]);
 
-    // Saring rekap hanya untuk host yang sedang login
-    const filteredRekap = useMemo(() => {
+    // --- PERBAIKAN: Hanya gunakan rekap yang sudah disetujui ---
+    const approvedRekap = useMemo(() => {
         if (!currentHost || !data.rekapLive) return [];
-        const hostRekap = data.rekapLive.filter(r => r.host_id === currentHost.id);
+        return data.rekapLive.filter(r => r.host_id === currentHost.id && r.status === 'Approved');
+    }, [data.rekapLive, currentHost]);
 
+    const filteredRekap = useMemo(() => {
+        if (!approvedRekap) return [];
         const now = new Date();
         const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
         switch (dateRange) {
-            case 'today': return hostRekap.filter(r => new Date(r.tanggal_live).setHours(0,0,0,0) === today.getTime());
-            case '7d': const last7Days = new Date(today); last7Days.setDate(today.getDate() - 6); return hostRekap.filter(r => new Date(r.tanggal_live) >= last7Days);
-            case 'thisMonth': const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1); return hostRekap.filter(r => new Date(r.tanggal_live) >= startOfMonth);
-            case '30d': const last30Days = new Date(today); last30Days.setDate(today.getDate() - 29); return hostRekap.filter(r => new Date(r.tanggal_live) >= last30Days);
-            default: return hostRekap;
+            case 'today': return approvedRekap.filter(r => new Date(r.tanggal_live).setHours(0,0,0,0) === today.getTime());
+            case '7d': const last7Days = new Date(today); last7Days.setDate(today.getDate() - 6); return approvedRekap.filter(r => new Date(r.tanggal_live) >= last7Days);
+            case 'thisMonth': const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1); return approvedRekap.filter(r => new Date(r.tanggal_live) >= startOfMonth);
+            case '30d': const last30Days = new Date(today); last30Days.setDate(today.getDate() - 29); return approvedRekap.filter(r => new Date(r.tanggal_live) >= last30Days);
+            default: return approvedRekap;
         }
-    }, [data.rekapLive, dateRange, currentHost]);
+    }, [approvedRekap, dateRange]);
 
-    // Hitung statistik personal host
     const personalStats = useMemo(() => {
         if (!currentHost || !data.rekapLive) return { totalMinutes: 0, totalDiamonds: 0, efficiency: 0, rank: 'N/A' };
         
@@ -153,10 +154,10 @@ function HostDashboard() {
         const totalHours = totalMinutes / 60;
         const efficiency = totalHours > 0 ? Math.round(totalDiamonds / totalHours) : 0;
 
-        // Hitung peringkat berdasarkan data rekap KESELURUHAN (bukan yang difilter)
-        const allTimeRekap = data.rekapLive;
+        // --- PERBAIKAN: Hitung peringkat hanya dari rekap yang disetujui ---
+        const allApprovedRekap = data.rekapLive.filter(r => r.status === 'Approved');
         const hostTotals = data.hosts.map(host => {
-            const hostAllTimeRekap = allTimeRekap.filter(r => r.host_id === host.id);
+            const hostAllTimeRekap = allApprovedRekap.filter(r => r.host_id === host.id);
             return { id: host.id, totalDiamonds: hostAllTimeRekap.reduce((sum, r) => sum + r.pendapatan, 0) };
         });
         hostTotals.sort((a, b) => b.totalDiamonds - a.totalDiamonds);
@@ -195,7 +196,7 @@ function HostDashboard() {
                 <AgencyTrendChart rekapData={filteredRekap} />
             </div>
              <div className="mt-8">
-                <h2 className="text-xl font-semibold mb-4">5 Sesi Live Terakhir Anda</h2>
+                <h2 className="text-xl font-semibold mb-4">5 Sesi Live Terakhir Anda (Disetujui)</h2>
                 <RecentSessionsTable rekapData={filteredRekap.slice(0, 5)} />
             </div>
         </section>
