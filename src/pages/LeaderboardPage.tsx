@@ -1,5 +1,5 @@
-import { useContext, useState, useMemo } from 'react';
-import { AppContext, AppContextType } from '../App';
+import { useContext, useState, useMemo, useEffect } from 'react';
+import { AppContext, AppContextType, supabase } from '../App';
 import { Trophy, ArrowUpCircle } from 'lucide-react';
 import Skeleton from '../components/Skeleton';
 
@@ -74,14 +74,32 @@ function SuperadminLeaderboard() {
 function HostLeaderboard() {
     const { data, session } = useContext(AppContext) as AppContextType;
     const [dateRange, setDateRange] = useState<DateRange>('all');
+    const [allRekapData, setAllRekapData] = useState<any[] | null>(null);
+    const [isLoading, setIsLoading] = useState(true);
+
+    useEffect(() => {
+        const fetchAllRekapData = async () => {
+            setIsLoading(true);
+            const { data: rekapData, error } = await supabase.from('rekap_live').select('*');
+            if (error) {
+                console.error("Gagal mengambil semua data rekap:", error);
+                setAllRekapData([]);
+            } else {
+                setAllRekapData(rekapData);
+            }
+            setIsLoading(false);
+        };
+        fetchAllRekapData();
+    }, []);
 
     const currentHostInfo = useMemo(() => {
         return data.hosts.find(h => h.user_id === session?.user.id);
     }, [data.hosts, session]);
     
     const leaderboardData = useMemo(() => {
-        return calculateLeaderboard(data.hosts, data.rekapLive, dateRange);
-    }, [data.hosts, data.rekapLive, dateRange]);
+        if (!allRekapData) return [];
+        return calculateLeaderboard(data.hosts, allRekapData, dateRange);
+    }, [data.hosts, allRekapData, dateRange]);
 
     const currentUserRank = useMemo(() => {
         return leaderboardData.find(h => h.id === currentHostInfo?.id);
@@ -96,12 +114,15 @@ function HostLeaderboard() {
         return hostAbove ? hostAbove.totalDiamonds - currentUserRank.totalDiamonds + 1 : 0;
     }, [currentUserRank, leaderboardData]);
 
+    if (isLoading) {
+        return <LeaderboardSkeleton />;
+    }
+
     return (
         <section>
             <h2 className="text-xl font-semibold text-stone-800 dark:text-stone-100 mb-4">Arena Kompetisi</h2>
             <DateRangeFilter selectedRange={dateRange} onSelectRange={setDateRange} />
 
-            {/* Kartu "Fokus pada Posisi Anda" */}
             {currentUserRank && (
                 <div className="mb-8 p-6 bg-white dark:bg-stone-800 rounded-xl shadow-lg border border-purple-200 dark:border-purple-800 grid grid-cols-1 md:grid-cols-3 gap-4 text-center md:text-left">
                     <div className="flex flex-col items-center md:items-start">
@@ -124,10 +145,8 @@ function HostLeaderboard() {
                 </div>
             )}
 
-            {/* Panggung Juara (Top 3) */}
             <Top3Showcase hosts={top3} />
 
-            {/* Daftar Peringkat Lainnya */}
             <div className="mt-8 bg-white dark:bg-stone-800 rounded-xl shadow-sm border border-stone-100 dark:border-stone-700 overflow-x-auto">
                  <table className="w-full text-sm text-left text-stone-600 dark:text-stone-300">
                     <thead className="text-xs text-stone-700 dark:text-stone-400 uppercase bg-stone-100 dark:bg-stone-700">
@@ -189,17 +208,19 @@ function DateRangeFilter({ selectedRange, onSelectRange }: { selectedRange: Date
 // Fungsi bantuan untuk menghitung data papan peringkat
 function calculateLeaderboard(hosts: any[], rekapLive: any[], dateRange: DateRange): LeaderboardEntry[] {
     const now = new Date();
-    let filteredRekap = rekapLive;
+    // --- PERBAIKAN: Saring hanya untuk rekap yang disetujui di awal ---
+    const approvedRekap = rekapLive.filter(r => r.status === 'Approved');
+    let filteredRekap = approvedRekap;
 
     if (dateRange === 'thisWeek') {
         const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
         const dayOfWeek = today.getDay();
         const startOfWeek = new Date(today);
         startOfWeek.setDate(today.getDate() - dayOfWeek + (dayOfWeek === 0 ? -6 : 1)); // Minggu dimulai hari Senin
-        filteredRekap = rekapLive.filter(r => new Date(r.tanggal_live) >= startOfWeek);
+        filteredRekap = approvedRekap.filter(r => new Date(r.tanggal_live) >= startOfWeek);
     } else if (dateRange === 'thisMonth') {
         const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-        filteredRekap = rekapLive.filter(r => new Date(r.tanggal_live) >= startOfMonth);
+        filteredRekap = approvedRekap.filter(r => new Date(r.tanggal_live) >= startOfMonth);
     }
 
     const hostTotals = hosts.map(host => {
