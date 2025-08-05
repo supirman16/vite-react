@@ -6,7 +6,9 @@ import ConfirmationModal from '../components/ConfirmationModal';
 import DropdownMenu from '../components/DropdownMenu';
 import Skeleton from '../components/Skeleton';
 
-// --- Tidak perlu URL Heroku lagi ---
+// --- KONFIGURASI EULERSTREAM (REST API) ---
+const EULER_STREAM_API_URL = "https://tiktok.eulerstream.com/api/v1/user/"; 
+const EULER_STREAM_API_KEY = "ZTlhMTg4YzcyMTRhNWY1ZTk2ZTNkODcwYTE0YTQyMDcwNGFiMGIwYjc4MmZmMjljZGE1ZmEw";
 
 // Komponen ini adalah halaman Manajemen Akun TikTok untuk superadmin.
 export default function TiktokPage() {
@@ -133,17 +135,17 @@ function TiktokTable({ onEdit, onDelete, searchQuery }: { onEdit: (account: any)
 
         for (const account of activeAccounts) {
             try {
-                // --- PERUBAHAN UTAMA: Memanggil API Vercel lokal ---
-                const response = await fetch(`/api/get-live-status`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ username: account.username })
-                });
+                // --- PERUBAHAN UTAMA: Memanggil API EulerStream secara langsung ---
+                const safeUsername = encodeURIComponent(account.username);
+                const urlWithKey = `${EULER_STREAM_API_URL}${safeUsername}?apiKey=${EULER_STREAM_API_KEY}`;
+                
+                const response = await fetch(urlWithKey);
                 
                 if (response.ok) {
                     const result = await response.json();
-                    newStatuses[account.username.toLowerCase()] = result.isLive;
+                    newStatuses[account.username.toLowerCase()] = result.is_live;
                 } else {
+                    console.error(`Gagal memeriksa status untuk ${account.username}: ${response.statusText}`);
                     newStatuses[account.username.toLowerCase()] = false;
                 }
                 setLiveStatuses(prev => ({ ...prev, ...newStatuses }));
