@@ -1,7 +1,7 @@
 import { useContext, useState, useEffect, useRef } from 'react';
 import { AppContext, AppContextType } from '../App';
 
-// --- PERUBAHAN UTAMA: Menggunakan URL Heroku Anda ---
+// --- Pastikan Anda menggunakan URL Heroku Anda di sini ---
 const WEBSOCKET_URL = "wss://unity-host-dashboard-bfc030a0ba69.herokuapp.com/"; 
 
 export default function LiveTestPage() {
