@@ -25,53 +25,38 @@ app.use(cors());
 // Kunci API EulerStream Anda
 const EULER_STREAM_API_KEY = "ZTlhMTg4YzcyMTRhNWY1ZTk2ZTNkODcwYTE0YTQyMDcwNGFiMGIwYjc4MmZmMjljZGE1ZmEw";
 
-// Endpoint untuk Health Check
+// Endpoint untuk Health Check (penting untuk Heroku)
 app.get('/', (req, res) => {
   res.status(200).send('TikTok WebSocket Server is running.');
 });
 
-// API Endpoint untuk memeriksa status live dengan cepat
-app.get('/check-status/:username', async (req, res) => {
-    const { username } = req.params;
-    if (!username) {
-        return res.status(400).json({ error: 'Username is required' });
-    }
-
-    try {
-        const tiktokConnection = new TikTokLiveConnection(username, {
-            signWebcastRequest: async (url, headers) => {
-                const signResponse = await fetch('https://tiktok.eulerstream.com/api/v1/webcast/sign_url', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'X-API-Key': EULER_STREAM_API_KEY },
-                    body: JSON.stringify({ url }),
-                });
-                const signedData = await signResponse.json();
-                if (signedData.error) throw new Error(signedData.error);
-                return { ...signedData, "User-Agent": headers['User-Agent'] };
-            }
-        });
-
-        await tiktokConnection.connect();
-        tiktokConnection.disconnect();
-        res.status(200).json({ isLive: true });
-    } catch (err) {
-        res.status(200).json({ isLive: false });
-    }
-});
-
-// Logika WebSocket untuk halaman "Uji Coba Live"
 const activeConnections = new Map();
+
+// Logika WebSocket Server
 wss.on('connection', (ws) => {
+    console.log('[Server] Klien baru terhubung.');
+
     ws.on('message', async (message) => {
         try {
             const data = JSON.parse(message);
-            if (activeConnections.has(ws)) { activeConnections.get(ws).disconnect(); }
+
+            if (activeConnections.has(ws)) {
+                activeConnections.get(ws).disconnect();
+            }
+
             if (data.action === 'connect' && data.username) {
-                const tiktokConnection = new TikTokLiveConnection(data.username, {
-                     signWebcastRequest: async (url, headers) => {
+                const { username } = data;
+                ws.send(JSON.stringify({ type: 'status', message: `Menghubungkan ke @${username}...` }));
+
+                // Menggunakan tiktok-live-connector dengan EulerStream sebagai signing server
+                const tiktokConnection = new TikTokLiveConnection(username, {
+                    signWebcastRequest: async (url, headers) => {
                         const signResponse = await fetch('https://tiktok.eulerstream.com/api/v1/webcast/sign_url', {
                             method: 'POST',
-                            headers: { 'Content-Type': 'application/json', 'X-API-Key': EULER_STREAM_API_KEY },
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-API-Key': EULER_STREAM_API_KEY,
+                            },
                             body: JSON.stringify({ url }),
                         });
                         const signedData = await signResponse.json();
@@ -79,27 +64,45 @@ wss.on('connection', (ws) => {
                         return { ...signedData, "User-Agent": headers['User-Agent'] };
                     }
                 });
+
                 activeConnections.set(ws, tiktokConnection);
-                setupEventHandlers(tiktokConnection, ws, data.username);
+                setupEventHandlers(tiktokConnection, ws, username);
+                
                 await tiktokConnection.connect();
             }
         } catch (error) {
+            console.error('[Server] Eror memproses pesan:', error);
             ws.send(JSON.stringify({ type: 'error', message: `Gagal memproses permintaan: ${error.message}` }));
         }
     });
+
     ws.on('close', () => {
+        console.log('[Server] Klien terputus.');
         if (activeConnections.has(ws)) {
             activeConnections.get(ws).disconnect();
             activeConnections.delete(ws);
         }
     });
 });
+
 function setupEventHandlers(tiktokConnection, ws, username) {
-    tiktokConnection.on('connected', (state) => ws.send(JSON.stringify({ type: 'connected', message: `BERHASIL terhubung ke @${username} (Room ID: ${state.roomId})` })));
-    tiktokConnection.on('disconnected', () => ws.send(JSON.stringify({ type: 'disconnected', message: 'Koneksi ke TikTok terputus.' })));
-    tiktokConnection.on(WebcastEvent.CHAT, (data) => ws.send(JSON.stringify({ type: 'chat', data: { uniqueId: data.uniqueId, comment: data.comment } })));
-    tiktokConnection.on(WebcastEvent.GIFT, (data) => { if (data.gift && data.gift.gift_name) { ws.send(JSON.stringify({ type: 'gift', data: { uniqueId: data.uniqueId, giftName: data.gift.gift_name, repeatCount: data.gift.repeat_count } })); }});
-    tiktokConnection.on('error', (error) => ws.send(JSON.stringify({ type: 'error', message: `Terjadi eror: ${error.message}` })));
+    tiktokConnection.on('connected', (state) => {
+        ws.send(JSON.stringify({ type: 'connected', message: `BERHASIL terhubung ke @${username} (Room ID: ${state.roomId})` }));
+    });
+    tiktokConnection.on('disconnected', () => {
+        ws.send(JSON.stringify({ type: 'disconnected', message: 'Koneksi ke TikTok terputus.' }));
+    });
+    tiktokConnection.on(WebcastEvent.CHAT, (data) => {
+        ws.send(JSON.stringify({ type: 'chat', data: { uniqueId: data.uniqueId, comment: data.comment } }));
+    });
+    tiktokConnection.on(WebcastEvent.GIFT, (data) => {
+        if (data.gift && data.gift.gift_name) {
+            ws.send(JSON.stringify({ type: 'gift', data: { uniqueId: data.uniqueId, giftName: data.gift.gift_name, repeatCount: data.gift.repeat_count } }));
+        }
+    });
+    tiktokConnection.on('error', (error) => {
+        ws.send(JSON.stringify({ type: 'error', message: `Terjadi eror: ${error.message}` }));
+    });
 }
 
 server.listen(PORT, () => {
