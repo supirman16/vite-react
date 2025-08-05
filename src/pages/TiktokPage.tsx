@@ -127,28 +127,33 @@ function TiktokTable({ onEdit, onDelete, searchQuery }: { onEdit: (account: any)
         });
     }, [data.tiktokAccounts, sortKey, sortDirection, searchQuery]);
 
+    // --- PERUBAHAN UTAMA: Membuat permintaan API secara sekuensial ---
     const checkAllStatuses = useCallback(async () => {
         setLoadingStatuses(true);
         const activeAccounts = filteredAndSortedData.filter(acc => acc.status === 'Aktif');
-        
-        const statusPromises = activeAccounts.map(async (account) => {
+        const newStatuses: { [key: string]: boolean } = {};
+
+        // Menggunakan loop for...of untuk membuat permintaan satu per satu
+        for (const account of activeAccounts) {
             try {
-                // --- PERUBAHAN UTAMA: Memanggil API backend Anda ---
                 const response = await fetch(`${API_URL}/check-status/${account.username}`);
-                if (!response.ok) return { username: account.username, isLive: false };
-                const result = await response.json();
-                return { username: account.username, isLive: result.isLive };
+                if (response.ok) {
+                    const result = await response.json();
+                    newStatuses[account.username.toLowerCase()] = result.isLive;
+                } else {
+                    newStatuses[account.username.toLowerCase()] = false;
+                }
+                // Perbarui state setelah setiap panggilan agar UI terasa lebih responsif
+                setLiveStatuses(prev => ({ ...prev, ...newStatuses }));
+                
+                // Tambahkan jeda singkat untuk tidak membebani server
+                await new Promise(resolve => setTimeout(resolve, 200)); // jeda 200ms
             } catch (error) {
                 console.error(`Error fetching status for ${account.username}:`, error);
-                return { username: account.username, isLive: false };
+                newStatuses[account.username.toLowerCase()] = false;
             }
-        });
+        }
 
-        const results = await Promise.all(statusPromises);
-        const newStatuses: { [key: string]: boolean } = {};
-        results.forEach(res => {
-            newStatuses[res.username.toLowerCase()] = res.isLive;
-        });
         setLiveStatuses(newStatuses);
         setLoadingStatuses(false);
     }, [filteredAndSortedData]);
