@@ -45,25 +45,21 @@ export default function App() {
         user: null,
     });
     
-    // --- PERBAIKAN: State baru untuk menangani pemuatan autentikasi ---
     const [authLoading, setAuthLoading] = useState(true);
 
     useEffect(() => {
-        // Mengambil sesi saat aplikasi dimuat
         supabase.auth.getSession().then(({ data: { session } }) => {
             setSession(session);
-            setAuthLoading(false); // Selesai memeriksa sesi awal
+            setAuthLoading(false);
         });
 
-        // Mendengarkan perubahan status autentikasi
         const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
             setSession(session);
-            // Jika ada perubahan (misalnya, logout), pastikan authLoading juga false
             if (authLoading) setAuthLoading(false); 
         });
 
         return () => subscription.unsubscribe();
-    }, [authLoading]); // Menambahkan authLoading sebagai dependensi
+    }, [authLoading]);
 
     // Fungsi untuk mengambil data utama aplikasi
     const fetchData = async (currentSession: Session) => {
@@ -74,7 +70,10 @@ export default function App() {
             
             const { data: hosts } = await supabase.from('hosts').select('*');
             const { data: tiktokAccounts } = await supabase.from('tiktok_accounts').select('*');
-            const { data: users } = await supabase.from('users').select('*');
+            
+            // --- PERBAIKAN: Menonaktifkan sementara query ke tabel 'users' yang tidak ada ---
+            // const { data: users } = await supabase.from('users').select('*');
+            const users: any[] = []; // Mengatur users sebagai array kosong untuk sementara
             
             let rekapLive;
             if (userRole === 'superadmin') {
@@ -106,14 +105,13 @@ export default function App() {
         if (session) {
             fetchData(session);
         } else {
-            // Jika tidak ada sesi, pastikan data direset dan tidak dalam status loading
             setData({ loading: false, hosts: [], rekapLive: [], tiktokAccounts: [], users: [], user: null });
         }
     }, [session]);
 
     const logout = async () => {
         await supabase.auth.signOut();
-        setPage('dashboard'); // Reset halaman ke dashboard setelah logout
+        setPage('dashboard');
     };
 
     const showNotification = (message: string, isError = false) => {
@@ -121,7 +119,6 @@ export default function App() {
         setTimeout(() => setNotification(null), 3000);
     };
 
-    // --- PERBAIKAN: Logika render yang lebih tangguh ---
     if (authLoading) {
         return (
             <div className="flex h-screen items-center justify-center bg-stone-100 dark:bg-stone-900">
