@@ -51,13 +51,13 @@ export default function LiveTestPage() {
                     setConnectionStatus(message.message);
                     break;
                 case 'chat':
-                    // --- PERBAIKAN: Menggunakan properti yang benar ---
-                    const chatText = `${message.data.user.uniqueId}: ${message.data.comment}`;
+                    // --- PERBAIKAN: Mengakses uniqueId secara langsung dari data ---
+                    const chatText = `${message.data.uniqueId}: ${message.data.comment}`;
                     setChatLog(prev => [chatText, ...prev].slice(0, 100));
                     break;
                 case 'gift':
-                     // --- PERBAIKAN: Menggunakan properti yang benar ---
-                    const giftText = `🎁 ${message.data.user.uniqueId} mengirim ${message.data.giftName} x${message.data.repeatCount}`;
+                     // --- PERBAIKAN: Mengakses uniqueId secara langsung dari data ---
+                    const giftText = `🎁 ${message.data.uniqueId} mengirim ${message.data.giftName} x${message.data.repeatCount}`;
                     setChatLog(prev => [giftText, ...prev].slice(0, 100));
                     break;
                 case 'stats':
