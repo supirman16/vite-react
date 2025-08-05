@@ -1,13 +1,19 @@
-import { useContext, useState, useMemo, useEffect } from 'react';
+import { useContext, useState, useMemo } from 'react';
 import { AppContext, AppContextType } from '../App';
 import { Line } from 'react-chartjs-2';
 import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, PointElement, LineElement, Title, Tooltip, Legend, Filler } from 'chart.js';
 import Skeleton from '../components/Skeleton';
-import { Clock, BarChart, Gem, Crown, ArrowUpDown, Sparkles, MessageSquareQuote } from 'lucide-react';
+import { Clock, BarChart, Gem, Crown, ArrowUpDown, Sparkles, MessageSquareQuote, Trophy } from 'lucide-react';
 import { marked } from 'marked';
 import Modal from '../components/Modal';
 
-// Registrasi komponen Chart.js yang dibutuhkan, termasuk Filler
+// Konfigurasi Marked.js untuk pemformatan yang lebih baik
+marked.setOptions({
+    gfm: true,
+    breaks: true,
+});
+
+// Registrasi komponen Chart.js yang dibutuhkan
 ChartJS.register(CategoryScale, LinearScale, BarElement, PointElement, LineElement, Title, Tooltip, Legend, Filler);
 
 // Tipe data untuk rentang waktu dan data performa
@@ -24,40 +30,41 @@ interface HostPerformance {
 // Komponen ini adalah halaman utama Dashboard.
 export default function DashboardPage() {
     const { data } = useContext(AppContext) as AppContextType;
-    const [dateRange, setDateRange] = useState<DateRange>('30d');
     
-    // --- STATE BARU UNTUK MODAL FEEDBACK ---
-    const [feedbackState, setFeedbackState] = useState<{
-        isOpen: boolean;
-        host: HostPerformance | null;
-    }>({ isOpen: false, host: null });
-    // ------------------------------------
+    // Tampilkan kerangka pemuatan jika data belum siap
+    if (data.loading) {
+        return <DashboardSkeleton />;
+    }
 
-    // Logika untuk menyaring data rekap
+    // Tentukan tampilan mana yang akan dirender berdasarkan peran pengguna
+    if (data.user?.role === 'Host') {
+        return <HostDashboard />;
+    } else {
+        return <SuperadminDashboard />;
+    }
+}
+
+// ==================================================================
+// TAMPILAN DASHBOARD UNTUK SUPERADMIN
+// ==================================================================
+function SuperadminDashboard() {
+    const { data } = useContext(AppContext) as AppContextType;
+    const [dateRange, setDateRange] = useState<DateRange>('30d');
+    const [feedbackState, setFeedbackState] = useState<{ isOpen: boolean; host: HostPerformance | null }>({ isOpen: false, host: null });
+
     const filteredRekap = useMemo(() => {
         const now = new Date();
         const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
         if (!data.rekapLive) return [];
         switch (dateRange) {
-            case 'today':
-                return data.rekapLive.filter(r => new Date(r.tanggal_live).setHours(0,0,0,0) === today.getTime());
-            case '7d':
-                const last7Days = new Date(today);
-                last7Days.setDate(today.getDate() - 6);
-                return data.rekapLive.filter(r => new Date(r.tanggal_live) >= last7Days);
-            case 'thisMonth':
-                const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-                return data.rekapLive.filter(r => new Date(r.tanggal_live) >= startOfMonth);
-            case '30d':
-                 const last30Days = new Date(today);
-                last30Days.setDate(today.getDate() - 29);
-                return data.rekapLive.filter(r => new Date(r.tanggal_live) >= last30Days);
-            default:
-                return data.rekapLive;
+            case 'today': return data.rekapLive.filter(r => new Date(r.tanggal_live).setHours(0,0,0,0) === today.getTime());
+            case '7d': const last7Days = new Date(today); last7Days.setDate(today.getDate() - 6); return data.rekapLive.filter(r => new Date(r.tanggal_live) >= last7Days);
+            case 'thisMonth': const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1); return data.rekapLive.filter(r => new Date(r.tanggal_live) >= startOfMonth);
+            case '30d': const last30Days = new Date(today); last30Days.setDate(today.getDate() - 29); return data.rekapLive.filter(r => new Date(r.tanggal_live) >= last30Days);
+            default: return data.rekapLive;
         }
     }, [data.rekapLive, dateRange]);
 
-    // Logika untuk menghitung statistik dinamis
     const dynamicStats = useMemo(() => {
         if (filteredRekap.length === 0) return { totalMinutes: 0, totalDiamonds: 0, totalSessions: 0, agencyEfficiency: 0, mostActiveHost: 'N/A' };
         const totalMinutes = filteredRekap.reduce((sum, r) => sum + r.durasi_menit, 0);
@@ -72,10 +79,6 @@ export default function DashboardPage() {
         const mostActiveHostData = data.hosts.find(h => h.id === parseInt(mostActiveHostId));
         return { totalMinutes, totalDiamonds, totalSessions: filteredRekap.length, agencyEfficiency, mostActiveHost: mostActiveHostData ? mostActiveHostData.nama_host : 'N/A' };
     }, [filteredRekap, data.hosts]);
-
-    if (data.loading) {
-        return <DashboardSkeleton />;
-    }
 
     const formatDiamond = (num: number) => new Intl.NumberFormat().format(num);
     const formatDuration = (minutes: number) => `${Math.floor(minutes / 60)}j ${minutes % 60}m`;
@@ -95,57 +98,105 @@ export default function DashboardPage() {
     return (
         <section>
             <DateRangeFilter selectedRange={dateRange} onSelectRange={setDateRange} />
-            
             <GeminiAnalysisCard filteredRekap={filteredRekap} hosts={data.hosts} dateRange={dateRange} />
-
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-                {kpiData.map((kpi) => (
-                    <div key={kpi.title} className="bg-white dark:bg-stone-800 p-6 rounded-xl shadow-sm border border-stone-100 dark:border-stone-700">
-                        <h3 className="text-sm font-medium text-stone-500 dark:text-stone-400">{kpi.title}</h3>
-                        <p className="text-3xl font-bold mt-2 text-stone-900 dark:text-white">{kpi.value}</p>
-                    </div>
-                ))}
+                {kpiData.map((kpi) => ( <div key={kpi.title} className="bg-white dark:bg-stone-800 p-6 rounded-xl shadow-sm border border-stone-100 dark:border-stone-700"><h3 className="text-sm font-medium text-stone-500 dark:text-stone-400">{kpi.title}</h3><p className="text-3xl font-bold mt-2 text-stone-900 dark:text-white">{kpi.value}</p></div>))}
             </div>
-            
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-                {dynamicKpiData.map((kpi) => (
+                {dynamicKpiData.map((kpi) => ( <div key={kpi.title} className="bg-white dark:bg-stone-800 p-6 rounded-xl shadow-sm border border-stone-100 dark:border-stone-700 flex items-center"><div className="p-3 rounded-full bg-purple-100 dark:bg-purple-900/50 mr-4"><kpi.icon className="h-6 w-6 text-purple-600 dark:text-purple-400" /></div><div><h3 className="text-sm font-medium text-stone-500 dark:text-stone-400">{kpi.title}</h3><p className="text-xl font-bold text-stone-900 dark:text-white truncate">{kpi.value}</p></div></div>))}
+            </div>
+            <div className="mt-8"><AgencyTrendChart rekapData={filteredRekap} /></div>
+            <div className="mt-8"><HostPerformanceTable rekapData={filteredRekap} hosts={data.hosts} onGetFeedback={(host) => setFeedbackState({ isOpen: true, host })}/></div>
+            {feedbackState.isOpen && (<FeedbackModal isOpen={feedbackState.isOpen} onClose={() => setFeedbackState({ isOpen: false, host: null })} hostData={feedbackState.host} dateRange={dateRange}/>)}
+        </section>
+    );
+}
+
+// ==================================================================
+// TAMPILAN DASHBOARD UNTUK HOST
+// ==================================================================
+function HostDashboard() {
+    const { data } = useContext(AppContext) as AppContextType;
+    const [dateRange, setDateRange] = useState<DateRange>('30d');
+
+    // Dapatkan data host yang sedang login
+    const currentHost = useMemo(() => {
+        return data.hosts.find(h => h.user_id === data.user?.id);
+    }, [data.hosts, data.user]);
+
+    // Saring rekap hanya untuk host yang sedang login
+    const filteredRekap = useMemo(() => {
+        if (!currentHost || !data.rekapLive) return [];
+        const hostRekap = data.rekapLive.filter(r => r.host_id === currentHost.id);
+
+        const now = new Date();
+        const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        switch (dateRange) {
+            case 'today': return hostRekap.filter(r => new Date(r.tanggal_live).setHours(0,0,0,0) === today.getTime());
+            case '7d': const last7Days = new Date(today); last7Days.setDate(today.getDate() - 6); return hostRekap.filter(r => new Date(r.tanggal_live) >= last7Days);
+            case 'thisMonth': const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1); return hostRekap.filter(r => new Date(r.tanggal_live) >= startOfMonth);
+            case '30d': const last30Days = new Date(today); last30Days.setDate(today.getDate() - 29); return hostRekap.filter(r => new Date(r.tanggal_live) >= last30Days);
+            default: return hostRekap;
+        }
+    }, [data.rekapLive, dateRange, currentHost]);
+
+    // Hitung statistik personal host
+    const personalStats = useMemo(() => {
+        if (!currentHost || filteredRekap.length === 0) return { totalMinutes: 0, totalDiamonds: 0, efficiency: 0, rank: 'N/A' };
+
+        const totalMinutes = filteredRekap.reduce((sum, r) => sum + r.durasi_menit, 0);
+        const totalDiamonds = filteredRekap.reduce((sum, r) => sum + r.pendapatan, 0);
+        const totalHours = totalMinutes / 60;
+        const efficiency = totalHours > 0 ? Math.round(totalDiamonds / totalHours) : 0;
+
+        // Hitung peringkat
+        const hostTotals = data.hosts.map(host => {
+            const hostRekap = data.rekapLive.filter(r => r.host_id === host.id);
+            return { id: host.id, totalDiamonds: hostRekap.reduce((sum, r) => sum + r.pendapatan, 0) };
+        });
+        hostTotals.sort((a, b) => b.totalDiamonds - a.totalDiamonds);
+        const rank = hostTotals.findIndex(h => h.id === currentHost.id) + 1;
+
+        return { totalMinutes, totalDiamonds, efficiency, rank: rank > 0 ? `#${rank}` : 'N/A' };
+    }, [filteredRekap, currentHost, data.hosts, data.rekapLive]);
+
+    const formatDiamond = (num: number) => new Intl.NumberFormat().format(num);
+    const formatDuration = (minutes: number) => `${Math.floor(minutes / 60)}j ${minutes % 60}m`;
+
+    const kpiData = [
+        { title: 'Total Diamond Anda', value: `${formatDiamond(personalStats.totalDiamonds)} 💎`, icon: Gem },
+        { title: 'Total Jam Live Anda', value: formatDuration(personalStats.totalMinutes), icon: Clock },
+        { title: 'Efisiensi Anda', value: `${formatDiamond(personalStats.efficiency)} 💎/jam`, icon: BarChart },
+        { title: 'Peringkat Anda', value: personalStats.rank, icon: Trophy },
+    ];
+
+    return (
+        <section>
+            <DateRangeFilter selectedRange={dateRange} onSelectRange={setDateRange} />
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                {kpiData.map((kpi) => (
                     <div key={kpi.title} className="bg-white dark:bg-stone-800 p-6 rounded-xl shadow-sm border border-stone-100 dark:border-stone-700 flex items-center">
                         <div className="p-3 rounded-full bg-purple-100 dark:bg-purple-900/50 mr-4">
                             <kpi.icon className="h-6 w-6 text-purple-600 dark:text-purple-400" />
                         </div>
                         <div>
                             <h3 className="text-sm font-medium text-stone-500 dark:text-stone-400">{kpi.title}</h3>
-                            <p className="text-xl font-bold text-stone-900 dark:text-white truncate">{kpi.value}</p>
+                            <p className="text-2xl font-bold text-stone-900 dark:text-white truncate">{kpi.value}</p>
                         </div>
                     </div>
                 ))}
             </div>
-
             <div className="mt-8">
                 <AgencyTrendChart rekapData={filteredRekap} />
             </div>
-
-            <div className="mt-8">
-                <HostPerformanceTable 
-                    rekapData={filteredRekap} 
-                    hosts={data.hosts} 
-                    onGetFeedback={(host) => setFeedbackState({ isOpen: true, host })}
-                />
+             <div className="mt-8">
+                <h2 className="text-xl font-semibold mb-4">5 Sesi Live Terakhir Anda</h2>
+                <RecentSessionsTable rekapData={filteredRekap.slice(0, 5)} />
             </div>
-
-            {/* --- RENDER MODAL FEEDBACK --- */}
-            {feedbackState.isOpen && (
-                <FeedbackModal
-                    isOpen={feedbackState.isOpen}
-                    onClose={() => setFeedbackState({ isOpen: false, host: null })}
-                    hostData={feedbackState.host}
-                    dateRange={dateRange}
-                />
-            )}
-            {/* ----------------------------- */}
         </section>
     );
 }
+
 
 // Komponen filter waktu
 function DateRangeFilter({ selectedRange, onSelectRange }: { selectedRange: DateRange, onSelectRange: (range: DateRange) => void }) {
@@ -171,7 +222,7 @@ function GeminiAnalysisCard({ filteredRekap, hosts, dateRange }: { filteredRekap
             const totalDiamonds = hostRekap.reduce((sum, r) => sum + r.pendapatan, 0);
             return { nama_host: host.nama_host, total_jam: (totalMinutes / 60).toFixed(1), total_diamond: totalDiamonds, jumlah_sesi: hostRekap.length };
         });
-        const prompt = `Anda adalah seorang manajer agensi TikTok yang ahli. Berdasarkan data kinerja berikut dalam format JSON untuk periode "${dateRange}", berikan analisis cerdas dalam format Markdown: Data Kinerja: ${JSON.stringify(performanceData, null, 2)} Tolong berikan: - Satu paragraf ringkasan umum. - Tiga poin utama (bullet points) yang menyoroti hal-hal penting. - Satu saran konkret yang bisa ditindaklanjuti.`;
+        const prompt = `Anda adalah seorang manajer agensi TikTok yang ahli. Berdasarkan data kinerja berikut dalam format JSON untuk periode "${dateRange}", berikan analisis cerdas dalam format Markdown yang rapi: Data Kinerja: ${JSON.stringify(performanceData, null, 2)} Tolong berikan analisis dengan struktur berikut: **Ringkasan Umum:** [Satu paragraf ringkasan umum di sini] **Poin-Poin Utama:** - [Poin 1] - [Poin 2] - [Poin 3] **Saran Konkret:** [Satu saran konkret yang bisa ditindaklanjuti di sini]`;
         try {
             const response = await fetch('/api/generate-analysis', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ prompt }) });
             if (!response.ok) { const errorData = await response.json(); throw new Error(errorData.details || `API call failed with status: ${response.status}`); }
@@ -223,7 +274,7 @@ function AgencyTrendChart({ rekapData }: { rekapData: any[] }) {
     const chartData = { labels: trendData.labels, datasets: [{ label: 'Total Diamond per Hari', data: trendData.data, fill: true, borderColor: 'rgb(75, 192, 192)', backgroundColor: 'rgba(75, 192, 192, 0.2)', tension: 0.1 }]};
     return (
         <div className="bg-white dark:bg-stone-800 p-6 rounded-xl shadow-sm border border-stone-100 dark:border-stone-700">
-            <h2 className="text-xl font-semibold mb-4">Tren Kinerja Agensi</h2>
+            <h2 className="text-xl font-semibold mb-4">Tren Kinerja Anda</h2>
             <div className="relative h-80"><Line data={chartData} options={{ responsive: true, maintainAspectRatio: false }} /></div>
         </div>
     );
@@ -294,7 +345,7 @@ function HostPerformanceTable({ rekapData, hosts, onGetFeedback }: { rekapData: 
     );
 }
 
-// --- KOMPONEN BARU UNTUK MODAL FEEDBACK ---
+// Komponen Modal Feedback
 function FeedbackModal({ isOpen, onClose, hostData, dateRange }: { isOpen: boolean, onClose: () => void, hostData: HostPerformance | null, dateRange: string }) {
     const [feedback, setFeedback] = useState('');
     const [loading, setLoading] = useState(false);
@@ -304,9 +355,7 @@ function FeedbackModal({ isOpen, onClose, hostData, dateRange }: { isOpen: boole
             const generateFeedback = async () => {
                 setLoading(true);
                 setFeedback('');
-                
-                const prompt = `Seorang host bernama "${hostData.nama_host}" memiliki statistik berikut untuk periode "${dateRange}": Total Jam Live: ${Math.round(hostData.totalMinutes / 60)} jam, Total Diamond: ${hostData.totalDiamonds}, Efisiensi: ${hostData.efficiency} diamond/jam. Tuliskan dalam format Markdown: 1. Satu paragraf umpan balik yang positif dan memotivasi. 2. Satu saran konkret yang bisa ditindaklanjuti untuk membantunya meningkatkan performa bulan depan.`;
-                
+                const prompt = `Seorang host bernama "${hostData.nama_host}" memiliki statistik berikut untuk periode "${dateRange}": - Total Jam Live: ${Math.round(hostData.totalMinutes / 60)} jam - Total Diamond: ${hostData.totalDiamonds} - Efisiensi: ${hostData.efficiency} diamond/jam. Tuliskan dalam format Markdown yang rapi dengan struktur berikut: **Umpan Balik Positif:** [Satu paragraf umpan balik yang positif dan memotivasi di sini] **Saran:** [Satu saran konkret yang bisa ditindaklanjuti di sini]`;
                 try {
                     const response = await fetch('/api/generate-analysis', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ prompt }) });
                     if (!response.ok) { const errorData = await response.json(); throw new Error(errorData.details || `API call failed`); }
@@ -327,5 +376,35 @@ function FeedbackModal({ isOpen, onClose, hostData, dateRange }: { isOpen: boole
             {loading && <div className="flex justify-center items-center h-40"><Sparkles className="h-8 w-8 animate-pulse text-purple-500" /></div>}
             {feedback && <div className="prose prose-sm dark:prose-invert max-w-none" dangerouslySetInnerHTML={{ __html: feedback }} />}
         </Modal>
+    );
+}
+
+// --- KOMPONEN BARU UNTUK TABEL SESI TERAKHIR HOST ---
+function RecentSessionsTable({ rekapData }: { rekapData: any[] }) {
+    const formatDiamond = (num: number) => new Intl.NumberFormat().format(num);
+    const formatDuration = (minutes: number) => `${Math.floor(minutes / 60)}j ${minutes % 60}m`;
+    const formatDate = (dateString: string) => new Date(dateString).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
+
+    return (
+        <div className="bg-white dark:bg-stone-800 rounded-xl shadow-sm border border-stone-100 dark:border-stone-700 overflow-x-auto">
+            <table className="w-full text-sm text-left text-stone-600 dark:text-stone-300">
+                <thead className="text-xs text-stone-700 dark:text-stone-400 uppercase bg-stone-100 dark:bg-stone-700">
+                    <tr>
+                        <th scope="col" className="px-6 py-3">Tanggal Live</th>
+                        <th scope="col" className="px-6 py-3">Durasi</th>
+                        <th scope="col" className="px-6 py-3">Pendapatan (💎)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {rekapData.map((rekap) => (
+                        <tr key={rekap.id} className="bg-white dark:bg-stone-800 border-b dark:border-stone-700">
+                            <td className="px-6 py-4 font-medium text-stone-900 dark:text-white">{formatDate(rekap.tanggal_live)}</td>
+                            <td className="px-6 py-4">{formatDuration(rekap.durasi_menit)}</td>
+                            <td className="px-6 py-4">{formatDiamond(rekap.pendapatan)}</td>
+                        </tr>
+                    ))}
+                </tbody>
+            </table>
+        </div>
     );
 }
