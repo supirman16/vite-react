@@ -6,9 +6,8 @@ import ConfirmationModal from '../components/ConfirmationModal';
 import DropdownMenu from '../components/DropdownMenu';
 import Skeleton from '../components/Skeleton';
 
-// --- KONFIGURASI EULERSTREAM (REST API) ---
-const EULER_STREAM_API_URL = "https://tiktok.eulerstream.com/api/v1/user/"; 
-const EULER_STREAM_API_KEY = "ZTlhMTg4YzcyMTRhNWY1ZTk2ZTNkODcwYTE0YTQyMDcwNGFiMGIwYjc4MmZmMjljZGE1ZmEw";
+// --- URL ke server backend Heroku Anda ---
+const API_URL = "https://unity-host-dashboard-bfc030a0ba69.herokuapp.com"; 
 
 // Komponen ini adalah halaman Manajemen Akun TikTok untuk superadmin.
 export default function TiktokPage() {
@@ -119,7 +118,6 @@ function TiktokTable({ onEdit, onDelete, searchQuery }: { onEdit: (account: any)
         const filtered = data.tiktokAccounts.filter(account => 
             account.username.toLowerCase().includes(searchQuery.toLowerCase())
         );
-
         return [...filtered].sort((a, b) => {
             const valA = a[sortKey];
             const valB = b[sortKey];
@@ -135,18 +133,11 @@ function TiktokTable({ onEdit, onDelete, searchQuery }: { onEdit: (account: any)
         
         const statusPromises = activeAccounts.map(async (account) => {
             try {
-                // --- PERBAIKAN UTAMA: Memindahkan apiKey ke parameter URL ---
-                const safeUsername = encodeURIComponent(account.username);
-                const urlWithKey = `${EULER_STREAM_API_URL}${safeUsername}?apiKey=${EULER_STREAM_API_KEY}`;
-                
-                const response = await fetch(urlWithKey, {
-                    method: 'GET'
-                    // Header tidak lagi diperlukan untuk otentikasi
-                });
-
+                // --- PERUBAHAN UTAMA: Memanggil API backend Anda ---
+                const response = await fetch(`${API_URL}/check-status/${account.username}`);
                 if (!response.ok) return { username: account.username, isLive: false };
                 const result = await response.json();
-                return { username: account.username, isLive: result.is_live };
+                return { username: account.username, isLive: result.isLive };
             } catch (error) {
                 console.error(`Error fetching status for ${account.username}:`, error);
                 return { username: account.username, isLive: false };
@@ -154,7 +145,6 @@ function TiktokTable({ onEdit, onDelete, searchQuery }: { onEdit: (account: any)
         });
 
         const results = await Promise.all(statusPromises);
-
         const newStatuses: { [key: string]: boolean } = {};
         results.forEach(res => {
             newStatuses[res.username.toLowerCase()] = res.isLive;
@@ -247,31 +237,25 @@ function TiktokTable({ onEdit, onDelete, searchQuery }: { onEdit: (account: any)
     );
 }
 
-
-// Komponen Modal untuk Tambah/Ubah Akun TikTok
+// Komponen Modal (tidak berubah)
 function TiktokModal({ isOpen, onClose, account }: { isOpen: boolean, onClose: () => void, account: any | null }) {
     const { setData, showNotification } = useContext(AppContext) as AppContextType;
-    const [formData, setFormData] = useState({
-        username: account?.username || '',
-        status: account?.status || 'Aktif',
-    });
+    const [formData, setFormData] = useState({ username: account?.username || '', status: account?.status || 'Aktif' });
     const [loading, setLoading] = useState(false);
-
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
         const { id, value } = e.target;
         setFormData(prev => ({ ...prev, [id]: value }));
     };
-
     const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
         setLoading(true);
         try {
-            if (account) { // Update
+            if (account) {
                 const { data: updatedAccount, error } = await supabase.from('tiktok_accounts').update(formData).eq('id', account.id).select().single();
                 if (error) throw error;
                 setData(prev => ({ ...prev, tiktokAccounts: prev.tiktokAccounts.map(acc => acc.id === account.id ? updatedAccount : acc) }));
                 showNotification('Akun TikTok berhasil diperbarui.');
-            } else { // Insert
+            } else {
                 const { data: newAccount, error } = await supabase.from('tiktok_accounts').insert(formData).select().single();
                 if (error) throw error;
                 setData(prev => ({ ...prev, tiktokAccounts: [...prev.tiktokAccounts, newAccount] }));
@@ -284,7 +268,6 @@ function TiktokModal({ isOpen, onClose, account }: { isOpen: boolean, onClose: (
             setLoading(false);
         }
     };
-
     return (
         <Modal isOpen={isOpen} onClose={onClose} title={account ? 'Ubah Akun TikTok' : 'Tambah Akun TikTok Baru'}>
             <form onSubmit={handleSubmit} className="space-y-4">
