@@ -29,18 +29,22 @@ interface HostPerformance {
 
 // Komponen ini adalah halaman utama Dashboard.
 export default function DashboardPage() {
-    // --- PERBAIKAN: Menggunakan 'session' dari AppContext ---
     const { data, session } = useContext(AppContext) as AppContextType;
     
-    // Tampilkan kerangka pemuatan jika data inti (sesi & peran) belum siap.
-    if (data.loading || !session || typeof session.user.user_metadata.role === 'undefined') {
+    // Tampilkan kerangka pemuatan jika sesi belum siap
+    if (data.loading || !session) {
         return <DashboardSkeleton />;
     }
 
-    // Sekarang kita bisa dengan aman mengakses peran pengguna dari session
-    const userRole = session.user.user_metadata.role;
+    // --- PERBAIKAN: Menggunakan optional chaining (?.) untuk keamanan ---
+    const userRole = session.user.user_metadata?.role;
 
-    if (userRole === 'Host') {
+    // Tampilkan kerangka pemuatan jika peran belum terdefinisi (menunggu data)
+    if (typeof userRole === 'undefined') {
+        return <DashboardSkeleton />;
+    }
+
+    if (userRole === 'host') {
         return <HostDashboard />;
     } else {
         // Asumsikan sebagai Superadmin jika peran bukan 'Host'
@@ -120,13 +124,11 @@ function SuperadminDashboard() {
 // TAMPILAN DASHBOARD UNTUK HOST
 // ==================================================================
 function HostDashboard() {
-    // --- PERBAIKAN: Menggunakan 'session' dari AppContext ---
     const { data, session } = useContext(AppContext) as AppContextType;
     const [dateRange, setDateRange] = useState<DateRange>('30d');
 
     // Dapatkan data host yang sedang login
     const currentHost = useMemo(() => {
-        // --- PERBAIKAN: Menggunakan 'session.user.id' ---
         return data.hosts.find(h => h.user_id === session?.user?.id);
     }, [data.hosts, session]);
 
@@ -171,7 +173,7 @@ function HostDashboard() {
     const formatDuration = (minutes: number) => `${Math.floor(minutes / 60)}j ${minutes % 60}m`;
 
     const kpiData = [
-        { title: 'Total Diamond Anda', value: `${formatDiamond(personalStats.totalDiamonds)} 💎`, icon: Gem },
+        { title: 'Total Diamond Anda', value: `${formatDiamond(personalStats.totalDiamonds)} �`, icon: Gem },
         { title: 'Total Jam Live Anda', value: formatDuration(personalStats.totalMinutes), icon: Clock },
         { title: 'Efisiensi Anda', value: `${formatDiamond(personalStats.efficiency)} 💎/jam`, icon: BarChart },
         { title: 'Peringkat Anda', value: personalStats.rank, icon: Trophy },
@@ -415,3 +417,4 @@ function RecentSessionsTable({ rekapData }: { rekapData: any[] }) {
         </div>
     );
 }
+�
