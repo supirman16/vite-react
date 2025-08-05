@@ -1,8 +1,9 @@
+// Menggunakan sintaks require() untuk semua modul
 const axios = require('axios');
-import type { VercelRequest, VercelResponse } from '@vercel/node';
+const { VercelRequest, VercelResponse } = require('@vercel/node');
 
 // Handler untuk serverless function
-module.exports = async (request: VercelRequest, response: VercelResponse) => {
+module.exports = async (request, response) => {
   // Menangani CORS agar frontend di Vercel bisa mengakses API ini
   response.setHeader('Access-Control-Allow-Origin', '*');
   response.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
@@ -49,7 +50,7 @@ module.exports = async (request: VercelRequest, response: VercelResponse) => {
         return response.status(500).json({ error: 'Respons dari Gemini tidak valid.' });
     }
 
-  } catch (error: any) {
+  } catch (error) {
     console.error('Error in Gemini API proxy:', error.response?.data || error.message);
     return response.status(500).json({ 
         error: 'Terjadi kesalahan internal saat memanggil API Gemini.',
