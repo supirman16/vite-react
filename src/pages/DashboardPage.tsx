@@ -3,6 +3,7 @@ import { AppContext, AppContextType } from '../App';
 import { Bar } from 'react-chartjs-2';
 import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend } from 'chart.js';
 import Skeleton from '../components/Skeleton';
+import { Clock, BarChart, Gem, Crown } from 'lucide-react';
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
 
@@ -17,23 +18,25 @@ export default function DashboardPage() {
     // Logika untuk menyaring data rekap berdasarkan rentang waktu yang dipilih
     const filteredRekap = useMemo(() => {
         const now = new Date();
+        // Set ke awal hari untuk perbandingan yang akurat
         const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
 
         if (!data.rekapLive) return [];
 
         switch (dateRange) {
             case 'today':
-                return data.rekapLive.filter(r => new Date(r.tanggal_live) >= today);
+                // Memastikan tanggal rekap sama dengan hari ini
+                return data.rekapLive.filter(r => new Date(r.tanggal_live).setHours(0,0,0,0) === today.getTime());
             case '7d':
                 const last7Days = new Date(today);
-                last7Days.setDate(today.getDate() - 7);
+                last7Days.setDate(today.getDate() - 6); // Termasuk hari ini
                 return data.rekapLive.filter(r => new Date(r.tanggal_live) >= last7Days);
             case 'thisMonth':
                 const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
                 return data.rekapLive.filter(r => new Date(r.tanggal_live) >= startOfMonth);
             case '30d':
                  const last30Days = new Date(today);
-                last30Days.setDate(today.getDate() - 30);
+                last30Days.setDate(today.getDate() - 29); // Termasuk hari ini
                 return data.rekapLive.filter(r => new Date(r.tanggal_live) >= last30Days);
             case 'all':
             default:
@@ -41,7 +44,45 @@ export default function DashboardPage() {
         }
     }, [data.rekapLive, dateRange]);
 
-    // Tampilkan kerangka pemuatan jika data belum siap
+    // --- PERHITUNGAN KPI BARU ---
+    const dynamicStats = useMemo(() => {
+        if (filteredRekap.length === 0) {
+            return {
+                totalMinutes: 0,
+                totalDiamonds: 0,
+                totalSessions: 0,
+                agencyEfficiency: 0,
+                mostActiveHost: 'N/A',
+            };
+        }
+
+        const totalMinutes = filteredRekap.reduce((sum, r) => sum + r.durasi_menit, 0);
+        const totalDiamonds = filteredRekap.reduce((sum, r) => sum + r.pendapatan, 0);
+        const totalHours = totalMinutes / 60;
+        
+        const agencyEfficiency = totalHours > 0 ? Math.round(totalDiamonds / totalHours) : 0;
+
+        const hostHours = data.hosts.reduce((acc, host) => {
+            acc[host.id] = filteredRekap
+                .filter(r => r.host_id === host.id)
+                .reduce((sum, r) => sum + r.durasi_menit, 0);
+            return acc;
+        }, {} as Record<number, number>);
+
+        const mostActiveHostId = Object.keys(hostHours).reduce((a, b) => hostHours[parseInt(a)] > hostHours[parseInt(b)] ? a : b, '0');
+        const mostActiveHostData = data.hosts.find(h => h.id === parseInt(mostActiveHostId));
+        
+        return {
+            totalMinutes,
+            totalDiamonds,
+            totalSessions: filteredRekap.length,
+            agencyEfficiency,
+            mostActiveHost: mostActiveHostData ? mostActiveHostData.nama_host : 'N/A',
+        };
+
+    }, [filteredRekap, data.hosts]);
+    // -------------------------
+
     if (data.loading) {
         return <DashboardSkeleton />;
     }
@@ -53,29 +94,52 @@ export default function DashboardPage() {
         return `${hours}j ${remainingMinutes}m`;
     };
     
-    // KPI sekarang dihitung dari data yang sudah disaring
+    // KPI utama
     const kpiData = [
-        { title: 'Total Host Aktif', value: data.hosts.filter(h => h.status === 'Aktif').length },
-        { title: 'Total Jam Live', value: formatDuration(filteredRekap.reduce((sum, r) => sum + r.durasi_menit, 0)) },
-        { title: 'Total Diamond', value: `${formatDiamond(filteredRekap.reduce((sum, r) => sum + r.pendapatan, 0))} 💎` },
+        { title: 'Total Host Aktif', value: data.hosts.filter(h => h.status === 'Aktif').length, icon: Gem },
+        { title: 'Total Jam Live', value: formatDuration(dynamicStats.totalMinutes), icon: Clock },
+        { title: 'Total Diamond', value: `${formatDiamond(dynamicStats.totalDiamonds)} 💎`, icon: Gem },
+    ];
+    
+    // KPI dinamis baru
+    const dynamicKpiData = [
+        { title: 'Efisiensi Agensi', value: `${formatDiamond(dynamicStats.agencyEfficiency)} 💎/jam`, icon: BarChart },
+        { title: 'Total Sesi Live', value: dynamicStats.totalSessions.toLocaleString(), icon: Clock },
+        { title: 'Host Paling Aktif', value: dynamicStats.mostActiveHost, icon: Crown },
     ];
     
     return (
         <section>
             <DateRangeFilter selectedRange={dateRange} onSelectRange={setDateRange} />
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+            
+            {/* Baris KPI Utama */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
                 {kpiData.map((kpi, index) => (
                     <div 
                         key={kpi.title} 
-                        className="bg-white dark:bg-stone-800 p-6 rounded-xl shadow-sm border border-stone-100 dark:border-stone-700 animate-slide-up-fade"
-                        style={{ animationDelay: `${index * 100}ms`, opacity: 0 }}
+                        className="bg-white dark:bg-stone-800 p-6 rounded-xl shadow-sm border border-stone-100 dark:border-stone-700"
                     >
                         <h3 className="text-sm font-medium text-stone-500 dark:text-stone-400">{kpi.title}</h3>
                         <p className="text-3xl font-bold mt-2 text-stone-900 dark:text-white">{kpi.value}</p>
                     </div>
                 ))}
             </div>
-            {/* Mengirim data yang sudah disaring ke komponen grafik */}
+            
+            {/* Baris KPI Dinamis Baru */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                {dynamicKpiData.map((kpi) => (
+                    <div key={kpi.title} className="bg-white dark:bg-stone-800 p-6 rounded-xl shadow-sm border border-stone-100 dark:border-stone-700 flex items-center">
+                        <div className="p-3 rounded-full bg-purple-100 dark:bg-purple-900/50 mr-4">
+                            <kpi.icon className="h-6 w-6 text-purple-600 dark:text-purple-400" />
+                        </div>
+                        <div>
+                            <h3 className="text-sm font-medium text-stone-500 dark:text-stone-400">{kpi.title}</h3>
+                            <p className="text-xl font-bold text-stone-900 dark:text-white truncate">{kpi.value}</p>
+                        </div>
+                    </div>
+                ))}
+            </div>
+
             <PerformanceChart rekapData={filteredRekap} />
         </section>
     );
