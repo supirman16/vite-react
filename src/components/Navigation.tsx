@@ -47,7 +47,15 @@ function AnimatedLogo() {
 // Komponen ini adalah bilah navigasi samping.
 export default function Navigation() {
     const { page, setPage, session, logout } = useContext(AppContext) as AppContextType;
-    const isSuperAdmin = session!.user.user_metadata?.role === 'superadmin';
+
+    // --- PERBAIKAN: Tambahkan pemeriksaan untuk memastikan session tidak null ---
+    // Ini mencegah komponen crash saat data sesi belum dimuat atau saat logout.
+    if (!session) {
+        return null; 
+    }
+    // ------------------------------------------------------------------
+
+    const isSuperAdmin = session.user.user_metadata?.role === 'superadmin';
 
     const navItems = [
         { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, roles: ['host', 'superadmin'] },
@@ -69,12 +77,10 @@ export default function Navigation() {
     return (
         <aside className="hidden md:flex flex-col w-64 bg-white dark:bg-stone-800 border-r border-stone-200 dark:border-stone-700">
             <div className="h-16 flex items-center px-6 border-b border-stone-200 dark:border-stone-700">
-                {/* --- PERUBAHAN DI SINI: Mengganti gambar dengan komponen animasi --- */}
                 <div className="flex items-center gap-3">
                     <AnimatedLogo />
                     <span className="font-bold text-xl text-stone-800 dark:text-white">UNITY</span>
                 </div>
-                {/* ----------------------------------------------------------------- */}
             </div>
             <nav className="flex-1 overflow-y-auto p-4 space-y-2">
                 {accessibleNavItems.map(item => (
