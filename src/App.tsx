@@ -6,7 +6,7 @@ import { LayoutDashboard } from 'lucide-react';
 
 // Konfigurasi Supabase
 const supabaseUrl = 'https://zorudwncbfietuzxrerd.supabase.co';
-const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpvcnVkd25jYmZpZXR1enhyZXJkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MjA2MTE5MjUsImV4cCI6MjAzNjE4NzkyNX0.R-CM842n10Mptw08_W5p3yVnB35o2qILB342c2c5cVA';
+const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpvcnVkd25jYmZpZXR1enhyZXJkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTI2NzMzNTUsImV4cCI6MjA2ODI0OTM1NX0.d6YJ8qj3Uegmei6ip52fQ0gnjJltqVDlrlbu6VXk7Ks';
 export const supabase = createClient(supabaseUrl, supabaseKey);
 
 // Tipe data untuk konteks aplikasi
