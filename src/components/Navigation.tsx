@@ -42,12 +42,14 @@ function AnimatedLogo() {
 // FILE YANG DIPERBARUI: Navigation.tsx
 // ==================================================================
 export default function Navigation() {
-    const { page, setPage, session, logout } = useContext(AppContext) as AppContextType;
+    const context = useContext(AppContext);
 
-    // Penjaga untuk mencegah crash saat sesi belum siap
-    if (!session) {
+    // Penjaga untuk mencegah crash saat konteks atau sesi belum siap
+    if (!context || !context.session) {
         return null; 
     }
+
+    const { page, setPage, session, logout } = context as AppContextType;
 
     // --- PERBAIKAN: Logika peran yang disederhanakan dan diperbaiki ---
     const userRole = session.user.user_metadata?.role;
@@ -55,7 +57,7 @@ export default function Navigation() {
     const navItems = [
         { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, roles: ['host', 'superadmin'] },
         { id: 'leaderboard', label: 'Papan Peringkat', icon: Star, roles: ['host', 'superadmin'] },
-        { id: 'analysis', label: 'Analisis Kinerja', icon: BarChart3, roles: ['host', 'superadmin'] },
+        { id: 'analysis', label: 'Analisis Kinerja', icon: BarChart3, roles: ['superadmin'] },
         { id: 'rekap', label: 'Rekap Live', icon: FileText, roles: ['host', 'superadmin'] },
         { id: 'profile', label: 'Profil Saya', icon: User, roles: ['host'] },
         { id: 'salary', label: 'Gaji Saya', icon: DollarSign, roles: ['host'] },
