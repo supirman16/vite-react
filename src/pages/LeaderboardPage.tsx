@@ -209,7 +209,7 @@ function DateRangeFilter({ selectedRange, onSelectRange }: { selectedRange: Date
 function calculateLeaderboard(hosts: any[], rekapLive: any[], dateRange: DateRange): LeaderboardEntry[] {
     const now = new Date();
     // --- PERBAIKAN: Saring hanya untuk rekap yang disetujui di awal ---
-    const approvedRekap = rekapLive.filter(r => r.status === 'Approved');
+    const approvedRekap = rekapLive.filter(r => r.status === 'approved');
     let filteredRekap = approvedRekap;
 
     if (dateRange === 'thisWeek') {
