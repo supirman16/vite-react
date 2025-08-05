@@ -55,16 +55,16 @@ export default function Navigation() {
     const navItems = [
         { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, roles: ['host', 'superadmin'] },
         { id: 'leaderboard', label: 'Papan Peringkat', icon: Star, roles: ['host', 'superadmin'] },
-        { id: 'analysis', label: 'Analisis Kinerja', icon: BarChart3, roles: ['superadmin'] },
+        { id: 'analysis', label: 'Analisis Kinerja', icon: BarChart3, roles: ['host', 'superadmin'] },
         { id: 'rekap', label: 'Rekap Live', icon: FileText, roles: ['host', 'superadmin'] },
-        { id: 'profile', label: 'Profil Saya', icon: User, roles: ['host', 'superadmin'] },
+        { id: 'profile', label: 'Profil Saya', icon: User, roles: ['host'] },
         { id: 'salary', label: 'Gaji Saya', icon: DollarSign, roles: ['host'] },
         { id: 'payroll', label: 'Sistem Gaji', icon: DollarSign, roles: ['superadmin'] },
         { id: 'hosts', label: 'Manajemen Host', icon: Building2, roles: ['superadmin'] },
         { id: 'users', label: 'Manajemen Pengguna', icon: Users, roles: ['superadmin'] },
         { id: 'tiktok', label: 'Manajemen Akun', icon: Ticket, roles: ['superadmin'] },
         { id: 'livetest', label: 'Uji Coba Live', icon: TestTube2, roles: ['superadmin'] },
-        { id: 'settings', label: 'Pengaturan Akun', icon: Settings, roles: ['host', 'superadmin'] },
+        { id: 'settings', label: 'Pengaturan Akun', icon: Settings, roles: ['host'] },
     ];
 
     // Logika filter yang benar
