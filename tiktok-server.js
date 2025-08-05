@@ -103,6 +103,24 @@ function setupEventHandlers(tiktokConnection, ws, username) {
     tiktokConnection.on('error', (error) => {
         ws.send(JSON.stringify({ type: 'error', message: `Terjadi eror: ${error.message}` }));
     });
+
+    // --- EVENT HANDLER BARU ---
+    tiktokConnection.on(WebcastEvent.ROOM_USER, (data) => {
+        ws.send(JSON.stringify({ type: 'stats', data: { viewerCount: data.viewerCount, likeCount: data.totalLikeCount } }));
+    });
+
+    tiktokConnection.on(WebcastEvent.LIKE, (data) => {
+        ws.send(JSON.stringify({ type: 'stats', data: { likeCount: data.totalLikeCount } }));
+    });
+
+    tiktokConnection.on(WebcastEvent.SOCIAL, (data) => {
+        ws.send(JSON.stringify({ type: 'social', data: { label: data.label, uniqueId: data.uniqueId } }));
+    });
+    
+    tiktokConnection.on(WebcastEvent.MEMBER, (data) => {
+        ws.send(JSON.stringify({ type: 'social', data: { label: `${data.uniqueId} joined`, uniqueId: data.uniqueId } }));
+    });
+    // -------------------------
 }
 
 server.listen(PORT, () => {
