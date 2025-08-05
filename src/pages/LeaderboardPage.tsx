@@ -1,5 +1,5 @@
-import { useContext, useState, useMemo } from 'react';
-import { AppContext, AppContextType } from '../App';
+import { useContext, useState, useMemo, useEffect } from 'react';
+import { AppContext, AppContextType, supabase } from '../App'; // Impor supabase
 import { Trophy, ArrowUpCircle } from 'lucide-react';
 import Skeleton from '../components/Skeleton';
 
@@ -74,19 +74,35 @@ function SuperadminLeaderboard() {
 function HostLeaderboard() {
     const { data, session } = useContext(AppContext) as AppContextType;
     const [dateRange, setDateRange] = useState<DateRange>('all');
+    
+    // --- PERBAIKAN: State baru untuk menyimpan semua data rekap ---
+    const [allRekapData, setAllRekapData] = useState<any[] | null>(null);
+    const [isLoading, setIsLoading] = useState(true);
+
+    // Efek untuk mengambil semua data rekap saat komponen dimuat
+    useEffect(() => {
+        const fetchAllRekapData = async () => {
+            setIsLoading(true);
+            const { data: rekapData, error } = await supabase.from('rekap_live').select('*');
+            if (error) {
+                console.error("Gagal mengambil semua data rekap:", error);
+                setAllRekapData([]);
+            } else {
+                setAllRekapData(rekapData);
+            }
+            setIsLoading(false);
+        };
+        fetchAllRekapData();
+    }, []);
 
     const currentHostInfo = useMemo(() => {
         return data.hosts.find(h => h.user_id === session?.user.id);
     }, [data.hosts, session]);
     
-    // --- PERBAIKAN: Gunakan SEMUA rekap untuk perhitungan peringkat, BUKAN rekap yang difilter ---
     const leaderboardData = useMemo(() => {
-        // Untuk host, kita perlu data lengkap untuk peringkat, jadi kita gunakan data.rekapLive dari AppContext
-        // yang seharusnya berisi SEMUA rekap jika query di App.tsx benar.
-        // Jika query di App.tsx sudah terlanjur memfilter, maka kita perlu memperbaikinya di sana.
-        // Untuk saat ini, kita asumsikan data.rekapLive berisi semua yang dibutuhkan.
-        return calculateLeaderboard(data.hosts, data.rekapLive, dateRange);
-    }, [data.hosts, data.rekapLive, dateRange]);
+        if (!allRekapData) return []; // Jangan hitung jika data belum siap
+        return calculateLeaderboard(data.hosts, allRekapData, dateRange);
+    }, [data.hosts, allRekapData, dateRange]);
 
     const currentUserRank = useMemo(() => {
         return leaderboardData.find(h => h.id === currentHostInfo?.id);
@@ -101,12 +117,15 @@ function HostLeaderboard() {
         return hostAbove ? hostAbove.totalDiamonds - currentUserRank.totalDiamonds + 1 : 0;
     }, [currentUserRank, leaderboardData]);
 
+    if (isLoading) {
+        return <LeaderboardSkeleton />;
+    }
+
     return (
         <section>
             <h2 className="text-xl font-semibold text-stone-800 dark:text-stone-100 mb-4">Arena Kompetisi</h2>
             <DateRangeFilter selectedRange={dateRange} onSelectRange={setDateRange} />
 
-            {/* Kartu "Fokus pada Posisi Anda" */}
             {currentUserRank && (
                 <div className="mb-8 p-6 bg-white dark:bg-stone-800 rounded-xl shadow-lg border border-purple-200 dark:border-purple-800 grid grid-cols-1 md:grid-cols-3 gap-4 text-center md:text-left">
                     <div className="flex flex-col items-center md:items-start">
@@ -129,10 +148,8 @@ function HostLeaderboard() {
                 </div>
             )}
 
-            {/* Panggung Juara (Top 3) */}
-            <Top3Showcase hosts={top3} currentHostId={currentHostInfo?.id} />
+            <Top3Showcase hosts={top3} />
 
-            {/* Daftar Peringkat Lainnya */}
             <div className="mt-8 bg-white dark:bg-stone-800 rounded-xl shadow-sm border border-stone-100 dark:border-stone-700 overflow-x-auto">
                  <table className="w-full text-sm text-left text-stone-600 dark:text-stone-300">
                     <thead className="text-xs text-stone-700 dark:text-stone-400 uppercase bg-stone-100 dark:bg-stone-700">
@@ -147,8 +164,7 @@ function HostLeaderboard() {
                             <tr key={host.id} className={`border-b dark:border-stone-700 ${host.id === currentHostInfo?.id ? 'bg-purple-50 dark:bg-purple-900/30' : 'bg-white dark:bg-stone-800'}`}>
                                 <td className="px-6 py-4 font-medium text-stone-900 dark:text-white text-center">{host.rank}</td>
                                 <td className="px-6 py-4 font-semibold text-stone-900 dark:text-white">{host.nama_host}</td>
-                                {/* --- PERBAIKAN: Tampilkan '-' jika bukan data host saat ini --- */}
-                                <td className="px-6 py-4">{host.id === currentHostInfo?.id ? new Intl.NumberFormat().format(host.totalDiamonds) : '-'}</td>
+                                <td className="px-6 py-4">{new Intl.NumberFormat().format(host.totalDiamonds)}</td>
                             </tr>
                         ))}
                     </tbody>
@@ -159,7 +175,7 @@ function HostLeaderboard() {
 }
 
 // Komponen untuk Panggung Juara Top 3
-function Top3Showcase({ hosts, currentHostId }: { hosts: LeaderboardEntry[], currentHostId?: number }) {
+function Top3Showcase({ hosts }: { hosts: LeaderboardEntry[] }) {
     const medalColors = ['text-yellow-400', 'text-stone-400', 'text-yellow-600'];
     return (
         <div>
@@ -170,8 +186,7 @@ function Top3Showcase({ hosts, currentHostId }: { hosts: LeaderboardEntry[], cur
                         <Trophy className={`h-8 w-8 mx-auto ${medalColors[index]}`} />
                         <p className="font-bold text-lg mt-2">{host.nama_host}</p>
                         <p className="text-sm text-stone-500 dark:text-stone-400">Peringkat #{host.rank}</p>
-                        {/* --- PERBAIKAN: Tampilkan '-' jika bukan data host saat ini --- */}
-                        <p className="font-semibold mt-1">{host.id === currentHostId ? `${new Intl.NumberFormat().format(host.totalDiamonds)} 💎` : '-'}</p>
+                        <p className="font-semibold mt-1">{new Intl.NumberFormat().format(host.totalDiamonds)} 💎</p>
                     </div>
                 ))}
             </div>
