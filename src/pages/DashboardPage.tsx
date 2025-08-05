@@ -1,11 +1,11 @@
-import { useContext, useState, useMemo } from 'react';
+import { useContext, useState, useMemo, useEffect } from 'react';
 import { AppContext, AppContextType } from '../App';
 import { Line } from 'react-chartjs-2';
 import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, PointElement, LineElement, Title, Tooltip, Legend, Filler } from 'chart.js';
 import Skeleton from '../components/Skeleton';
-import { Clock, BarChart, Gem, Crown, ArrowUpDown, Sparkles } from 'lucide-react';
-// Impor library 'marked'
+import { Clock, BarChart, Gem, Crown, ArrowUpDown, Sparkles, MessageSquareQuote } from 'lucide-react';
 import { marked } from 'marked';
+import Modal from '../components/Modal';
 
 // Registrasi komponen Chart.js yang dibutuhkan, termasuk Filler
 ChartJS.register(CategoryScale, LinearScale, BarElement, PointElement, LineElement, Title, Tooltip, Legend, Filler);
@@ -25,6 +25,13 @@ interface HostPerformance {
 export default function DashboardPage() {
     const { data } = useContext(AppContext) as AppContextType;
     const [dateRange, setDateRange] = useState<DateRange>('30d');
+    
+    // --- STATE BARU UNTUK MODAL FEEDBACK ---
+    const [feedbackState, setFeedbackState] = useState<{
+        isOpen: boolean;
+        host: HostPerformance | null;
+    }>({ isOpen: false, host: null });
+    // ------------------------------------
 
     // Logika untuk menyaring data rekap
     const filteredRekap = useMemo(() => {
@@ -89,9 +96,7 @@ export default function DashboardPage() {
         <section>
             <DateRangeFilter selectedRange={dateRange} onSelectRange={setDateRange} />
             
-            {/* --- KARTU ANALISIS CERDAS BARU --- */}
             <GeminiAnalysisCard filteredRekap={filteredRekap} hosts={data.hosts} dateRange={dateRange} />
-            {/* ---------------------------------- */}
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
                 {kpiData.map((kpi) => (
@@ -121,8 +126,23 @@ export default function DashboardPage() {
             </div>
 
             <div className="mt-8">
-                <HostPerformanceTable rekapData={filteredRekap} hosts={data.hosts} />
+                <HostPerformanceTable 
+                    rekapData={filteredRekap} 
+                    hosts={data.hosts} 
+                    onGetFeedback={(host) => setFeedbackState({ isOpen: true, host })}
+                />
             </div>
+
+            {/* --- RENDER MODAL FEEDBACK --- */}
+            {feedbackState.isOpen && (
+                <FeedbackModal
+                    isOpen={feedbackState.isOpen}
+                    onClose={() => setFeedbackState({ isOpen: false, host: null })}
+                    hostData={feedbackState.host}
+                    dateRange={dateRange}
+                />
+            )}
+            {/* ----------------------------- */}
         </section>
     );
 }
@@ -137,7 +157,7 @@ function DateRangeFilter({ selectedRange, onSelectRange }: { selectedRange: Date
     );
 }
 
-// --- KOMPONEN BARU UNTUK ANALISIS CERDAS ---
+// Komponen Analisis Cerdas
 function GeminiAnalysisCard({ filteredRekap, hosts, dateRange }: { filteredRekap: any[], hosts: any[], dateRange: string }) {
     const [analysis, setAnalysis] = useState('');
     const [loading, setLoading] = useState(false);
@@ -145,73 +165,31 @@ function GeminiAnalysisCard({ filteredRekap, hosts, dateRange }: { filteredRekap
     const generateAnalysis = async () => {
         setLoading(true);
         setAnalysis('');
-
         const performanceData = hosts.map(host => {
             const hostRekap = filteredRekap.filter(r => r.host_id === host.id);
             const totalMinutes = hostRekap.reduce((sum, r) => sum + r.durasi_menit, 0);
             const totalDiamonds = hostRekap.reduce((sum, r) => sum + r.pendapatan, 0);
-            return {
-                nama_host: host.nama_host,
-                total_jam: (totalMinutes / 60).toFixed(1),
-                total_diamond: totalDiamonds,
-                jumlah_sesi: hostRekap.length,
-            };
+            return { nama_host: host.nama_host, total_jam: (totalMinutes / 60).toFixed(1), total_diamond: totalDiamonds, jumlah_sesi: hostRekap.length };
         });
-
-        const prompt = `
-            Anda adalah seorang manajer agensi TikTok yang ahli. Berdasarkan data kinerja berikut dalam format JSON untuk periode "${dateRange}", berikan analisis cerdas dalam format Markdown:
-            Data Kinerja:
-            ${JSON.stringify(performanceData, null, 2)}
-            Tolong berikan:
-            - Satu paragraf ringkasan umum.
-            - Tiga poin utama (bullet points) yang menyoroti hal-hal penting (misalnya, host terbaik, tren menarik, atau masalah).
-            - Satu saran konkret yang bisa ditindaklanjuti untuk meningkatkan kinerja agensi.
-        `;
-
+        const prompt = `Anda adalah seorang manajer agensi TikTok yang ahli. Berdasarkan data kinerja berikut dalam format JSON untuk periode "${dateRange}", berikan analisis cerdas dalam format Markdown: Data Kinerja: ${JSON.stringify(performanceData, null, 2)} Tolong berikan: - Satu paragraf ringkasan umum. - Tiga poin utama (bullet points) yang menyoroti hal-hal penting. - Satu saran konkret yang bisa ditindaklanjuti.`;
         try {
-            const response = await fetch('/api/generate-analysis', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ prompt })
-            });
-
-            if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData.details || `API call failed with status: ${response.status}`);
-            }
-
+            const response = await fetch('/api/generate-analysis', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ prompt }) });
+            if (!response.ok) { const errorData = await response.json(); throw new Error(errorData.details || `API call failed with status: ${response.status}`); }
             const result = await response.json();
-            // --- PERBAIKAN: Gunakan 'marked' untuk mem-parse Markdown ---
             setAnalysis(marked(result.analysis) as string);
-            
         } catch (error) {
             console.error("Error calling local API:", error);
             setAnalysis(`Terjadi kesalahan saat menghubungi layanan analisis: ${error.message}`);
-        } finally {
-            setLoading(false);
-        }
+        } finally { setLoading(false); }
     };
 
     return (
         <div className="mb-8 bg-white dark:bg-stone-800 p-6 rounded-xl shadow-sm border border-stone-100 dark:border-stone-700">
             <div className="flex justify-between items-start">
-                <div>
-                    <h2 className="text-xl font-semibold">Analisis Cerdas</h2>
-                    <p className="text-sm text-stone-500 dark:text-stone-400 mt-1">Dapatkan wawasan instan tentang kinerja agensi Anda dengan bantuan AI.</p>
-                </div>
-                <button 
-                    onClick={generateAnalysis}
-                    disabled={loading}
-                    className="unity-gradient-bg text-white font-semibold px-4 py-2 rounded-lg shadow-sm hover:opacity-90 flex items-center disabled:opacity-75"
-                >
-                    <Sparkles className={`h-5 w-5 mr-2 ${loading ? 'animate-pulse' : ''}`} />
-                    {loading ? 'Menganalisis...' : 'Buat Ringkasan'}
-                </button>
+                <div><h2 className="text-xl font-semibold">Analisis Cerdas</h2><p className="text-sm text-stone-500 dark:text-stone-400 mt-1">Dapatkan wawasan instan tentang kinerja agensi Anda dengan bantuan AI.</p></div>
+                <button onClick={generateAnalysis} disabled={loading} className="unity-gradient-bg text-white font-semibold px-4 py-2 rounded-lg shadow-sm hover:opacity-90 flex items-center disabled:opacity-75"><Sparkles className={`h-5 w-5 mr-2 ${loading ? 'animate-pulse' : ''}`} />{loading ? 'Menganalisis...' : 'Buat Ringkasan'}</button>
             </div>
-            {analysis && (
-                <div className="mt-4 pt-4 border-t dark:border-stone-700 prose prose-sm dark:prose-invert max-w-none"
-                     dangerouslySetInnerHTML={{ __html: analysis }} />
-            )}
+            {analysis && (<div className="mt-4 pt-4 border-t dark:border-stone-700 prose prose-sm dark:prose-invert max-w-none" dangerouslySetInnerHTML={{ __html: analysis }} />)}
         </div>
     );
 }
@@ -252,7 +230,7 @@ function AgencyTrendChart({ rekapData }: { rekapData: any[] }) {
 }
 
 // Komponen tabel performa host
-function HostPerformanceTable({ rekapData, hosts }: { rekapData: any[], hosts: any[] }) {
+function HostPerformanceTable({ rekapData, hosts, onGetFeedback }: { rekapData: any[], hosts: any[], onGetFeedback: (host: HostPerformance) => void }) {
     const [sortConfig, setSortConfig] = useState<{ key: keyof HostPerformance; direction: 'asc' | 'desc' }>({ key: 'totalDiamonds', direction: 'desc' });
     const performanceData = useMemo(() => {
         return hosts.map(host => {
@@ -288,25 +266,66 @@ function HostPerformanceTable({ rekapData, hosts }: { rekapData: any[], hosts: a
                     <tr>
                         <th scope="col" className="px-6 py-3">Peringkat</th>
                         <SortableHeader tKey="nama_host" tLabel="Nama Host" />
-                        <SortableHeader tKey="totalMinutes" tLabel="Total Jam Live" />
                         <SortableHeader tKey="totalDiamonds" tLabel="Total Diamond" />
                         <SortableHeader tKey="efficiency" tLabel="Efisiensi (💎/jam)" />
-                        <SortableHeader tKey="totalSessions" tLabel="Jumlah Sesi" />
+                        <SortableHeader tKey="totalMinutes" tLabel="Total Jam Live" />
+                        <th scope="col" className="px-6 py-3">Aksi AI</th>
                     </tr>
                 </thead>
                 <tbody>
                     {sortedPerformanceData.map((host, index) => (
                         <tr key={host.id} className="bg-white dark:bg-stone-800 border-b dark:border-stone-700">
-                            <td className="px-6 py-4 font-medium text-stone-900 dark:text-white text-center">{index + 1}</td>
+                            <td className="px-6 py-4 text-center">{index + 1}</td>
                             <td className="px-6 py-4 font-medium text-stone-900 dark:text-white">{host.nama_host}</td>
-                            <td className="px-6 py-4">{formatDuration(host.totalMinutes)}</td>
                             <td className="px-6 py-4">{formatDiamond(host.totalDiamonds)}</td>
                             <td className="px-6 py-4">{formatDiamond(host.efficiency)}</td>
-                            <td className="px-6 py-4">{host.totalSessions}</td>
+                            <td className="px-6 py-4">{formatDuration(host.totalMinutes)}</td>
+                            <td className="px-6 py-4">
+                                <button onClick={() => onGetFeedback(host)} className="text-purple-600 hover:text-purple-800 dark:text-purple-400 dark:hover:text-purple-300 flex items-center text-sm font-semibold">
+                                    <MessageSquareQuote className="h-4 w-4 mr-1.5" />
+                                    Dapatkan Saran
+                                </button>
+                            </td>
                         </tr>
                     ))}
                 </tbody>
             </table>
         </div>
+    );
+}
+
+// --- KOMPONEN BARU UNTUK MODAL FEEDBACK ---
+function FeedbackModal({ isOpen, onClose, hostData, dateRange }: { isOpen: boolean, onClose: () => void, hostData: HostPerformance | null, dateRange: string }) {
+    const [feedback, setFeedback] = useState('');
+    const [loading, setLoading] = useState(false);
+
+    useEffect(() => {
+        if (isOpen && hostData) {
+            const generateFeedback = async () => {
+                setLoading(true);
+                setFeedback('');
+                
+                const prompt = `Seorang host bernama "${hostData.nama_host}" memiliki statistik berikut untuk periode "${dateRange}": Total Jam Live: ${Math.round(hostData.totalMinutes / 60)} jam, Total Diamond: ${hostData.totalDiamonds}, Efisiensi: ${hostData.efficiency} diamond/jam. Tuliskan dalam format Markdown: 1. Satu paragraf umpan balik yang positif dan memotivasi. 2. Satu saran konkret yang bisa ditindaklanjuti untuk membantunya meningkatkan performa bulan depan.`;
+                
+                try {
+                    const response = await fetch('/api/generate-analysis', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ prompt }) });
+                    if (!response.ok) { const errorData = await response.json(); throw new Error(errorData.details || `API call failed`); }
+                    const result = await response.json();
+                    setFeedback(marked(result.analysis) as string);
+                } catch (error) {
+                    setFeedback(`Gagal mendapatkan saran: ${error.message}`);
+                } finally {
+                    setLoading(false);
+                }
+            };
+            generateFeedback();
+        }
+    }, [isOpen, hostData, dateRange]);
+
+    return (
+        <Modal isOpen={isOpen} onClose={onClose} title={`Saran AI untuk ${hostData?.nama_host}`}>
+            {loading && <div className="flex justify-center items-center h-40"><Sparkles className="h-8 w-8 animate-pulse text-purple-500" /></div>}
+            {feedback && <div className="prose prose-sm dark:prose-invert max-w-none" dangerouslySetInnerHTML={{ __html: feedback }} />}
+        </Modal>
     );
 }
