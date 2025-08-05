@@ -36,14 +36,14 @@ export default function DashboardPage() {
         return <DashboardSkeleton />;
     }
 
-    // --- PERBAIKAN: Menggunakan user_metadata.role secara langsung ---
-    const userRole = data.user.user_metadata?.role;
+    // --- PERBAIKAN: Menggunakan logika peran yang sama dengan Navigasi ---
+    const isSuperAdmin = data.user.user_metadata?.role === 'superadmin';
 
-    if (userRole === 'Host') {
-        return <HostDashboard />;
-    } else {
-        // Asumsikan sebagai Superadmin jika peran bukan 'Host'
+    if (isSuperAdmin) {
         return <SuperadminDashboard />;
+    } else {
+        // Jika bukan superadmin, tampilkan dasbor Host
+        return <HostDashboard />;
     }
 }
 
