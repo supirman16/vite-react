@@ -3,7 +3,7 @@ import { AppContext, AppContextType } from '../App';
 import { Line } from 'react-chartjs-2';
 import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, PointElement, LineElement, Title, Tooltip, Legend } from 'chart.js';
 import Skeleton from '../components/Skeleton';
-import { Clock, BarChart, Gem, Crown, ArrowUpDown } from 'lucide-react';
+import { Clock, BarChart, Gem, Crown, ArrowUpDown, Sparkles } from 'lucide-react';
 
 // Registrasi komponen Chart.js yang dibutuhkan
 ChartJS.register(CategoryScale, LinearScale, BarElement, PointElement, LineElement, Title, Tooltip, Legend);
@@ -87,6 +87,10 @@ export default function DashboardPage() {
         <section>
             <DateRangeFilter selectedRange={dateRange} onSelectRange={setDateRange} />
             
+            {/* --- KARTU ANALISIS CERDAS BARU --- */}
+            <GeminiAnalysisCard filteredRekap={filteredRekap} hosts={data.hosts} dateRange={dateRange} />
+            {/* ---------------------------------- */}
+
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
                 {kpiData.map((kpi) => (
                     <div key={kpi.title} className="bg-white dark:bg-stone-800 p-6 rounded-xl shadow-sm border border-stone-100 dark:border-stone-700">
@@ -114,11 +118,9 @@ export default function DashboardPage() {
                 <AgencyTrendChart rekapData={filteredRekap} />
             </div>
 
-            {/* --- MENGGANTI GRAFIK BATANG DENGAN TABEL PERFORMA BARU --- */}
             <div className="mt-8">
                 <HostPerformanceTable rekapData={filteredRekap} hosts={data.hosts} />
             </div>
-            {/* -------------------------------------------------------- */}
         </section>
     );
 }
@@ -133,11 +135,111 @@ function DateRangeFilter({ selectedRange, onSelectRange }: { selectedRange: Date
     );
 }
 
+// --- KOMPONEN BARU UNTUK ANALISIS CERDAS ---
+function GeminiAnalysisCard({ filteredRekap, hosts, dateRange }: { filteredRekap: any[], hosts: any[], dateRange: string }) {
+    const [analysis, setAnalysis] = useState('');
+    const [loading, setLoading] = useState(false);
+
+    const generateAnalysis = async () => {
+        setLoading(true);
+        setAnalysis('');
+
+        // 1. Siapkan data untuk dikirim
+        const performanceData = hosts.map(host => {
+            const hostRekap = filteredRekap.filter(r => r.host_id === host.id);
+            const totalMinutes = hostRekap.reduce((sum, r) => sum + r.durasi_menit, 0);
+            const totalDiamonds = hostRekap.reduce((sum, r) => sum + r.pendapatan, 0);
+            return {
+                nama_host: host.nama_host,
+                total_jam: (totalMinutes / 60).toFixed(1),
+                total_diamond: totalDiamonds,
+                jumlah_sesi: hostRekap.length,
+            };
+        });
+
+        // 2. Buat prompt untuk Gemini
+        const prompt = `
+            Anda adalah seorang manajer agensi TikTok yang ahli. Berdasarkan data kinerja berikut dalam format JSON untuk periode "${dateRange}", berikan analisis cerdas dalam format Markdown:
+            
+            Data Kinerja:
+            ${JSON.stringify(performanceData, null, 2)}
+
+            Tolong berikan:
+            - Satu paragraf ringkasan umum.
+            - Tiga poin utama (bullet points) yang menyoroti hal-hal penting (misalnya, host terbaik, tren menarik, atau masalah).
+            - Satu saran konkret yang bisa ditindaklanjuti untuk meningkatkan kinerja agensi.
+        `;
+
+        // 3. Panggil API Gemini
+        try {
+            let chatHistory = [{ role: "user", parts: [{ text: prompt }] }];
+            const payload = { contents: chatHistory };
+            const apiKey = ""; // Kunci API akan disediakan oleh lingkungan Canvas
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
+            
+            const response = await fetch(apiUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+
+            if (!response.ok) {
+                throw new Error(`API call failed with status: ${response.status}`);
+            }
+
+            const result = await response.json();
+            
+            if (result.candidates && result.candidates[0]?.content?.parts[0]?.text) {
+                setAnalysis(result.candidates[0].content.parts[0].text);
+            } else {
+                setAnalysis("Tidak dapat menghasilkan analisis. Coba lagi.");
+            }
+        } catch (error) {
+            console.error("Error calling Gemini API:", error);
+            setAnalysis("Terjadi kesalahan saat menghubungi layanan analisis. Periksa konsol untuk detail.");
+        } finally {
+            setLoading(false);
+        }
+    };
+    
+    // Fungsi sederhana untuk merender Markdown dasar
+    const renderMarkdown = (text: string) => {
+        return text
+            .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>') // Bold
+            .replace(/\*(.*?)\*/g, '<em>$1</em>')       // Italic
+            .replace(/^- (.*?)(\n|$)/gm, '<li class="ml-4 list-disc">$1</li>'); // Bullet points
+    };
+
+    return (
+        <div className="mb-8 bg-white dark:bg-stone-800 p-6 rounded-xl shadow-sm border border-stone-100 dark:border-stone-700">
+            <div className="flex justify-between items-start">
+                <div>
+                    <h2 className="text-xl font-semibold">Analisis Cerdas</h2>
+                    <p className="text-sm text-stone-500 dark:text-stone-400 mt-1">Dapatkan wawasan instan tentang kinerja agensi Anda dengan bantuan AI.</p>
+                </div>
+                <button 
+                    onClick={generateAnalysis}
+                    disabled={loading}
+                    className="unity-gradient-bg text-white font-semibold px-4 py-2 rounded-lg shadow-sm hover:opacity-90 flex items-center disabled:opacity-75"
+                >
+                    <Sparkles className={`h-5 w-5 mr-2 ${loading ? 'animate-pulse' : ''}`} />
+                    {loading ? 'Menganalisis...' : 'Buat Ringkasan'}
+                </button>
+            </div>
+            {analysis && (
+                <div className="mt-4 pt-4 border-t dark:border-stone-700 prose prose-sm dark:prose-invert max-w-none"
+                     dangerouslySetInnerHTML={{ __html: renderMarkdown(analysis) }} />
+            )}
+        </div>
+    );
+}
+
 // Komponen kerangka pemuatan
 function DashboardSkeleton() {
     return (
         <section>
             <div className="flex items-center space-x-2 mb-6"><Skeleton className="h-9 w-28 rounded-lg" /><Skeleton className="h-9 w-24 rounded-lg" /><Skeleton className="h-9 w-32 rounded-lg" /></div>
+            <Skeleton className="h-48 mb-8" /> {/* Skeleton untuk kartu Gemini */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8"><Skeleton className="h-28" /><Skeleton className="h-28" /><Skeleton className="h-28" /></div>
             <Skeleton className="h-96" />
             <div className="mt-8"><Skeleton className="h-96" /></div>
@@ -167,27 +269,18 @@ function AgencyTrendChart({ rekapData }: { rekapData: any[] }) {
     );
 }
 
-// --- KOMPONEN TABEL PERFORMA HOST BARU ---
+// Komponen tabel performa host
 function HostPerformanceTable({ rekapData, hosts }: { rekapData: any[], hosts: any[] }) {
     const [sortConfig, setSortConfig] = useState<{ key: keyof HostPerformance; direction: 'asc' | 'desc' }>({ key: 'totalDiamonds', direction: 'desc' });
-
     const performanceData = useMemo(() => {
         return hosts.map(host => {
             const hostRekap = rekapData.filter(r => r.host_id === host.id);
             const totalMinutes = hostRekap.reduce((sum, r) => sum + r.durasi_menit, 0);
             const totalDiamonds = hostRekap.reduce((sum, r) => sum + r.pendapatan, 0);
             const totalHours = totalMinutes / 60;
-            return {
-                id: host.id,
-                nama_host: host.nama_host,
-                totalMinutes,
-                totalDiamonds,
-                totalSessions: hostRekap.length,
-                efficiency: totalHours > 0 ? Math.round(totalDiamonds / totalHours) : 0,
-            };
+            return { id: host.id, nama_host: host.nama_host, totalMinutes, totalDiamonds, totalSessions: hostRekap.length, efficiency: totalHours > 0 ? Math.round(totalDiamonds / totalHours) : 0 };
         });
     }, [rekapData, hosts]);
-
     const sortedPerformanceData = useMemo(() => {
         return [...performanceData].sort((a, b) => {
             if (a[sortConfig.key] < b[sortConfig.key]) return sortConfig.direction === 'asc' ? -1 : 1;
@@ -195,26 +288,16 @@ function HostPerformanceTable({ rekapData, hosts }: { rekapData: any[], hosts: a
             return 0;
         });
     }, [performanceData, sortConfig]);
-
     const handleSort = (key: keyof HostPerformance) => {
-        setSortConfig(prev => ({
-            key,
-            direction: prev.key === key && prev.direction === 'desc' ? 'asc' : 'desc'
-        }));
+        setSortConfig(prev => ({ key, direction: prev.key === key && prev.direction === 'desc' ? 'asc' : 'desc' }));
     };
-
     const SortableHeader = ({ tKey, tLabel }: { tKey: keyof HostPerformance, tLabel: string }) => (
         <th scope="col" className="px-6 py-3 cursor-pointer hover:bg-stone-200 dark:hover:bg-stone-700" onClick={() => handleSort(tKey)}>
-            <div className="flex items-center">
-                {tLabel}
-                {sortConfig.key === tKey && <ArrowUpDown className="ml-2 h-4 w-4" />}
-            </div>
+            <div className="flex items-center">{tLabel}{sortConfig.key === tKey && <ArrowUpDown className="ml-2 h-4 w-4" />}</div>
         </th>
     );
-
     const formatDiamond = (num: number) => new Intl.NumberFormat().format(num);
     const formatDuration = (minutes: number) => `${Math.floor(minutes / 60)}j ${minutes % 60}m`;
-
     return (
         <div className="bg-white dark:bg-stone-800 rounded-xl shadow-sm border border-stone-100 dark:border-stone-700 overflow-x-auto">
             <h2 className="text-xl font-semibold p-6">Tabel Performa Host</h2>
