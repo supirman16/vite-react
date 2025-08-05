@@ -1,11 +1,8 @@
+const axios = require('axios');
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import axios from 'axios';
 
 // Handler untuk serverless function
-export default async function handler(
-  request: VercelRequest,
-  response: VercelResponse,
-) {
+module.exports = async (request: VercelRequest, response: VercelResponse) => {
   // Menangani CORS agar frontend di Vercel bisa mengakses API ini
   response.setHeader('Access-Control-Allow-Origin', '*');
   response.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
@@ -59,4 +56,4 @@ export default async function handler(
         details: error.response?.data || error.message
     });
   }
-}
+};
