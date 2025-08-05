@@ -1,10 +1,8 @@
 import { useContext } from 'react';
 import { AppContext, AppContextType } from '../App';
-import { LayoutDashboard, Star, FileText, User, DollarSign, Settings, Users, TestTube2, Ticket, BarChart3, Building2, LogOut } from 'lucide-react';
+import { LayoutDashboard, Star, FileText, User, DollarSign, Settings, Users, TestTube2, Ticket, BarChart3, Building2, LogOut, X } from 'lucide-react';
 
-// ==================================================================
-// KOMPONEN BARU: AnimatedLogo
-// ==================================================================
+// Komponen Logo Animasi
 function AnimatedLogo() {
     return (
         <svg width="32" height="32" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
@@ -37,21 +35,15 @@ function AnimatedLogo() {
     );
 }
 
-
-// ==================================================================
-// FILE YANG DIPERBARUI: Navigation.tsx
-// ==================================================================
-export default function Navigation() {
+// Komponen Bilah Navigasi Samping
+export default function Navigation({ onClose }: { onClose?: () => void }) {
     const context = useContext(AppContext);
 
-    // Penjaga untuk mencegah crash saat konteks atau sesi belum siap
     if (!context || !context.session) {
         return null; 
     }
 
     const { page, setPage, session, logout } = context as AppContextType;
-
-    // --- PERBAIKAN: Logika peran yang disederhanakan dan diperbaiki ---
     const userRole = session.user.user_metadata?.role;
 
     const navItems = [
@@ -66,26 +58,36 @@ export default function Navigation() {
         { id: 'users', label: 'Manajemen Pengguna', icon: Users, roles: ['superadmin'] },
         { id: 'tiktok', label: 'Manajemen Akun', icon: Ticket, roles: ['superadmin'] },
         { id: 'livetest', label: 'Uji Coba Live', icon: TestTube2, roles: ['superadmin'] },
-        { id: 'settings', label: 'Pengaturan Akun', icon: Settings, roles: ['host'] },
+        { id: 'settings', label: 'Pengaturan Akun', icon: Settings, roles: ['host', 'superadmin'] },
     ];
 
-    // Logika filter yang benar
     const accessibleNavItems = navItems.filter(item => item.roles.includes(userRole));
-    // ------------------------------------------------------------------
+
+    const handleLinkClick = (pageId: string) => {
+        setPage(pageId);
+        // Jika fungsi onClose diberikan (di mobile), panggil untuk menutup sidebar
+        if (onClose) {
+            onClose();
+        }
+    };
 
     return (
-        <aside className="hidden md:flex flex-col w-64 bg-white dark:bg-stone-800 border-r border-stone-200 dark:border-stone-700">
-            <div className="h-16 flex items-center px-6 border-b border-stone-200 dark:border-stone-700">
+        <aside className="flex h-full flex-col w-64 bg-white dark:bg-stone-800 border-r border-stone-200 dark:border-stone-700">
+            <div className="h-16 flex items-center justify-between px-6 border-b border-stone-200 dark:border-stone-700">
                 <div className="flex items-center gap-3">
                     <AnimatedLogo />
                     <span className="font-bold text-xl text-stone-800 dark:text-white">UNITY</span>
                 </div>
+                {/* Tombol tutup untuk mobile */}
+                <button onClick={onClose} className="md:hidden p-1 text-stone-500 dark:text-stone-400">
+                    <X className="h-6 w-6" />
+                </button>
             </div>
             <nav className="flex-1 overflow-y-auto p-4 space-y-2">
                 {accessibleNavItems.map(item => (
                     <button 
                         key={item.id} 
-                        onClick={() => setPage(item.id)} 
+                        onClick={() => handleLinkClick(item.id)} 
                         className={`w-full flex items-center px-4 py-2.5 text-sm font-semibold rounded-lg transition-colors ${
                             page === item.id 
                                 ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/50 dark:text-purple-300' 
