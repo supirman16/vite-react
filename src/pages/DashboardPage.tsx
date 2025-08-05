@@ -1,12 +1,12 @@
 import { useContext, useState, useMemo } from 'react';
 import { AppContext, AppContextType } from '../App';
 import { Line } from 'react-chartjs-2';
-import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, PointElement, LineElement, Title, Tooltip, Legend } from 'chart.js';
+import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, PointElement, LineElement, Title, Tooltip, Legend, Filler } from 'chart.js';
 import Skeleton from '../components/Skeleton';
 import { Clock, BarChart, Gem, Crown, ArrowUpDown, Sparkles } from 'lucide-react';
 
-// Registrasi komponen Chart.js yang dibutuhkan
-ChartJS.register(CategoryScale, LinearScale, BarElement, PointElement, LineElement, Title, Tooltip, Legend);
+// Registrasi komponen Chart.js yang dibutuhkan, termasuk Filler
+ChartJS.register(CategoryScale, LinearScale, BarElement, PointElement, LineElement, Title, Tooltip, Legend, Filler);
 
 // Tipe data untuk rentang waktu dan data performa
 type DateRange = 'all' | 'today' | '7d' | 'thisMonth' | '30d';
@@ -144,7 +144,6 @@ function GeminiAnalysisCard({ filteredRekap, hosts, dateRange }: { filteredRekap
         setLoading(true);
         setAnalysis('');
 
-        // 1. Siapkan data untuk dikirim
         const performanceData = hosts.map(host => {
             const hostRekap = filteredRekap.filter(r => r.host_id === host.id);
             const totalMinutes = hostRekap.reduce((sum, r) => sum + r.durasi_menit, 0);
@@ -157,57 +156,45 @@ function GeminiAnalysisCard({ filteredRekap, hosts, dateRange }: { filteredRekap
             };
         });
 
-        // 2. Buat prompt untuk Gemini
         const prompt = `
             Anda adalah seorang manajer agensi TikTok yang ahli. Berdasarkan data kinerja berikut dalam format JSON untuk periode "${dateRange}", berikan analisis cerdas dalam format Markdown:
-            
             Data Kinerja:
             ${JSON.stringify(performanceData, null, 2)}
-
             Tolong berikan:
             - Satu paragraf ringkasan umum.
             - Tiga poin utama (bullet points) yang menyoroti hal-hal penting (misalnya, host terbaik, tren menarik, atau masalah).
             - Satu saran konkret yang bisa ditindaklanjuti untuk meningkatkan kinerja agensi.
         `;
 
-        // 3. Panggil API Gemini
+        // --- PERUBAHAN UTAMA: Memanggil API backend Anda, bukan Google ---
         try {
-            let chatHistory = [{ role: "user", parts: [{ text: prompt }] }];
-            const payload = { contents: chatHistory };
-            const apiKey = ""; // Kunci API akan disediakan oleh lingkungan Canvas
-            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
-            
-            const response = await fetch(apiUrl, {
+            const response = await fetch('/api/generate-analysis', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
+                body: JSON.stringify({ prompt }) // Kirim prompt ke backend
             });
 
             if (!response.ok) {
-                throw new Error(`API call failed with status: ${response.status}`);
+                const errorData = await response.json();
+                throw new Error(errorData.details || `API call failed with status: ${response.status}`);
             }
 
             const result = await response.json();
+            setAnalysis(result.analysis);
             
-            if (result.candidates && result.candidates[0]?.content?.parts[0]?.text) {
-                setAnalysis(result.candidates[0].content.parts[0].text);
-            } else {
-                setAnalysis("Tidak dapat menghasilkan analisis. Coba lagi.");
-            }
         } catch (error) {
-            console.error("Error calling Gemini API:", error);
-            setAnalysis("Terjadi kesalahan saat menghubungi layanan analisis. Periksa konsol untuk detail.");
+            console.error("Error calling local API:", error);
+            setAnalysis(`Terjadi kesalahan saat menghubungi layanan analisis: ${error.message}`);
         } finally {
             setLoading(false);
         }
     };
     
-    // Fungsi sederhana untuk merender Markdown dasar
     const renderMarkdown = (text: string) => {
         return text
-            .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>') // Bold
-            .replace(/\*(.*?)\*/g, '<em>$1</em>')       // Italic
-            .replace(/^- (.*?)(\n|$)/gm, '<li class="ml-4 list-disc">$1</li>'); // Bullet points
+            .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+            .replace(/\*(.*?)\*/g, '<em>$1</em>')
+            .replace(/^- (.*?)(\n|$)/gm, '<li class="ml-4 list-disc">$1</li>');
     };
 
     return (
