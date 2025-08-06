@@ -2,7 +2,6 @@ import { useContext } from 'react';
 import { AppContext, AppContextType } from '../App';
 import { LayoutDashboard, Star, FileText, User, DollarSign, Settings, Users, TestTube2, Ticket, BarChart3, Building2, LogOut, X, ShieldCheck, Megaphone } from 'lucide-react';
 
-// Komponen Bilah Navigasi Samping yang Didesain Ulang
 export default function Navigation({ onClose }: { onClose?: () => void }) {
     const context = useContext(AppContext);
 
@@ -11,6 +10,7 @@ export default function Navigation({ onClose }: { onClose?: () => void }) {
     }
 
     const { page, setPage, session, logout, theme } = context as AppContextType;
+    // --- PERBAIKAN: Kembali menggunakan user_metadata ---
     const userRole = session.user.user_metadata?.role;
     const userInitial = session.user.email ? session.user.email.charAt(0).toUpperCase() : '?';
 
@@ -18,7 +18,6 @@ export default function Navigation({ onClose }: { onClose?: () => void }) {
         { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, roles: ['host', 'superadmin'] },
         { id: 'announcements', label: 'Pengumuman', icon: Megaphone, roles: ['host', 'superadmin'] },
         { id: 'leaderboard', label: 'Papan Peringkat', icon: Star, roles: ['host', 'superadmin'] },
-        // --- PERBAIKAN: Tambahkan 'host' ke dalam roles di sini ---
         { id: 'analysis', label: 'Analisis Kinerja', icon: BarChart3, roles: ['host', 'superadmin'] },
         { id: 'rekap', label: 'Rekap Live', icon: FileText, roles: ['host', 'superadmin'] },
         { id: 'profile', label: 'Profil Saya', icon: User, roles: ['host'] },

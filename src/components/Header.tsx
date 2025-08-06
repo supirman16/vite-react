@@ -1,6 +1,6 @@
 import { useContext, useState, useEffect, useRef } from 'react';
 import { AppContext, AppContextType } from '../App';
-import { LogOut, Sun, Moon, Menu, User, Settings, ShieldCheck } from 'lucide-react';
+import { LogOut, Sun, Moon, Menu, User, Settings, ShieldCheck, Sparkles } from 'lucide-react';
 
 interface HeaderProps {
     onMenuClick: () => void;
@@ -19,6 +19,7 @@ const pageTitles: { [key: string]: string } = {
     tiktok: 'Manajemen Akun',
     livetest: 'Uji Coba Live',
     settings: 'Pengaturan Akun',
+    announcements: 'Pengumuman'
 };
 
 export default function Header({ onMenuClick }: HeaderProps) {
@@ -26,6 +27,7 @@ export default function Header({ onMenuClick }: HeaderProps) {
     const [isProfileOpen, setIsProfileOpen] = useState(false);
     const profileMenuRef = useRef<HTMLDivElement>(null);
 
+    // --- PERBAIKAN: Kembali menggunakan user_metadata ---
     const userRole = session?.user?.user_metadata?.role;
     const isSuperAdmin = userRole === 'superadmin';
     const currentPageTitle = pageTitles[page] || 'Dashboard';
@@ -55,7 +57,6 @@ export default function Header({ onMenuClick }: HeaderProps) {
     const userInitial = session?.user?.email ? session.user.email.charAt(0).toUpperCase() : '?';
 
     return (
-        // --- PERUBAHAN: Menghapus 'sticky', 'top-4', 'mx-4', 'md:mx-6' ---
         <header className="flex justify-between items-center px-4 md:px-6 py-4 h-20 bg-white/70 dark:bg-stone-900/70 backdrop-blur-lg border-b border-stone-200/80 dark:border-stone-800/80">
             <div className="flex items-center space-x-4">
                 <button 

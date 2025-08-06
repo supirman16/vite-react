@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useContext } from 'react';
 import { AppContext, AppContextType, supabase } from '../App';
-import { Download, Trash2, Eye, Check, XCircle } from 'lucide-react';
+import { Download, Trash2, Eye, Check, XCircle, Target } from 'lucide-react';
 import Modal from './Modal';
 
 interface ProfileEditorProps {
@@ -21,8 +21,8 @@ const documentStatuses = {
 };
 
 // Komponen ini menampilkan formulir profil dan manajemen dokumen untuk host tertentu.
-export default function ProfileEditor({ hostId }: ProfileEditorProps) {
-    const { data, fetchData, showNotification } = useContext(AppContext) as AppContextType;
+export default function ProfileEditor({ hostId }: { hostId: number }) {
+    const { data, showNotification } = useContext(AppContext) as AppContextType;
     const [loading, setLoading] = useState(false);
     const hostData = data.hosts.find(h => h.id === hostId);
 
@@ -58,7 +58,7 @@ export default function ProfileEditor({ hostId }: ProfileEditorProps) {
             const { error } = await supabase.from('hosts').update(formData).eq('id', hostId);
             if (error) throw error;
             showNotification('Profil berhasil diperbarui!');
-            fetchData();
+            // Tidak perlu fetchData() karena data akan diperbarui oleh subscription
         } catch (error: any) {
             showNotification(`Gagal memperbarui profil: ${error.message}`, true);
         } finally {
@@ -72,6 +72,7 @@ export default function ProfileEditor({ hostId }: ProfileEditorProps) {
         <div className="space-y-8">
             <div className="bg-white dark:bg-stone-800 p-6 rounded-xl shadow-sm border border-stone-100 dark:border-stone-700">
                 <form onSubmit={handleSubmit} className="space-y-6 max-w-lg">
+                    {/* ... (Form profil yang sudah ada tidak berubah) ... */}
                     <div>
                         <label htmlFor="nama_host" className="block mb-2 text-sm font-medium text-stone-900 dark:text-stone-300">Nama Lengkap</label>
                         <input type="text" id="nama_host" value={formData.nama_host} onChange={handleInputChange} className={commonInputClasses} required />
@@ -102,7 +103,72 @@ export default function ProfileEditor({ hostId }: ProfileEditorProps) {
                     </div>
                 </form>
             </div>
+            {/* --- PENAMBAHAN: Bagian untuk mengatur target --- */}
+            <TargetSetter hostId={hostId} />
             <DocumentSection hostId={hostId} />
+        </div>
+    );
+}
+
+// --- PENAMBAHAN: Komponen baru untuk mengatur target ---
+function TargetSetter({ hostId }: { hostId: number }) {
+    const { data, setData, showNotification } = useContext(AppContext) as AppContextType;
+    const hostData = data.hosts.find(h => h.id === hostId);
+    const [target, setTarget] = useState(hostData?.monthly_diamond_target || 0);
+    const [loading, setLoading] = useState(false);
+
+    useEffect(() => {
+        setTarget(hostData?.monthly_diamond_target || 0);
+    }, [hostData]);
+
+    const handleTargetSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+        e.preventDefault();
+        setLoading(true);
+        try {
+            const { data: updatedHost, error } = await supabase
+                .from('hosts')
+                .update({ monthly_diamond_target: target })
+                .eq('id', hostId)
+                .select()
+                .single();
+
+            if (error) throw error;
+
+            setData(prev => ({
+                ...prev,
+                hosts: prev.hosts.map(h => h.id === hostId ? updatedHost : h)
+            }));
+            showNotification('Target bulanan berhasil diperbarui!');
+        } catch (error: any) {
+            showNotification(`Gagal menyimpan target: ${error.message}`, true);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    return (
+        <div className="bg-white dark:bg-stone-800 p-6 rounded-xl shadow-sm border border-stone-100 dark:border-stone-700">
+            <h3 className="text-lg font-medium text-stone-900 dark:text-stone-200 flex items-center">
+                <Target className="h-5 w-5 mr-3 text-purple-500" />
+                Target Diamond Bulanan
+            </h3>
+            <p className="text-sm text-stone-500 dark:text-stone-400 mt-1">Atur target pribadi untuk memotivasi diri Anda setiap bulan.</p>
+            <form onSubmit={handleTargetSubmit} className="mt-4 flex flex-col sm:flex-row items-end gap-4">
+                <div className="w-full">
+                    <label htmlFor="monthly_diamond_target" className="block mb-2 text-sm font-medium text-stone-900 dark:text-stone-300">Target Diamond</label>
+                    <input 
+                        type="number" 
+                        id="monthly_diamond_target" 
+                        value={target}
+                        onChange={(e) => setTarget(parseInt(e.target.value) || 0)}
+                        className="bg-stone-50 border border-stone-300 text-stone-900 text-sm rounded-lg focus:ring-purple-500 focus:border-purple-500 block w-full p-2.5 dark:bg-stone-700 dark:border-stone-600 dark:placeholder-stone-400 dark:text-white"
+                        placeholder="Contoh: 100000"
+                    />
+                </div>
+                <button type="submit" disabled={loading} className="w-full sm:w-auto unity-gradient-bg text-white font-semibold px-5 py-2.5 rounded-lg shadow-sm hover:opacity-90 flex items-center justify-center disabled:opacity-75">
+                    {loading ? 'Menyimpan...' : 'Simpan Target'}
+                </button>
+            </form>
         </div>
     );
 }
