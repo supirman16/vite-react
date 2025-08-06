@@ -16,9 +16,10 @@ export default function Navigation({ onClose }: { onClose?: () => void }) {
 
     const navItems = [
         { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, roles: ['host', 'superadmin'] },
-        { id: 'announcements', label: 'Pengumuman', icon: Megaphone, roles: ['host', 'superadmin'] }, // <-- Tambahkan ini
+        { id: 'announcements', label: 'Pengumuman', icon: Megaphone, roles: ['host', 'superadmin'] },
         { id: 'leaderboard', label: 'Papan Peringkat', icon: Star, roles: ['host', 'superadmin'] },
-        { id: 'analysis', label: 'Analisis Kinerja', icon: BarChart3, roles: ['superadmin'] },
+        // --- PERBAIKAN: Tambahkan 'host' ke dalam roles di sini ---
+        { id: 'analysis', label: 'Analisis Kinerja', icon: BarChart3, roles: ['host', 'superadmin'] },
         { id: 'rekap', label: 'Rekap Live', icon: FileText, roles: ['host', 'superadmin'] },
         { id: 'profile', label: 'Profil Saya', icon: User, roles: ['host'] },
         { id: 'salary', label: 'Gaji Saya', icon: DollarSign, roles: ['host'] },
