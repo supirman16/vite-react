@@ -2,14 +2,25 @@ import { useContext, useState, useEffect, useRef } from 'react';
 import { AppContext, AppContextType } from '../App';
 import { LogOut, Sun, Moon, Menu, User, Settings } from 'lucide-react';
 
+// Definisikan tipe untuk props yang diterima komponen
+interface HeaderProps {
+    onMenuClick: () => void;
+}
+
 // Komponen ini bertanggung jawab untuk merender bagian header aplikasi.
-export default function Header() {
-    const { theme, setTheme, handleLogout, setIsMenuOpen, session, setPage } = useContext(AppContext) as AppContextType;
+// Sekarang menerima 'onMenuClick' sebagai prop.
+export default function Header({ onMenuClick }: HeaderProps) {
+    // Hapus 'setIsMenuOpen' dari context karena kita menggunakan prop 'onMenuClick'
+    const { theme, setTheme, logout, session, setPage } = useContext(AppContext) as AppContextType;
     const [isProfileOpen, setIsProfileOpen] = useState(false);
     const profileMenuRef = useRef<HTMLDivElement>(null);
     const isSuperAdmin = session?.user?.user_metadata?.role === 'superadmin';
 
-    const toggleTheme = () => setTheme(theme === 'light' ? 'dark' : 'light');
+    const toggleTheme = () => {
+        const newTheme = theme === 'light' ? 'dark' : 'light';
+        setTheme(newTheme);
+        // Anda mungkin perlu menambahkan logika untuk menyimpan tema di localStorage atau context
+    };
 
     // Menutup dropdown saat pengguna mengklik di luar area menu
     useEffect(() => {
@@ -24,7 +35,7 @@ export default function Header() {
         };
     }, [profileMenuRef]);
 
-    const handleMenuClick = (pageName: string) => {
+    const handleProfileMenuClick = (pageName: string) => {
         setPage(pageName);
         setIsProfileOpen(false);
     }
@@ -36,13 +47,13 @@ export default function Header() {
         <header className="mb-8 flex justify-between items-center p-4 bg-white/50 dark:bg-stone-800/50 backdrop-blur-sm sticky top-4 z-20 rounded-xl shadow-sm border border-stone-200 dark:border-stone-700">
             <div className="flex items-center space-x-4">
                 <button 
-                    onClick={() => setIsMenuOpen(true)} 
+                    onClick={onMenuClick} // Gunakan prop onMenuClick di sini
                     className="md:hidden p-2 rounded-md hover:bg-stone-100 dark:hover:bg-stone-700"
                     aria-label="Buka menu"
                 >
                     <Menu className="h-6 w-6" />
                 </button>
-                {/* Logo berubah sesuai tema */}
+                {/* Logo bisa disesuaikan jika perlu */}
                 <img className="h-10 w-auto" src={theme === 'dark' ? 'https://i.imgur.com/L4a0239.png' : 'https://i.imgur.com/kwZdtFs.png'} alt="Unity Agency" />
             </div>
             <div className="flex items-center space-x-2">
@@ -71,17 +82,17 @@ export default function Header() {
                                 </div>
                                 {!isSuperAdmin && (
                                     <>
-                                        <a href="#" onClick={() => handleMenuClick('profile')} className="flex items-center px-4 py-2 text-sm text-stone-700 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-700">
+                                        <a href="#" onClick={() => handleProfileMenuClick('profile')} className="flex items-center px-4 py-2 text-sm text-stone-700 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-700">
                                             <User className="mr-3 h-5 w-5" />
                                             <span>Profil Saya</span>
                                         </a>
-                                        <a href="#" onClick={() => handleMenuClick('settings')} className="flex items-center px-4 py-2 text-sm text-stone-700 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-700">
+                                        <a href="#" onClick={() => handleProfileMenuClick('settings')} className="flex items-center px-4 py-2 text-sm text-stone-700 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-700">
                                             <Settings className="mr-3 h-5 w-5" />
                                             <span>Pengaturan Akun</span>
                                         </a>
                                     </>
                                 )}
-                                <a href="#" onClick={handleLogout} className="flex items-center px-4 py-2 text-sm text-red-600 dark:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/50">
+                                <a href="#" onClick={logout} className="flex items-center px-4 py-2 text-sm text-red-600 dark:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/50">
                                     <LogOut className="mr-3 h-5 w-5" />
                                     <span>Logout</span>
                                 </a>
