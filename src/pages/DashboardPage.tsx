@@ -3,20 +3,20 @@ import { AppContext, AppContextType } from '../App';
 import { Line } from 'react-chartjs-2';
 import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, PointElement, LineElement, Title, Tooltip, Legend, Filler } from 'chart.js';
 import Skeleton from '../components/Skeleton';
-import { Clock, BarChart, Gem, Crown, ArrowUpDown, Sparkles, MessageSquareQuote, Trophy } from 'lucide-react';
+import { Clock, BarChart, Gem, Crown, ArrowUpDown, Sparkles, MessageSquareQuote, Trophy, Target } from 'lucide-react';
 import { marked } from 'marked';
 import Modal from '../components/Modal';
 
-// Konfigurasi Marked.js untuk pemformatan yang lebih baik
+// Konfigurasi Marked.js
 marked.setOptions({
     gfm: true,
     breaks: true,
 });
 
-// Registrasi komponen Chart.js yang dibutuhkan
+// Registrasi komponen Chart.js
 ChartJS.register(CategoryScale, LinearScale, BarElement, PointElement, LineElement, Title, Tooltip, Legend, Filler);
 
-// Tipe data untuk rentang waktu dan data performa
+// Tipe data
 type DateRange = 'all' | 'today' | '7d' | 'thisMonth' | '30d';
 interface HostPerformance {
     id: number;
@@ -27,7 +27,7 @@ interface HostPerformance {
     efficiency: number;
 }
 
-// Komponen ini adalah halaman utama Dashboard.
+// Komponen utama Dashboard
 export default function DashboardPage() {
     const { data, session } = useContext(AppContext) as AppContextType;
     
@@ -52,7 +52,6 @@ function SuperadminDashboard() {
     const [dateRange, setDateRange] = useState<DateRange>('30d');
     const [feedbackState, setFeedbackState] = useState<{ isOpen: boolean; host: HostPerformance | null }>({ isOpen: false, host: null });
 
-    // --- PERBAIKAN: Hanya gunakan rekap yang sudah disetujui ---
     const approvedRekap = useMemo(() => {
         return data.rekapLive.filter(r => r.status === 'approved');
     }, [data.rekapLive]);
@@ -123,15 +122,17 @@ function HostDashboard() {
     const { data, session } = useContext(AppContext) as AppContextType;
     const [dateRange, setDateRange] = useState<DateRange>('30d');
 
+    // --- PERBAIKAN: Gunakan host_id dari metadata sebagai sumber kebenaran ---
+    const hostId = session?.user.user_metadata.host_id;
     const currentHost = useMemo(() => {
-        return data.hosts.find(h => h.user_id === session?.user.id);
-    }, [data.hosts, session]);
+        return data.hosts.find(h => h.id === hostId);
+    }, [data.hosts, hostId]);
 
-    // --- PERBAIKAN: Hanya gunakan rekap yang sudah disetujui ---
     const approvedRekap = useMemo(() => {
-        if (!currentHost || !data.rekapLive) return [];
-        return data.rekapLive.filter(r => r.host_id === currentHost.id && r.status === 'Approved');
-    }, [data.rekapLive, currentHost]);
+        if (!hostId || !data.rekapLive) return [];
+        // Filter rekap live langsung menggunakan hostId
+        return data.rekapLive.filter(r => r.host_id === hostId && r.status === 'approved');
+    }, [data.rekapLive, hostId]);
 
     const filteredRekap = useMemo(() => {
         if (!approvedRekap) return [];
@@ -147,30 +148,29 @@ function HostDashboard() {
     }, [approvedRekap, dateRange]);
 
     const personalStats = useMemo(() => {
-        if (!currentHost || !data.rekapLive) return { totalMinutes: 0, totalDiamonds: 0, efficiency: 0, rank: 'N/A' };
+        if (!hostId || !data.rekapLive) return { totalMinutes: 0, totalDiamonds: 0, efficiency: 0, rank: 'N/A' };
         
         const totalMinutes = filteredRekap.reduce((sum, r) => sum + r.durasi_menit, 0);
         const totalDiamonds = filteredRekap.reduce((sum, r) => sum + r.pendapatan, 0);
         const totalHours = totalMinutes / 60;
         const efficiency = totalHours > 0 ? Math.round(totalDiamonds / totalHours) : 0;
 
-        // --- PERBAIKAN: Hitung peringkat hanya dari rekap yang disetujui ---
-        const allApprovedRekap = data.rekapLive.filter(r => r.status === 'Approved');
+        const allApprovedRekap = data.rekapLive.filter(r => r.status === 'approved');
         const hostTotals = data.hosts.map(host => {
             const hostAllTimeRekap = allApprovedRekap.filter(r => r.host_id === host.id);
             return { id: host.id, totalDiamonds: hostAllTimeRekap.reduce((sum, r) => sum + r.pendapatan, 0) };
         });
         hostTotals.sort((a, b) => b.totalDiamonds - a.totalDiamonds);
-        const rank = hostTotals.findIndex(h => h.id === currentHost.id) + 1;
+        const rank = hostTotals.findIndex(h => h.id === hostId) + 1;
 
         return { totalMinutes, totalDiamonds, efficiency, rank: rank > 0 ? `#${rank}` : 'N/A' };
-    }, [filteredRekap, currentHost, data.hosts, data.rekapLive]);
+    }, [filteredRekap, hostId, data.hosts, data.rekapLive]);
 
     const formatDiamond = (num: number) => new Intl.NumberFormat().format(num);
     const formatDuration = (minutes: number) => `${Math.floor(minutes / 60)}j ${minutes % 60}m`;
 
     const kpiData = [
-        { title: 'Total Diamond Anda', value: `${formatDiamond(personalStats.totalDiamonds)} 💎`, icon: Gem },
+        { title: 'Total Diamond Anda', value: `${formatDiamond(personalStats.totalDiamonds)} `, icon: Gem },
         { title: 'Total Jam Live Anda', value: formatDuration(personalStats.totalMinutes), icon: Clock },
         { title: 'Efisiensi Anda', value: `${formatDiamond(personalStats.efficiency)} 💎/jam`, icon: BarChart },
         { title: 'Peringkat Anda', value: personalStats.rank, icon: Trophy },
@@ -179,6 +179,9 @@ function HostDashboard() {
     return (
         <section>
             <DateRangeFilter selectedRange={dateRange} onSelectRange={setDateRange} />
+            
+            {currentHost && <div className="mb-8"><TargetProgressWidget host={currentHost} rekapData={data.rekapLive} /></div>}
+
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
                 {kpiData.map((kpi) => (
                     <div key={kpi.title} className="bg-white dark:bg-stone-800 p-6 rounded-xl shadow-sm border border-stone-100 dark:border-stone-700 flex items-center">
@@ -203,6 +206,61 @@ function HostDashboard() {
     );
 }
 
+// ==================================================================
+// KOMPONEN-KOMPONEN PEMBANTU
+// ==================================================================
+
+// Komponen baru untuk widget progress target
+function TargetProgressWidget({ host, rekapData }: { host: any, rekapData: any[] }) {
+    const target = host.monthly_diamond_target || 0;
+
+    const currentMonthDiamonds = useMemo(() => {
+        const now = new Date();
+        const currentMonth = now.getMonth();
+        const currentYear = now.getFullYear();
+
+        return rekapData
+            .filter(r => {
+                const recDate = new Date(r.tanggal_live);
+                return r.host_id === host.id &&
+                       recDate.getMonth() === currentMonth &&
+                       recDate.getFullYear() === currentYear &&
+                       r.status === 'approved';
+            })
+            .reduce((sum, r) => sum + r.pendapatan, 0);
+    }, [rekapData, host.id]);
+
+    const progress = target > 0 ? Math.min(100, (currentMonthDiamonds / target) * 100) : 0;
+    const formatDiamond = (num: number) => new Intl.NumberFormat().format(num);
+
+    if (target === 0) {
+        return (
+            <div className="bg-white dark:bg-stone-800 p-6 rounded-xl shadow-sm border border-stone-100 dark:border-stone-700 text-center">
+                <Target className="h-8 w-8 mx-auto text-stone-400" />
+                <p className="mt-2 text-sm text-stone-500 dark:text-stone-400">Anda belum mengatur target bulanan. Atur di halaman profil!</p>
+            </div>
+        );
+    }
+
+    return (
+        <div className="bg-white dark:bg-stone-800 p-6 rounded-xl shadow-sm border border-stone-100 dark:border-stone-700">
+            <div className="flex justify-between items-center mb-2">
+                <h3 className="text-md font-semibold text-stone-800 dark:text-stone-100">Progres Target Bulanan</h3>
+                <span className="text-lg font-bold unity-gradient-text">{progress.toFixed(1)}%</span>
+            </div>
+            <div className="w-full bg-stone-200 dark:bg-stone-700 rounded-full h-4">
+                <div 
+                    className="bg-gradient-to-r from-purple-500 to-blue-500 h-4 rounded-full transition-all duration-500" 
+                    style={{ width: `${progress}%` }}
+                ></div>
+            </div>
+            <div className="flex justify-between items-center mt-2 text-sm text-stone-600 dark:text-stone-300">
+                <span>{formatDiamond(currentMonthDiamonds)} 💎</span>
+                <span className="font-semibold">{formatDiamond(target)} 💎</span>
+            </div>
+        </div>
+    );
+}
 
 // Komponen filter waktu
 function DateRangeFilter({ selectedRange, onSelectRange }: { selectedRange: DateRange, onSelectRange: (range: DateRange) => void }) {
@@ -234,9 +292,9 @@ function GeminiAnalysisCard({ filteredRekap, hosts, dateRange }: { filteredRekap
             if (!response.ok) { const errorData = await response.json(); throw new Error(errorData.details || `API call failed with status: ${response.status}`); }
             const result = await response.json();
             setAnalysis(marked(result.analysis) as string);
-        } catch (error) {
+        } catch (error: any) {
             console.error("Error calling local API:", error);
-            setAnalysis(`Terjadi kesalahan saat menghubungi layanan analisis: ${error.message}`);
+            setAnalysis(`<p class="text-red-500">Terjadi kesalahan saat menghubungi layanan analisis: ${error.message}</p>`);
         } finally { setLoading(false); }
     };
 
@@ -367,8 +425,8 @@ function FeedbackModal({ isOpen, onClose, hostData, dateRange }: { isOpen: boole
                     if (!response.ok) { const errorData = await response.json(); throw new Error(errorData.details || `API call failed`); }
                     const result = await response.json();
                     setFeedback(marked(result.analysis) as string);
-                } catch (error) {
-                    setFeedback(`Gagal mendapatkan saran: ${error.message}`);
+                } catch (error: any) {
+                    setFeedback(`<p class="text-red-500">Gagal mendapatkan saran: ${error.message}</p>`);
                 } finally {
                     setLoading(false);
                 }
@@ -385,7 +443,7 @@ function FeedbackModal({ isOpen, onClose, hostData, dateRange }: { isOpen: boole
     );
 }
 
-// --- KOMPONEN BARU UNTUK TABEL SESI TERAKHIR HOST ---
+// Komponen tabel sesi terakhir host
 function RecentSessionsTable({ rekapData }: { rekapData: any[] }) {
     const formatDiamond = (num: number) => new Intl.NumberFormat().format(num);
     const formatDuration = (minutes: number) => `${Math.floor(minutes / 60)}j ${minutes % 60}m`;
