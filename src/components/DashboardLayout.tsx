@@ -2,7 +2,8 @@ import { useState, useContext } from 'react';
 import { AppContext, AppContextType } from '../App';
 import Header from './Header';
 import Navigation from './Navigation';
-import MobileMenu from './MobileMenu';
+// MobileMenu tidak lagi diimpor
+// import MobileMenu from './MobileMenu'; 
 import DashboardPage from '../pages/DashboardPage';
 import LeaderboardPage from '../pages/LeaderboardPage';
 import AnalysisPage from '../pages/AnalysisPage';
@@ -63,13 +64,14 @@ export default function DashboardLayout() {
             {/* Konten Utama */}
             <div className="flex flex-1 flex-col">
                 <Header onMenuClick={() => setSidebarOpen(true)} />
-                <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
+                {/* Menambahkan padding bawah untuk mobile (pb-20) untuk menggantikan ruang yang ditinggalkan oleh menu bawah */}
+                <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 pb-20 md:pb-8">
                     {renderPage()}
                 </main>
             </div>
 
-            {/* Menu Bawah untuk Mobile */}
-            <MobileMenu />
+            {/* Menu Bawah untuk Mobile telah dihapus */}
+            {/* <MobileMenu /> */}
         </div>
     );
 }
