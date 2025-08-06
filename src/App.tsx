@@ -32,7 +32,6 @@ export interface AppData {
     users: any[];
     user: any | null;
     announcements: any[];
-    // --- PENAMBAHAN: State untuk data interaktif ---
     announcementReads: any[];
     announcementReactions: any[];
 }
@@ -55,7 +54,6 @@ export default function App() {
         users: [],
         user: null,
         announcements: [],
-        // --- PENAMBAHAN: Inisialisasi state baru ---
         announcementReads: [],
         announcementReactions: [],
     });
@@ -93,7 +91,6 @@ export default function App() {
                 { data: hosts },
                 { data: tiktokAccounts },
                 { data: announcements },
-                // --- PENAMBAHAN: Ambil data reaksi dan status baca ---
                 { data: announcementReads },
                 { data: announcementReactions }
             ] = await Promise.all([
@@ -115,9 +112,10 @@ export default function App() {
                 const { data } = await supabase.from('rekap_live').select('*');
                 rekapLive = data;
             } else {
-                const host = hosts?.find(h => h.id === user.id);
-                if (host) {
-                    const { data } = await supabase.from('rekap_live').select('*').eq('host_id', host.id);
+                // --- PERBAIKAN FINAL: Langsung gunakan host_id dari metadata pengguna ---
+                const hostId = user.user_metadata?.host_id;
+                if (hostId) {
+                    const { data } = await supabase.from('rekap_live').select('*').eq('host_id', hostId);
                     rekapLive = data;
                 }
             }
@@ -130,7 +128,6 @@ export default function App() {
                 users: users || [],
                 user: user,
                 announcements: announcements || [],
-                // --- PENAMBAHAN: Set state baru ---
                 announcementReads: announcementReads || [],
                 announcementReactions: announcementReactions || [],
             });
@@ -147,6 +144,27 @@ export default function App() {
         } else {
             setData({ loading: false, hosts: [], rekapLive: [], tiktokAccounts: [], users: [], user: null, announcements: [], announcementReads: [], announcementReactions: [] });
         }
+    }, [session, fetchData]);
+
+    useEffect(() => {
+        if (!session) return;
+
+        const readsChannel = supabase.channel('announcement_reads_realtime')
+            .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'announcement_reads' }, (payload) => {
+                setData(prev => ({ ...prev, announcementReads: [...prev.announcementReads, payload.new] }));
+            })
+            .subscribe();
+
+        const reactionsChannel = supabase.channel('announcement_reactions_realtime')
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'announcement_reactions' }, () => {
+                fetchData(session);
+            })
+            .subscribe();
+
+        return () => {
+            supabase.removeChannel(readsChannel);
+            supabase.removeChannel(reactionsChannel);
+        };
     }, [session, fetchData]);
 
     const logout = async () => {
