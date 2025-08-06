@@ -1,41 +1,8 @@
 import { useContext } from 'react';
 import { AppContext, AppContextType } from '../App';
-import { LayoutDashboard, Star, FileText, User, DollarSign, Settings, Users, TestTube2, Ticket, BarChart3, Building2, LogOut, X } from 'lucide-react';
+import { LayoutDashboard, Star, FileText, User, DollarSign, Settings, Users, TestTube2, Ticket, BarChart3, Building2, LogOut, X, ShieldCheck, Megaphone } from 'lucide-react';
 
-// Komponen Logo Animasi
-function AnimatedLogo() {
-    return (
-        <svg width="32" height="32" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
-            <defs>
-                <linearGradient id="logoGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                    <stop offset="0%" stopColor="#F472B6" />
-                    <stop offset="50%" stopColor="#A855F7" />
-                    <stop offset="100%" stopColor="#22D3EE" />
-                </linearGradient>
-                <style>
-                    {`
-                        @keyframes flow {
-                            0% { transform: rotate(0deg) scale(1.1); }
-                            50% { transform: rotate(180deg) scale(1); }
-                            100% { transform: rotate(360deg) scale(1.1); }
-                        }
-                        .shape {
-                            animation: flow 20s linear infinite;
-                            transform-origin: 50% 50%;
-                        }
-                    `}
-                </style>
-            </defs>
-            <circle cx="50" cy="50" r="48" fill="url(#logoGradient)" />
-            <g className="shape">
-                <path d="M 20,50 C 20,20 80,20 80,50 C 80,80 20,80 20,50 Z" fill="#000" fillOpacity="0.1" />
-                <path d="M 50,20 C 80,20 80,80 50,80 C 20,80 20,20 50,20 Z" fill="#FFF" fillOpacity="0.15" transform="rotate(45 50 50)" />
-            </g>
-        </svg>
-    );
-}
-
-// Komponen Bilah Navigasi Samping
+// Komponen Bilah Navigasi Samping yang Didesain Ulang
 export default function Navigation({ onClose }: { onClose?: () => void }) {
     const context = useContext(AppContext);
 
@@ -43,11 +10,13 @@ export default function Navigation({ onClose }: { onClose?: () => void }) {
         return null; 
     }
 
-    const { page, setPage, session, logout } = context as AppContextType;
+    const { page, setPage, session, logout, theme } = context as AppContextType;
     const userRole = session.user.user_metadata?.role;
+    const userInitial = session.user.email ? session.user.email.charAt(0).toUpperCase() : '?';
 
     const navItems = [
         { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, roles: ['host', 'superadmin'] },
+        { id: 'announcements', label: 'Pengumuman', icon: Megaphone, roles: ['host', 'superadmin'] }, // <-- Tambahkan ini
         { id: 'leaderboard', label: 'Papan Peringkat', icon: Star, roles: ['host', 'superadmin'] },
         { id: 'analysis', label: 'Analisis Kinerja', icon: BarChart3, roles: ['superadmin'] },
         { id: 'rekap', label: 'Rekap Live', icon: FileText, roles: ['host', 'superadmin'] },
@@ -65,33 +34,32 @@ export default function Navigation({ onClose }: { onClose?: () => void }) {
 
     const handleLinkClick = (pageId: string) => {
         setPage(pageId);
-        // Jika fungsi onClose diberikan (di mobile), panggil untuk menutup sidebar
         if (onClose) {
             onClose();
         }
     };
 
     return (
-        <aside className="flex h-full flex-col w-64 bg-white dark:bg-stone-800 border-r border-stone-200 dark:border-stone-700">
-            <div className="h-16 flex items-center justify-between px-6 border-b border-stone-200 dark:border-stone-700">
+        <aside className="flex h-full flex-col w-64 bg-white dark:bg-stone-900 shadow-xl border-r border-stone-200 dark:border-stone-800">
+            <div className="flex items-center justify-between px-6 h-20 border-b border-stone-200 dark:border-stone-800">
                 <div className="flex items-center gap-3">
-                    <AnimatedLogo />
+                    <img className="h-10 w-auto" src={theme === 'dark' ? 'https://i.imgur.com/L4a0239.png' : 'https://i.imgur.com/kwZdtFs.png'} alt="Unity Agency" />
                     <span className="font-bold text-xl text-stone-800 dark:text-white">UNITY</span>
                 </div>
-                {/* Tombol tutup untuk mobile */}
                 <button onClick={onClose} className="md:hidden p-1 text-stone-500 dark:text-stone-400">
                     <X className="h-6 w-6" />
                 </button>
             </div>
-            <nav className="flex-1 overflow-y-auto p-4 space-y-2">
+            
+            <nav className="flex-1 overflow-y-auto p-4 space-y-1">
                 {accessibleNavItems.map(item => (
                     <button 
                         key={item.id} 
                         onClick={() => handleLinkClick(item.id)} 
-                        className={`w-full flex items-center px-4 py-2.5 text-sm font-semibold rounded-lg transition-colors ${
+                        className={`w-full flex items-center px-4 py-2.5 text-sm font-semibold rounded-lg transition-all duration-200 ease-in-out transform hover:translate-x-1 ${
                             page === item.id 
-                                ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/50 dark:text-purple-300' 
-                                : 'text-stone-600 hover:bg-stone-100 dark:text-stone-300 dark:hover:bg-stone-700'
+                                ? 'unity-gradient-bg text-white shadow-md' 
+                                : 'text-stone-600 hover:bg-stone-100 dark:text-stone-300 dark:hover:bg-stone-800'
                         }`}
                     >
                         <item.icon className="h-5 w-5 mr-3" />
@@ -99,13 +67,26 @@ export default function Navigation({ onClose }: { onClose?: () => void }) {
                     </button>
                 ))}
             </nav>
-            <div className="p-4 border-t border-stone-200 dark:border-stone-700">
+
+            <div className="p-4 border-t border-stone-200 dark:border-stone-800">
+                <div className="flex items-center gap-3 mb-4">
+                    <div className="h-10 w-10 rounded-full bg-gradient-to-br from-purple-600 to-blue-500 text-white flex items-center justify-center font-bold text-lg">
+                        {userInitial}
+                    </div>
+                    <div>
+                        <p className="text-sm font-semibold text-stone-800 dark:text-white truncate">{session.user.email}</p>
+                        <div className="flex items-center">
+                            <ShieldCheck className="h-4 w-4 text-green-500 mr-1.5" />
+                            <p className="text-xs font-medium text-stone-500 dark:text-stone-400 capitalize">{userRole}</p>
+                        </div>
+                    </div>
+                </div>
                 <button 
                     onClick={logout} 
-                    className="w-full flex items-center px-4 py-2.5 text-sm font-semibold rounded-lg text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/50"
+                    className="w-full flex items-center justify-center px-4 py-2.5 text-sm font-semibold rounded-lg text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/50 transition-colors"
                 >
-                    <LogOut className="h-5 w-5 mr-3" />
-                    Keluar
+                    <LogOut className="h-5 w-5 mr-2" />
+                    <span>Keluar</span>
                 </button>
             </div>
         </aside>

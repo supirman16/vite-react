@@ -5,7 +5,7 @@ import Modal from '../components/Modal';
 import ConfirmationModal from '../components/ConfirmationModal';
 import DropdownMenu from '../components/DropdownMenu';
 
-// Komponen ini adalah halaman Manajemen Pengguna untuk superadmin.
+// --- PERBAIKAN: Menambahkan kembali "export default" ---
 export default function UsersPage() {
     const { setData, showNotification } = useContext(AppContext) as AppContextType;
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -182,7 +182,6 @@ function UsersTable({ onEdit, onDelete, searchQuery }: { onEdit: (user: any) => 
     );
 }
 
-// Komponen Modal untuk Tambah/Ubah Pengguna
 function UserModal({ isOpen, onClose, user }: { isOpen: boolean, onClose: () => void, user: any | null }) {
     const { data, setData, showNotification } = useContext(AppContext) as AppContextType;
     const [formData, setFormData] = useState({
@@ -192,6 +191,7 @@ function UserModal({ isOpen, onClose, user }: { isOpen: boolean, onClose: () => 
         host_id: user?.user_metadata?.host_id || '',
     });
     const [loading, setLoading] = useState(false);
+    const commonInputClasses = "bg-stone-50 border border-stone-300 text-stone-900 text-sm rounded-lg focus:ring-purple-500 focus:border-purple-500 block w-full p-2.5 dark:bg-stone-700 dark:border-stone-600 dark:placeholder-stone-400 dark:text-white";
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
         const { id, value } = e.target;
@@ -208,7 +208,7 @@ function UserModal({ isOpen, onClose, user }: { isOpen: boolean, onClose: () => 
         e.preventDefault();
         setLoading(true);
         try {
-            if (user) { // Update
+            if (user) {
                 const { data: updatedUser, error } = await supabase.functions.invoke('update-user-details', {
                     body: { 
                         userId: user.id, 
@@ -222,7 +222,7 @@ function UserModal({ isOpen, onClose, user }: { isOpen: boolean, onClose: () => 
                 setData(prev => ({ ...prev, users: prev.users.map(u => u.id === user.id ? updatedUser.user : u) }));
                 showNotification('Pengguna berhasil diperbarui.');
 
-            } else { // Insert
+            } else {
                 if (!formData.password) {
                     showNotification('Password wajib diisi untuk pengguna baru.', true);
                     setLoading(false);
@@ -247,24 +247,24 @@ function UserModal({ isOpen, onClose, user }: { isOpen: boolean, onClose: () => 
         <Modal isOpen={isOpen} onClose={onClose} title={user ? 'Ubah Pengguna' : 'Tambah Pengguna Baru'}>
             <form onSubmit={handleSubmit} className="space-y-4">
                 <div>
-                    <label htmlFor="email" className="block mb-2 text-sm font-medium">Email</label>
-                    <input id="email" type="email" value={formData.email} onChange={handleChange} disabled={!!user} className="bg-stone-50 border border-stone-300 text-stone-900 text-sm rounded-lg block w-full p-2.5 dark:bg-stone-700 dark:border-stone-600 disabled:opacity-50" required />
+                    <label htmlFor="email" className="block mb-2 text-sm font-medium text-stone-900 dark:text-stone-300">Email</label>
+                    <input id="email" type="email" value={formData.email} onChange={handleChange} disabled={!!user} className={`${commonInputClasses} disabled:opacity-50`} required />
                 </div>
                 <div>
-                    <label htmlFor="password" className="block mb-2 text-sm font-medium">Password</label>
-                    <input id="password" type="password" value={formData.password} onChange={handleChange} className="bg-stone-50 border border-stone-300 text-stone-900 text-sm rounded-lg block w-full p-2.5 dark:bg-stone-700 dark:border-stone-600" placeholder={user ? "Kosongkan jika tidak ingin diubah" : ""} />
+                    <label htmlFor="password" className="block mb-2 text-sm font-medium text-stone-900 dark:text-stone-300">Password</label>
+                    <input id="password" type="password" value={formData.password} onChange={handleChange} className={commonInputClasses} placeholder={user ? "Kosongkan jika tidak ingin diubah" : ""} />
                 </div>
                 <div>
-                    <label htmlFor="role" className="block mb-2 text-sm font-medium">Peran</label>
-                    <select id="role" value={formData.role} onChange={handleChange} className="bg-stone-50 border border-stone-300 text-stone-900 text-sm rounded-lg block w-full p-2.5 dark:bg-stone-700 dark:border-stone-600">
+                    <label htmlFor="role" className="block mb-2 text-sm font-medium text-stone-900 dark:text-stone-300">Peran</label>
+                    <select id="role" value={formData.role} onChange={handleChange} className={commonInputClasses}>
                         <option value="host">Host</option>
                         <option value="superadmin">Superadmin</option>
                     </select>
                 </div>
                 {formData.role === 'host' && (
                     <div>
-                        <label htmlFor="host_id" className="block mb-2 text-sm font-medium">Hubungkan ke Host</label>
-                        <select id="host_id" value={formData.host_id} onChange={handleChange} className="bg-stone-50 border border-stone-300 text-stone-900 text-sm rounded-lg block w-full p-2.5 dark:bg-stone-700 dark:border-stone-600">
+                        <label htmlFor="host_id" className="block mb-2 text-sm font-medium text-stone-900 dark:text-stone-300">Hubungkan ke Host</label>
+                        <select id="host_id" value={formData.host_id} onChange={handleChange} className={commonInputClasses}>
                             <option value="">Pilih Host</option>
                             {data.hosts.map(h => <option key={h.id} value={h.id}>{h.nama_host}</option>)}
                         </select>

@@ -6,7 +6,7 @@ import ConfirmationModal from '../components/ConfirmationModal';
 import DropdownMenu from '../components/DropdownMenu';
 import ProfileEditor from '../components/ProfileEditor';
 
-// Komponen ini adalah halaman Manajemen Host untuk superadmin.
+// --- PERBAIKAN: Menambahkan kembali "export default" ---
 export default function HostsPage() {
     const { setData, showNotification } = useContext(AppContext) as AppContextType;
     const [isFormModalOpen, setIsFormModalOpen] = useState(false);
@@ -16,7 +16,7 @@ export default function HostsPage() {
     const [hostToDelete, setHostToDelete] = useState<any | null>(null);
     const [hostForProfile, setHostForProfile] = useState<any | null>(null);
     const [searchQuery, setSearchQuery] = useState('');
-    const [showInactive, setShowInactive] = useState(false); // <-- State baru
+    const [showInactive, setShowInactive] = useState(false);
 
     const handleAdd = () => {
         setSelectedHost(null);
@@ -73,7 +73,6 @@ export default function HostsPage() {
                 </button>
             </div>
 
-            {/* Opsi Pencarian & Filter */}
             <div className="mb-4 flex flex-col sm:flex-row gap-4">
                 <div className="relative flex-grow">
                     <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
@@ -132,7 +131,6 @@ export default function HostsPage() {
     );
 }
 
-// Komponen Tabel Host
 function HostsTable({ onEdit, onDelete, onViewProfile, searchQuery, showInactive }: { onEdit: (host: any) => void, onDelete: (host: any) => void, onViewProfile: (host: any) => void, searchQuery: string, showInactive: boolean }) {
     const { data } = useContext(AppContext) as AppContextType;
     const [sortKey, setSortKey] = useState('nama_host');
@@ -215,7 +213,6 @@ function HostsTable({ onEdit, onDelete, onViewProfile, searchQuery, showInactive
     );
 }
 
-// Komponen Modal untuk Tambah/Ubah Host
 function HostModal({ isOpen, onClose, host }: { isOpen: boolean, onClose: () => void, host: any | null }) {
     const { setData, showNotification } = useContext(AppContext) as AppContextType;
     const [formData, setFormData] = useState({
@@ -225,6 +222,7 @@ function HostModal({ isOpen, onClose, host }: { isOpen: boolean, onClose: () => 
         status: host?.status || 'Aktif',
     });
     const [loading, setLoading] = useState(false);
+    const commonInputClasses = "bg-stone-50 border border-stone-300 text-stone-900 text-sm rounded-lg focus:ring-purple-500 focus:border-purple-500 block w-full p-2.5 dark:bg-stone-700 dark:border-stone-600 dark:placeholder-stone-400 dark:text-white";
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
         const { id, value } = e.target;
@@ -235,12 +233,12 @@ function HostModal({ isOpen, onClose, host }: { isOpen: boolean, onClose: () => 
         e.preventDefault();
         setLoading(true);
         try {
-            if (host) { // Update
+            if (host) {
                 const { data: updatedHost, error } = await supabase.from('hosts').update(formData).eq('id', host.id).select().single();
                 if (error) throw error;
                 setData(prev => ({ ...prev, hosts: prev.hosts.map(h => h.id === host.id ? updatedHost : h) }));
                 showNotification('Data host berhasil diperbarui.');
-            } else { // Insert
+            } else {
                 const { data: newHost, error } = await supabase.from('hosts').insert(formData).select().single();
                 if (error) throw error;
                 setData(prev => ({ ...prev, hosts: [...prev.hosts, newHost] }));
@@ -258,20 +256,20 @@ function HostModal({ isOpen, onClose, host }: { isOpen: boolean, onClose: () => 
         <Modal isOpen={isOpen} onClose={onClose} title={host ? 'Ubah Data Host' : 'Tambah Host Baru'}>
             <form onSubmit={handleSubmit} className="space-y-4">
                 <div>
-                    <label htmlFor="nama_host" className="block mb-2 text-sm font-medium">Nama Host</label>
-                    <input id="nama_host" type="text" value={formData.nama_host} onChange={handleChange} className="bg-stone-50 border border-stone-300 text-stone-900 text-sm rounded-lg block w-full p-2.5 dark:bg-stone-700 dark:border-stone-600" required />
+                    <label htmlFor="nama_host" className="block mb-2 text-sm font-medium text-stone-900 dark:text-stone-300">Nama Host</label>
+                    <input id="nama_host" type="text" value={formData.nama_host} onChange={handleChange} className={commonInputClasses} required />
                 </div>
                 <div>
-                    <label htmlFor="platform" className="block mb-2 text-sm font-medium">Platform</label>
-                    <input id="platform" type="text" value={formData.platform} onChange={handleChange} className="bg-stone-50 border border-stone-300 text-stone-900 text-sm rounded-lg block w-full p-2.5 dark:bg-stone-700 dark:border-stone-600" required />
+                    <label htmlFor="platform" className="block mb-2 text-sm font-medium text-stone-900 dark:text-stone-300">Platform</label>
+                    <input id="platform" type="text" value={formData.platform} onChange={handleChange} className={commonInputClasses} required />
                 </div>
                 <div>
-                    <label htmlFor="tanggal_bergabung" className="block mb-2 text-sm font-medium">Tanggal Bergabung</label>
-                    <input id="tanggal_bergabung" type="date" value={formData.tanggal_bergabung} onChange={handleChange} className="bg-stone-50 border border-stone-300 text-stone-900 text-sm rounded-lg block w-full p-2.5 dark:bg-stone-700 dark:border-stone-600" required />
+                    <label htmlFor="tanggal_bergabung" className="block mb-2 text-sm font-medium text-stone-900 dark:text-stone-300">Tanggal Bergabung</label>
+                    <input id="tanggal_bergabung" type="date" value={formData.tanggal_bergabung} onChange={handleChange} className={commonInputClasses} required />
                 </div>
                 <div>
-                    <label htmlFor="status" className="block mb-2 text-sm font-medium">Status</label>
-                    <select id="status" value={formData.status} onChange={handleChange} className="bg-stone-50 border border-stone-300 text-stone-900 text-sm rounded-lg block w-full p-2.5 dark:bg-stone-700 dark:border-stone-600">
+                    <label htmlFor="status" className="block mb-2 text-sm font-medium text-stone-900 dark:text-stone-300">Status</label>
+                    <select id="status" value={formData.status} onChange={handleChange} className={commonInputClasses}>
                         <option value="Aktif">Aktif</option>
                         <option value="Tidak Aktif">Tidak Aktif</option>
                     </select>
@@ -283,29 +281,6 @@ function HostModal({ isOpen, onClose, host }: { isOpen: boolean, onClose: () => 
                     </button>
                 </div>
             </form>
-        </Modal>
-    );
-}
-
-// Komponen Modal Konfirmasi
-function ConfirmationModal({ isOpen, onClose, onConfirm, title, message }: { isOpen: boolean, onClose: () => void, onConfirm: () => void, title: string, message: string }) {
-    const [loading, setLoading] = useState(false);
-
-    const handleConfirm = async () => {
-        setLoading(true);
-        await onConfirm();
-        setLoading(false);
-    };
-    
-    return (
-        <Modal isOpen={isOpen} onClose={onClose} title={title}>
-            <p className="text-sm text-stone-600 dark:text-stone-300 mt-2 mb-6">{message}</p>
-            <div className="flex justify-end space-x-4">
-                <button onClick={onClose} className="px-5 py-2.5 text-sm font-medium text-stone-700 bg-stone-100 rounded-lg hover:bg-stone-200 dark:bg-stone-700 dark:text-stone-300 dark:hover:bg-stone-600">Batal</button>
-                <button onClick={handleConfirm} disabled={loading} className="bg-red-600 text-white font-semibold px-5 py-2.5 rounded-lg shadow-sm hover:bg-red-700 flex items-center justify-center disabled:opacity-75">
-                    {loading ? 'Menghapus...' : 'Ya, Hapus'}
-                </button>
-            </div>
         </Modal>
     );
 }

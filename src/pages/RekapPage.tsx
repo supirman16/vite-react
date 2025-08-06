@@ -3,6 +3,7 @@ import { AppContext, AppContextType, supabase } from '../App';
 import { Plus, Check, XCircle, Edit, Trash2 } from 'lucide-react';
 import Modal from '../components/Modal';
 import EmptyState from '../components/EmptyState';
+import Skeleton from '../components/Skeleton';
 
 // Komponen ini adalah halaman Manajemen Rekap Live.
 export default function RekapPage() {
@@ -48,11 +49,13 @@ export default function RekapPage() {
     const StatusButton = ({ status, label }: { status: string, label: string }) => (
         <button 
             onClick={() => setSelectedStatus(status)}
-            className={`px-3 py-1 text-sm font-semibold rounded-md transition-colors ${selectedStatus === status ? 'bg-purple-600 text-white' : 'bg-stone-200 dark:bg-stone-700 hover:bg-stone-300 dark:hover:bg-stone-600'}`}
+            className={`px-3 py-1 text-sm font-semibold rounded-md transition-colors ${selectedStatus === status ? 'bg-purple-600 text-white' : 'bg-stone-200 dark:bg-stone-700 hover:bg-stone-300 dark:hover:bg-stone-600 text-stone-700 dark:text-stone-200'}`}
         >
             {label}
         </button>
     );
+    
+    const commonSelectClasses = "bg-stone-50 border border-stone-300 text-stone-900 text-sm rounded-lg focus:ring-purple-500 focus:border-purple-500 block w-full p-2.5 dark:bg-stone-700 dark:border-stone-600 dark:placeholder-stone-400 dark:text-white";
 
     return (
         <section>
@@ -70,20 +73,20 @@ export default function RekapPage() {
             {/* Filter Lanjutan */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6 p-4 bg-white dark:bg-stone-800/50 rounded-xl border border-stone-200 dark:border-stone-700">
                 <div className="flex items-center space-x-2">
-                    <select value={month} onChange={(e) => setMonth(parseInt(e.target.value))} className="bg-stone-50 border border-stone-300 text-stone-900 text-sm rounded-lg focus:ring-purple-500 focus:border-purple-500 block w-full p-2.5 dark:bg-stone-700 dark:border-stone-600">
+                    <select value={month} onChange={(e) => setMonth(parseInt(e.target.value))} className={commonSelectClasses}>
                         {months.map((m, i) => <option key={i} value={i}>{m}</option>)}
                     </select>
-                    <select value={year} onChange={(e) => setYear(parseInt(e.target.value))} className="bg-stone-50 border border-stone-300 text-stone-900 text-sm rounded-lg focus:ring-purple-500 focus:border-purple-500 block w-full p-2.5 dark:bg-stone-700 dark:border-stone-600">
+                    <select value={year} onChange={(e) => setYear(parseInt(e.target.value))} className={commonSelectClasses}>
                         {years.map(y => <option key={y} value={y}>{y}</option>)}
                     </select>
                 </div>
                 {isSuperAdmin && (
                     <>
-                        <select value={selectedHost} onChange={(e) => setSelectedHost(e.target.value)} className="bg-stone-50 border border-stone-300 text-stone-900 text-sm rounded-lg focus:ring-purple-500 focus:border-purple-500 block w-full p-2.5 dark:bg-stone-700 dark:border-stone-600">
+                        <select value={selectedHost} onChange={(e) => setSelectedHost(e.target.value)} className={commonSelectClasses}>
                             <option value="all">Semua Host</option>
                             {data.hosts.map(h => <option key={h.id} value={h.id}>{h.nama_host}</option>)}
                         </select>
-                        <select value={selectedTiktok} onChange={(e) => setSelectedTiktok(e.target.value)} className="bg-stone-50 border border-stone-300 text-stone-900 text-sm rounded-lg focus:ring-purple-500 focus:border-purple-500 block w-full p-2.5 dark:bg-stone-700 dark:border-stone-600">
+                        <select value={selectedTiktok} onChange={(e) => setSelectedTiktok(e.target.value)} className={commonSelectClasses}>
                             <option value="all">Semua Akun</option>
                             {data.tiktokAccounts.map(acc => <option key={acc.id} value={acc.id}>{acc.username}</option>)}
                         </select>
@@ -286,7 +289,7 @@ function RekapDetailModal({ isOpen, onClose, rekap, onEdit }: { isOpen: boolean,
     };
 
     return (
-        <Modal isOpen={isOpen} onClose={onClose} title="Detail Rekap Live">
+        <Modal isOpen={isOpen} onClose={onClose} title={`Detail Rekap Live`}>
             <div className="space-y-3 text-sm">
                 <div className="flex justify-between border-b pb-2 dark:border-stone-600">
                     <span className="font-medium text-stone-500 dark:text-stone-400">Tanggal Live:</span> 
@@ -434,7 +437,7 @@ function RekapModal({ isOpen, onClose, rekap }: { isOpen: boolean, onClose: () =
                     <textarea id="catatan" value={formData.catatan} onChange={handleChange} placeholder="Topik live, kendala, dll..." rows={3} className={commonInputClasses}></textarea>
                 </div>
                 <div className="flex justify-end space-x-4 pt-4">
-                    <button type="button" onClick={onClose} className="px-5 py-2.5 text-sm font-medium text-stone-700 bg-stone-100 rounded-lg hover:bg-stone-200 dark:bg-stone-700 dark:text-stone-300 dark:hover:bg-stone-600">Batal</button>
+                    <button type="button" onClick={onClose} className="px-5 py-2.5 text-sm font-medium text-white bg-stone-100 rounded-lg hover:bg-stone-200 dark:bg-stone-700 dark:text-stone-300 dark:hover:bg-stone-600">Batal</button>
                     <button type="submit" disabled={loading} className="unity-gradient-bg font-semibold px-5 py-2.5 rounded-lg shadow-sm hover:opacity-90 flex items-center justify-center disabled:opacity-75">
                         {loading ? 'Menyimpan...' : 'Simpan'}
                     </button>

@@ -1,15 +1,11 @@
-import { useContext, useState, useMemo, useEffect, useCallback } from 'react';
+import { useContext, useState, useMemo } from 'react';
 import { AppContext, AppContextType, supabase } from '../App';
-import { Plus, Edit, Trash2, ArrowUpDown, Search, RefreshCw } from 'lucide-react';
+import { Plus, Edit, Trash2, ArrowUpDown, Search } from 'lucide-react';
 import Modal from '../components/Modal';
 import ConfirmationModal from '../components/ConfirmationModal';
 import DropdownMenu from '../components/DropdownMenu';
-import Skeleton from '../components/Skeleton';
 
-// --- Ganti URL ini dengan URL Heroku Anda ---
-const API_URL = "https://unity-host-dashboard-bfc030a0ba69.herokuapp.com"; 
-
-// Komponen ini adalah halaman Manajemen Akun TikTok untuk superadmin.
+// --- PERBAIKAN: Menambahkan kembali "export default" ---
 export default function TiktokPage() {
     const { setData, showNotification } = useContext(AppContext) as AppContextType;
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -106,13 +102,10 @@ export default function TiktokPage() {
     );
 }
 
-// Komponen Tabel Akun TikTok
 function TiktokTable({ onEdit, onDelete, searchQuery }: { onEdit: (account: any) => void, onDelete: (account: any) => void, searchQuery: string }) {
     const { data } = useContext(AppContext) as AppContextType;
     const [sortKey, setSortKey] = useState('username');
     const [sortDirection, setSortDirection] = useState('asc');
-    const [liveStatuses, setLiveStatuses] = useState<{ [key: string]: boolean }>({});
-    const [loadingStatuses, setLoadingStatuses] = useState(true);
 
     const filteredAndSortedData = useMemo(() => {
         const filtered = data.tiktokAccounts.filter(account => 
@@ -126,41 +119,6 @@ function TiktokTable({ onEdit, onDelete, searchQuery }: { onEdit: (account: any)
             return 0;
         });
     }, [data.tiktokAccounts, sortKey, sortDirection, searchQuery]);
-
-    const checkAllStatuses = useCallback(async () => {
-        setLoadingStatuses(true);
-        const activeAccounts = filteredAndSortedData.filter(acc => acc.status === 'Aktif');
-        const newStatuses: { [key: string]: boolean } = {};
-
-        for (const account of activeAccounts) {
-            try {
-                const response = await fetch(`${API_URL}/check-status/${account.username}`);
-                if (response.ok) {
-                    const result = await response.json();
-                    newStatuses[account.username.toLowerCase()] = result.isLive;
-                } else {
-                    newStatuses[account.username.toLowerCase()] = false;
-                }
-                setLiveStatuses(prev => ({ ...prev, ...newStatuses }));
-                
-                await new Promise(resolve => setTimeout(resolve, 200));
-            } catch (error) {
-                console.error(`Error fetching status for ${account.username}:`, error);
-                newStatuses[account.username.toLowerCase()] = false;
-            }
-        }
-
-        setLiveStatuses(newStatuses);
-        setLoadingStatuses(false);
-    }, [filteredAndSortedData]);
-
-    useEffect(() => {
-        if (filteredAndSortedData.length > 0) {
-            checkAllStatuses();
-        } else {
-            setLoadingStatuses(false);
-        }
-    }, [filteredAndSortedData, checkAllStatuses]);
 
     const handleSort = (key: string) => {
         if (sortKey === key) {
@@ -182,16 +140,6 @@ function TiktokTable({ onEdit, onDelete, searchQuery }: { onEdit: (account: any)
 
     return (
         <div className="bg-white dark:bg-stone-800 rounded-xl shadow-sm border border-stone-100 dark:border-stone-700 overflow-x-auto">
-            <div className="p-4 border-b dark:border-stone-700 flex justify-end">
-                <button 
-                    onClick={checkAllStatuses} 
-                    disabled={loadingStatuses}
-                    className="text-sm bg-stone-100 dark:bg-stone-700 px-3 py-2 rounded-lg flex items-center hover:bg-stone-200 dark:hover:bg-stone-600 disabled:opacity-50"
-                >
-                    <RefreshCw className={`h-4 w-4 mr-2 ${loadingStatuses ? 'animate-spin' : ''}`} />
-                    {loadingStatuses ? 'Memuat...' : 'Segarkan Status'}
-                </button>
-            </div>
             <table className="w-full text-sm text-left text-stone-600 dark:text-stone-300">
                 <thead className="hidden md:table-header-group text-xs text-stone-700 dark:text-stone-400 uppercase bg-stone-100 dark:bg-stone-700">
                     <tr>
@@ -202,7 +150,6 @@ function TiktokTable({ onEdit, onDelete, searchQuery }: { onEdit: (account: any)
                 </thead>
                 <tbody className="block md:table-row-group">
                     {filteredAndSortedData.map(account => {
-                        const isLive = liveStatuses[account.username.toLowerCase()] || false;
                         const actions = [
                             { label: 'Ubah', icon: Edit, onClick: () => onEdit(account), className: 'text-purple-600 dark:text-purple-400' },
                             { label: 'Hapus', icon: Trash2, onClick: () => onDelete(account), className: 'text-red-600 dark:text-red-400' }
@@ -210,16 +157,7 @@ function TiktokTable({ onEdit, onDelete, searchQuery }: { onEdit: (account: any)
                         return (
                             <tr key={account.id} className="block md:table-row bg-white dark:bg-stone-800 border-b dark:border-stone-700 mb-4 md:mb-0">
                                 <td data-label="Username:" className="mobile-label px-6 py-4 block md:table-cell font-medium text-stone-900 dark:text-white">
-                                    <div className="flex items-center space-x-2">
-                                        {loadingStatuses ? <Skeleton className="h-3 w-3 rounded-full" /> : (
-                                            isLive && (
-                                                <span className="live-badge" title="Sedang Live">
-                                                    <span className="live-badge-ping"></span>
-                                                </span>
-                                            )
-                                        )}
-                                        <span>{account.username}</span>
-                                    </div>
+                                    {account.username}
                                 </td>
                                 <td data-label="Status:" className="mobile-label px-6 py-4 block md:table-cell">
                                     <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${account.status === 'Aktif' ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300' : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300'}`}>
@@ -238,11 +176,12 @@ function TiktokTable({ onEdit, onDelete, searchQuery }: { onEdit: (account: any)
     );
 }
 
-// Komponen Modal (tidak berubah)
 function TiktokModal({ isOpen, onClose, account }: { isOpen: boolean, onClose: () => void, account: any | null }) {
     const { setData, showNotification } = useContext(AppContext) as AppContextType;
     const [formData, setFormData] = useState({ username: account?.username || '', status: account?.status || 'Aktif' });
     const [loading, setLoading] = useState(false);
+    const commonInputClasses = "bg-stone-50 border border-stone-300 text-stone-900 text-sm rounded-lg focus:ring-purple-500 focus:border-purple-500 block w-full p-2.5 dark:bg-stone-700 dark:border-stone-600 dark:placeholder-stone-400 dark:text-white";
+
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
         const { id, value } = e.target;
         setFormData(prev => ({ ...prev, [id]: value }));
@@ -273,12 +212,12 @@ function TiktokModal({ isOpen, onClose, account }: { isOpen: boolean, onClose: (
         <Modal isOpen={isOpen} onClose={onClose} title={account ? 'Ubah Akun TikTok' : 'Tambah Akun TikTok Baru'}>
             <form onSubmit={handleSubmit} className="space-y-4">
                 <div>
-                    <label htmlFor="username" className="block mb-2 text-sm font-medium">Username</label>
-                    <input id="username" type="text" value={formData.username} onChange={handleChange} className="bg-stone-50 border border-stone-300 text-stone-900 text-sm rounded-lg block w-full p-2.5 dark:bg-stone-700 dark:border-stone-600" required />
+                    <label htmlFor="username" className="block mb-2 text-sm font-medium text-stone-900 dark:text-stone-300">Username</label>
+                    <input id="username" type="text" value={formData.username} onChange={handleChange} className={commonInputClasses} required />
                 </div>
                 <div>
-                    <label htmlFor="status" className="block mb-2 text-sm font-medium">Status</label>
-                    <select id="status" value={formData.status} onChange={handleChange} className="bg-stone-50 border border-stone-300 text-stone-900 text-sm rounded-lg block w-full p-2.5 dark:bg-stone-700 dark:border-stone-600">
+                    <label htmlFor="status" className="block mb-2 text-sm font-medium text-stone-900 dark:text-stone-300">Status</label>
+                    <select id="status" value={formData.status} onChange={handleChange} className={commonInputClasses}>
                         <option value="Aktif">Aktif</option>
                         <option value="Tidak Aktif">Tidak Aktif</option>
                     </select>

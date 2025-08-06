@@ -1,12 +1,12 @@
-import { useState, useEffect, createContext } from 'react';
+import { useState, useEffect, createContext, useCallback } from 'react';
 import { createClient, Session } from '@supabase/supabase-js';
 import DashboardLayout from './components/DashboardLayout';
 import LoginPage from './components/LoginPage';
 import { LayoutDashboard } from 'lucide-react';
 
 // Konfigurasi Supabase
-const supabaseUrl = 'https://zorudwncbfietuzxrerd.supabase.co';
-const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpvcnVkd25jYmZpZXR1enhyZXJkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTI2NzMzNTUsImV4cCI6MjA2ODI0OTM1NX0.d6YJ8qj3Uegmei6ip52fQ0gnjJltqVDlrlbu6VXk7Ks';
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 export const supabase = createClient(supabaseUrl, supabaseKey);
 
 // Tipe data untuk konteks aplikasi
@@ -18,6 +18,10 @@ export interface AppContextType {
     data: AppData;
     setData: React.Dispatch<React.SetStateAction<AppData>>;
     showNotification: (message: string, isError?: boolean) => void;
+    theme: string;
+    setTheme: (theme: string) => void;
+    isQuoteBannerVisible: boolean;
+    setIsQuoteBannerVisible: (isVisible: boolean) => void;
 }
 
 export interface AppData {
@@ -27,6 +31,10 @@ export interface AppData {
     tiktokAccounts: any[];
     users: any[];
     user: any | null;
+    announcements: any[];
+    // --- PENAMBAHAN: State untuk data interaktif ---
+    announcementReads: any[];
+    announcementReactions: any[];
 }
 
 export const AppContext = createContext<AppContextType | null>(null);
@@ -36,6 +44,9 @@ export default function App() {
     const [session, setSession] = useState<Session | null>(null);
     const [page, setPage] = useState('dashboard');
     const [notification, setNotification] = useState<{ message: string; isError: boolean } | null>(null);
+    const [theme, setTheme] = useState(localStorage.getItem('theme') || 'light');
+    const [isQuoteBannerVisible, setIsQuoteBannerVisible] = useState(true);
+    
     const [data, setData] = useState<AppData>({
         loading: true,
         hosts: [],
@@ -43,9 +54,20 @@ export default function App() {
         tiktokAccounts: [],
         users: [],
         user: null,
+        announcements: [],
+        // --- PENAMBAHAN: Inisialisasi state baru ---
+        announcementReads: [],
+        announcementReactions: [],
     });
     
     const [authLoading, setAuthLoading] = useState(true);
+
+    useEffect(() => {
+        const root = window.document.documentElement;
+        root.classList.remove('light', 'dark');
+        root.classList.add(theme);
+        localStorage.setItem('theme', theme);
+    }, [theme]);
 
     useEffect(() => {
         supabase.auth.getSession().then(({ data: { session } }) => {
@@ -61,21 +83,31 @@ export default function App() {
         return () => subscription.unsubscribe();
     }, [authLoading]);
 
-    // Fungsi untuk mengambil data utama aplikasi
-    const fetchData = async (currentSession: Session) => {
+    const fetchData = useCallback(async (currentSession: Session) => {
         setData(prev => ({ ...prev, loading: true }));
         try {
             const user = currentSession.user;
             const userRole = user.user_metadata?.role;
             
-            const { data: hosts } = await supabase.from('hosts').select('*');
-            const { data: tiktokAccounts } = await supabase.from('tiktok_accounts').select('*');
+            const [
+                { data: hosts },
+                { data: tiktokAccounts },
+                { data: announcements },
+                // --- PENAMBAHAN: Ambil data reaksi dan status baca ---
+                { data: announcementReads },
+                { data: announcementReactions }
+            ] = await Promise.all([
+                supabase.from('hosts').select('*'),
+                supabase.from('tiktok_accounts').select('*'),
+                supabase.from('announcements').select('*').order('is_pinned', { ascending: false }).order('created_at', { ascending: false }),
+                supabase.from('announcement_reads').select('*'),
+                supabase.from('announcement_reactions').select('*')
+            ]);
             
             let users: any[] = [];
             let rekapLive;
 
             if (userRole === 'superadmin') {
-                // --- PERBAIKAN: Memanggil Edge Function untuk mendapatkan daftar pengguna ---
                 const { data: userList, error: userError } = await supabase.functions.invoke('list-all-users');
                 if (userError) throw userError;
                 users = userList;
@@ -83,7 +115,7 @@ export default function App() {
                 const { data } = await supabase.from('rekap_live').select('*');
                 rekapLive = data;
             } else {
-                const host = hosts?.find(h => h.user_id === user.id);
+                const host = hosts?.find(h => h.id === user.id);
                 if (host) {
                     const { data } = await supabase.from('rekap_live').select('*').eq('host_id', host.id);
                     rekapLive = data;
@@ -97,20 +129,25 @@ export default function App() {
                 tiktokAccounts: tiktokAccounts || [],
                 users: users || [],
                 user: user,
+                announcements: announcements || [],
+                // --- PENAMBAHAN: Set state baru ---
+                announcementReads: announcementReads || [],
+                announcementReactions: announcementReactions || [],
             });
         } catch (error) {
             console.error("Error fetching data:", error);
             setData(prev => ({ ...prev, loading: false }));
         }
-    };
+    }, []);
     
     useEffect(() => {
         if (session) {
             fetchData(session);
+            setIsQuoteBannerVisible(true);
         } else {
-            setData({ loading: false, hosts: [], rekapLive: [], tiktokAccounts: [], users: [], user: null });
+            setData({ loading: false, hosts: [], rekapLive: [], tiktokAccounts: [], users: [], user: null, announcements: [], announcementReads: [], announcementReactions: [] });
         }
-    }, [session]);
+    }, [session, fetchData]);
 
     const logout = async () => {
         await supabase.auth.signOut();
@@ -131,7 +168,7 @@ export default function App() {
     }
     
     return (
-        <AppContext.Provider value={{ page, setPage, session, logout, data, setData, showNotification }}>
+        <AppContext.Provider value={{ page, setPage, session, logout, data, setData, showNotification, theme, setTheme, isQuoteBannerVisible, setIsQuoteBannerVisible }}>
             {!session ? <LoginPage /> : <DashboardLayout />}
             {notification && (
                 <div className={`fixed bottom-5 right-5 p-4 rounded-lg shadow-lg text-white ${notification.isError ? 'bg-red-500' : 'bg-green-500'}`}>

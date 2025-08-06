@@ -1,5 +1,5 @@
-import { useState, FormEvent } from 'react';
-import { supabase } from '../App';
+import { useState, FormEvent, useContext } from 'react';
+import { supabase, AppContext, AppContextType } from '../App';
 
 // Komponen ini adalah halaman Login untuk aplikasi.
 export default function LoginPage() {
@@ -7,6 +7,9 @@ export default function LoginPage() {
     const [password, setPassword] = useState('');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    
+    // showNotification tidak lagi dibutuhkan di sini
+    // const { showNotification } = useContext(AppContext) as AppContextType;
 
     const handleLogin = async (event: FormEvent<HTMLFormElement>) => {
         event.preventDefault();
@@ -21,24 +24,22 @@ export default function LoginPage() {
         if (error) {
             setError(error.message);
         }
-        // Jika berhasil, App.tsx akan menangani navigasi
+        // Jika login berhasil, App.tsx akan menangani pergantian halaman secara otomatis.
+        // Tidak ada lagi notifikasi kutipan yang ditampilkan.
         
         setLoading(false);
     };
 
     return (
         <div 
-            className="relative min-h-screen" // Menambahkan 'relative' untuk posisi overlay
+            className="relative min-h-screen"
             style={{ 
                 backgroundImage: `url('/background.png')`,
                 backgroundSize: 'cover',
                 backgroundPosition: 'center'
             }}
         >
-            {/* --- LAPISAN OVERLAY BARU --- */}
-            {/* Lapisan ini akan meredupkan background agar teks lebih mudah dibaca */}
             <div className="absolute inset-0 bg-black/50 flex items-center justify-center px-4">
-            
                 <div className="w-full max-w-md space-y-8">
                     <div className="text-center">
                         <h2 className="mt-6 text-3xl font-bold tracking-tight text-white">
@@ -100,7 +101,6 @@ export default function LoginPage() {
                         </div>
                     </form>
                 </div>
-
             </div>
         </div>
     );
