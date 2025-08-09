@@ -1,7 +1,8 @@
 import { useContext, useState, useMemo, useEffect } from 'react';
 import { AppContext, AppContextType, supabase } from '../App';
-import { Trophy, ArrowUpCircle } from 'lucide-react';
+import { Trophy, ArrowUpCircle, Award } from 'lucide-react';
 import Skeleton from '../components/Skeleton';
+import { motion } from 'framer-motion';
 
 // Tipe data untuk rentang waktu dan data peringkat
 type DateRange = 'all' | 'thisWeek' | 'thisMonth';
@@ -22,15 +23,20 @@ export default function LeaderboardPage() {
 
     const isSuperAdmin = session.user.user_metadata?.role === 'superadmin';
 
-    if (isSuperAdmin) {
-        return <SuperadminLeaderboard />;
-    } else {
-        return <HostLeaderboard />;
-    }
+    return (
+        <section>
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4">
+                <h2 className="text-2xl font-bold tracking-wider text-stone-800 dark:text-white uppercase" style={{ textShadow: '0 0 8px rgba(192, 132, 252, 0.3)' }}>
+                    {isSuperAdmin ? 'Leaderboard Agensi' : 'Arena Kompetisi'}
+                </h2>
+            </div>
+            {isSuperAdmin ? <SuperadminLeaderboard /> : <HostLeaderboard />}
+        </section>
+    );
 }
 
 // ==================================================================
-// TAMPILAN PAPAN PERINGKAT UNTUK SUPERADMIN
+// TAMPILAN PAPAN PERINGKAT UNTUK SUPERADMIN (DESAIN BARU)
 // ==================================================================
 function SuperadminLeaderboard() {
     const { data } = useContext(AppContext) as AppContextType;
@@ -40,36 +46,48 @@ function SuperadminLeaderboard() {
         return calculateLeaderboard(data.hosts, data.rekapLive, dateRange);
     }, [data.hosts, data.rekapLive, dateRange]);
 
+    const top3 = leaderboardData.slice(0, 3);
+    const others = leaderboardData.slice(3);
+
     return (
-        <section>
-            <h2 className="text-xl font-semibold text-stone-800 dark:text-stone-100 mb-4">Papan Peringkat Agensi</h2>
+        <>
             <DateRangeFilter selectedRange={dateRange} onSelectRange={setDateRange} />
-            <div className="bg-white dark:bg-stone-800 rounded-xl shadow-sm border border-stone-100 dark:border-stone-700 overflow-x-auto">
+            
+            <Top3Showcase hosts={top3} />
+
+            <div className="mt-8 bg-white dark:bg-stone-900/50 backdrop-blur-sm rounded-xl border border-stone-200 dark:border-stone-700 overflow-hidden">
                 <table className="w-full text-sm text-left text-stone-600 dark:text-stone-300">
-                    <thead className="text-xs text-stone-700 dark:text-stone-400 uppercase bg-stone-100 dark:bg-stone-700">
+                    <thead className="text-xs text-purple-600 dark:text-cyan-400 uppercase bg-stone-100 dark:bg-black/30">
                         <tr>
-                            <th scope="col" className="px-6 py-3 text-center">Peringkat</th>
-                            <th scope="col" className="px-6 py-3">Nama Host</th>
-                            <th scope="col" className="px-6 py-3">Total Diamond (💎)</th>
+                            <th scope="col" className="px-6 py-4 text-center">Peringkat</th>
+                            <th scope="col" className="px-6 py-4">Nama Host</th>
+                            <th scope="col" className="px-6 py-4">Total Diamond (💎)</th>
                         </tr>
                     </thead>
                     <tbody>
-                        {leaderboardData.map((host) => (
-                            <tr key={host.id} className="bg-white dark:bg-stone-800 border-b dark:border-stone-700">
-                                <td className="px-6 py-4 font-medium text-stone-900 dark:text-white text-center">{host.rank}</td>
-                                <td className="px-6 py-4 font-semibold text-stone-900 dark:text-white">{host.nama_host}</td>
-                                <td className="px-6 py-4">{new Intl.NumberFormat().format(host.totalDiamonds)}</td>
+                        {others.length > 0 ? others.map((host) => (
+                            <tr key={host.id} className="border-b border-stone-200 dark:border-stone-800 hover:bg-stone-50 dark:hover:bg-stone-800/60 transition-colors">
+                                <td className="px-6 py-4 font-bold text-xl text-stone-800 dark:text-white text-center">{host.rank}</td>
+                                <td className="px-6 py-4 font-semibold text-stone-800 dark:text-white">{host.nama_host}</td>
+                                <td className="px-6 py-4 font-mono text-lg">{new Intl.NumberFormat().format(host.totalDiamonds)}</td>
                             </tr>
-                        ))}
+                        )) : (
+                            <tr>
+                                <td colSpan={3} className="text-center py-8 text-stone-500">
+                                    Tidak ada data peringkat lain untuk ditampilkan.
+                                </td>
+                            </tr>
+                        )}
                     </tbody>
                 </table>
             </div>
-        </section>
+        </>
     );
 }
 
+
 // ==================================================================
-// TAMPILAN PAPAN PERINGKAT UNTUK HOST
+// TAMPILAN PAPAN PERINGKAT UNTUK HOST (DESAIN BARU)
 // ==================================================================
 function HostLeaderboard() {
     const { data, session } = useContext(AppContext) as AppContextType;
@@ -92,9 +110,7 @@ function HostLeaderboard() {
         fetchAllRekapData();
     }, []);
 
-    const currentHostInfo = useMemo(() => {
-        return data.hosts.find(h => h.user_id === session?.user.id);
-    }, [data.hosts, session]);
+    const hostId = session?.user.user_metadata.host_id;
     
     const leaderboardData = useMemo(() => {
         if (!allRekapData) return [];
@@ -102,8 +118,8 @@ function HostLeaderboard() {
     }, [data.hosts, allRekapData, dateRange]);
 
     const currentUserRank = useMemo(() => {
-        return leaderboardData.find(h => h.id === currentHostInfo?.id);
-    }, [leaderboardData, currentHostInfo]);
+        return leaderboardData.find(h => h.id === hostId);
+    }, [leaderboardData, hostId]);
 
     const top3 = leaderboardData.slice(0, 3);
     const others = leaderboardData.slice(3);
@@ -120,25 +136,24 @@ function HostLeaderboard() {
 
     return (
         <section>
-            <h2 className="text-xl font-semibold text-stone-800 dark:text-stone-100 mb-4">Arena Kompetisi</h2>
             <DateRangeFilter selectedRange={dateRange} onSelectRange={setDateRange} />
 
             {currentUserRank && (
-                <div className="mb-8 p-6 bg-white dark:bg-stone-800 rounded-xl shadow-lg border border-purple-200 dark:border-purple-800 grid grid-cols-1 md:grid-cols-3 gap-4 text-center md:text-left">
+                <div className="mb-8 p-6 bg-white dark:bg-stone-900/50 backdrop-blur-sm rounded-xl border border-stone-200 dark:border-stone-700 grid grid-cols-1 md:grid-cols-3 gap-6 text-center md:text-left">
                     <div className="flex flex-col items-center md:items-start">
-                        <p className="text-sm text-stone-500 dark:text-stone-400">Peringkat Anda</p>
-                        <p className="text-5xl font-bold text-purple-600 dark:text-purple-400">#{currentUserRank.rank}</p>
+                        <p className="text-sm text-stone-500 dark:text-stone-400 uppercase tracking-wider">Peringkat Anda</p>
+                        <p className="text-5xl font-bold unity-gradient-text">#{currentUserRank.rank}</p>
                     </div>
                     <div className="flex flex-col items-center md:items-start">
-                        <p className="text-sm text-stone-500 dark:text-stone-400">Total Diamond Anda</p>
-                        <p className="text-3xl font-semibold">{new Intl.NumberFormat().format(currentUserRank.totalDiamonds)} 💎</p>
+                        <p className="text-sm text-stone-500 dark:text-stone-400 uppercase tracking-wider">Total Diamond</p>
+                        <p className="text-3xl font-semibold text-stone-800 dark:text-white">{new Intl.NumberFormat().format(currentUserRank.totalDiamonds)} 💎</p>
                     </div>
                     {currentUserRank.rank > 1 && (
                          <div className="flex flex-col items-center md:items-start">
-                            <p className="text-sm text-stone-500 dark:text-stone-400">Menuju Peringkat Berikutnya</p>
-                            <p className="text-3xl font-semibold text-green-500 flex items-center">
+                            <p className="text-sm text-stone-500 dark:text-stone-400 uppercase tracking-wider">Kejar Peringkat Atas</p>
+                            <p className="text-3xl font-semibold text-green-500 dark:text-green-400 flex items-center">
                                 <ArrowUpCircle className="h-6 w-6 mr-2"/>
-                                {new Intl.NumberFormat().format(diamondsToNextRank)} 💎
+                                {new Intl.NumberFormat().format(diamondsToNextRank)}
                             </p>
                         </div>
                     )}
@@ -147,21 +162,21 @@ function HostLeaderboard() {
 
             <Top3Showcase hosts={top3} />
 
-            <div className="mt-8 bg-white dark:bg-stone-800 rounded-xl shadow-sm border border-stone-100 dark:border-stone-700 overflow-x-auto">
+            <div className="mt-8 bg-white dark:bg-stone-900/50 backdrop-blur-sm rounded-xl border border-stone-200 dark:border-stone-700 overflow-hidden">
                  <table className="w-full text-sm text-left text-stone-600 dark:text-stone-300">
-                    <thead className="text-xs text-stone-700 dark:text-stone-400 uppercase bg-stone-100 dark:bg-stone-700">
+                    <thead className="text-xs text-purple-600 dark:text-cyan-400 uppercase bg-stone-100 dark:bg-black/30">
                         <tr>
-                            <th scope="col" className="px-6 py-3 text-center">Peringkat</th>
-                            <th scope="col" className="px-6 py-3">Nama Host</th>
-                            <th scope="col" className="px-6 py-3">Total Diamond (💎)</th>
+                            <th scope="col" className="px-6 py-4 text-center">Peringkat</th>
+                            <th scope="col" className="px-6 py-4">Nama Host</th>
+                            <th scope="col" className="px-6 py-4">Total Diamond (💎)</th>
                         </tr>
                     </thead>
                     <tbody>
                         {others.map((host) => (
-                            <tr key={host.id} className={`border-b dark:border-stone-700 ${host.id === currentHostInfo?.id ? 'bg-purple-50 dark:bg-purple-900/30' : 'bg-white dark:bg-stone-800'}`}>
-                                <td className="px-6 py-4 font-medium text-stone-900 dark:text-white text-center">{host.rank}</td>
-                                <td className="px-6 py-4 font-semibold text-stone-900 dark:text-white">{host.nama_host}</td>
-                                <td className="px-6 py-4">{new Intl.NumberFormat().format(host.totalDiamonds)}</td>
+                            <tr key={host.id} className={`border-b border-stone-200 dark:border-stone-800 transition-colors ${host.id === hostId ? 'unity-gradient-bg text-white' : 'hover:bg-stone-50 dark:hover:bg-stone-800/60'}`}>
+                                <td className="px-6 py-4 font-bold text-xl text-center">{host.rank}</td>
+                                <td className="px-6 py-4 font-semibold">{host.nama_host}</td>
+                                <td className="px-6 py-4 font-mono text-lg">{new Intl.NumberFormat().format(host.totalDiamonds)}</td>
                             </tr>
                         ))}
                     </tbody>
@@ -171,27 +186,43 @@ function HostLeaderboard() {
     );
 }
 
-// Komponen untuk Panggung Juara Top 3
+// ==================================================================
+// KOMPONEN-KOMPONEN PEMBANTU (DESAIN BARU & RESPONSIVE TEMA)
+// ==================================================================
+
 function Top3Showcase({ hosts }: { hosts: LeaderboardEntry[] }) {
-    const medalColors = ['text-yellow-400', 'text-stone-400', 'text-yellow-600'];
+    const podiumOrder = [1, 0, 2]; // Index untuk juara 2, 1, 3
+    const podiumStyles = [
+        { rank: 1, color: 'gold', shadow: 'shadow-[0_0_20px_gold]', border: 'border-yellow-400', height: 'mt-0' },
+        { rank: 2, color: '#A0A0A0', shadow: 'shadow-[0_0_20px_#C0C0C0]', border: 'border-stone-400', height: 'mt-8' },
+        { rank: 3, color: '#CD7F32', shadow: 'shadow-[0_0_20px_#CD7F32]', border: 'border-yellow-600', height: 'mt-12' },
+    ];
+
+    const podiumHosts = podiumOrder.map(index => hosts[index]).filter(Boolean);
+
     return (
-        <div>
-            <h3 className="text-lg font-semibold mb-4">Panggung Juara</h3>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                {hosts.map((host, index) => (
-                    <div key={host.id} className={`p-4 rounded-lg text-center bg-stone-50 dark:bg-stone-800/50 border-2 ${index === 0 ? 'border-yellow-400' : index === 1 ? 'border-stone-400' : 'border-yellow-600'}`}>
-                        <Trophy className={`h-8 w-8 mx-auto ${medalColors[index]}`} />
-                        <p className="font-bold text-lg mt-2">{host.nama_host}</p>
-                        <p className="text-sm text-stone-500 dark:text-stone-400">Peringkat #{host.rank}</p>
-                        <p className="font-semibold mt-1">{new Intl.NumberFormat().format(host.totalDiamonds)} 💎</p>
-                    </div>
-                ))}
-            </div>
+        <div className="relative flex justify-center items-end gap-4 px-4 pt-8 min-h-[280px]">
+            {podiumHosts.map((host) => {
+                const style = podiumStyles.find(s => s.rank === host.rank)!;
+                return (
+                    <motion.div 
+                        key={host.id} 
+                        className={`w-1/3 max-w-xs flex flex-col items-center p-4 rounded-t-lg bg-white/80 dark:bg-stone-900/80 backdrop-blur-sm border-2 ${style.border} ${style.height} ${style.shadow}`}
+                        initial={{ opacity: 0, y: 50 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.5, delay: (4 - host.rank) * 0.2 }}
+                    >
+                        <Award size={48} color={style.color} style={{ filter: `drop-shadow(0 0 10px ${style.color})` }} />
+                        <h3 className="text-xl font-bold text-stone-800 dark:text-white mt-2 truncate">{host.nama_host}</h3>
+                        <p className="font-semibold text-2xl" style={{ color: style.color }}>#{host.rank}</p>
+                        <p className="font-mono text-lg text-stone-800 dark:text-white mt-1">{new Intl.NumberFormat().format(host.totalDiamonds)} 💎</p>
+                    </motion.div>
+                )
+            })}
         </div>
     );
 }
 
-// Komponen filter waktu
 function DateRangeFilter({ selectedRange, onSelectRange }: { selectedRange: DateRange, onSelectRange: (range: DateRange) => void }) {
     const ranges: { id: DateRange; label: string }[] = [
         { id: 'all', label: 'Semua Waktu' },
@@ -200,15 +231,13 @@ function DateRangeFilter({ selectedRange, onSelectRange }: { selectedRange: Date
     ];
     return (
         <div className="flex flex-wrap items-center gap-2 mb-6">
-            {ranges.map(range => ( <button key={range.id} onClick={() => onSelectRange(range.id)} className={`px-3 py-1.5 text-sm font-semibold rounded-lg transition-colors ${ selectedRange === range.id ? 'unity-gradient-bg text-white shadow-sm' : 'bg-stone-100 text-stone-600 hover:bg-stone-200 dark:bg-stone-800 dark:text-stone-300 dark:hover:bg-stone-700' }`}>{range.label}</button>))}
+            {ranges.map(range => ( <button key={range.id} onClick={() => onSelectRange(range.id)} className={`px-4 py-2 text-sm font-bold rounded-md transition-all duration-200 border-2 border-transparent hover:border-purple-500 dark:hover:border-cyan-400 ${ selectedRange === range.id ? 'unity-gradient-bg text-white shadow-[0_0_15px_rgba(168,85,247,0.5)]' : 'bg-white dark:bg-stone-800 text-stone-600 dark:text-stone-300 hover:text-stone-900 dark:hover:text-white' }`}>{range.label}</button>))}
         </div>
     );
 }
 
-// Fungsi bantuan untuk menghitung data papan peringkat
 function calculateLeaderboard(hosts: any[], rekapLive: any[], dateRange: DateRange): LeaderboardEntry[] {
     const now = new Date();
-    // --- PERBAIKAN: Saring hanya untuk rekap yang disetujui di awal ---
     const approvedRekap = rekapLive.filter(r => r.status === 'approved');
     let filteredRekap = approvedRekap;
 
@@ -216,7 +245,7 @@ function calculateLeaderboard(hosts: any[], rekapLive: any[], dateRange: DateRan
         const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
         const dayOfWeek = today.getDay();
         const startOfWeek = new Date(today);
-        startOfWeek.setDate(today.getDate() - dayOfWeek + (dayOfWeek === 0 ? -6 : 1)); // Minggu dimulai hari Senin
+        startOfWeek.setDate(today.getDate() - dayOfWeek + (dayOfWeek === 0 ? -6 : 1));
         filteredRekap = approvedRekap.filter(r => new Date(r.tanggal_live) >= startOfWeek);
     } else if (dateRange === 'thisMonth') {
         const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
@@ -237,8 +266,6 @@ function calculateLeaderboard(hosts: any[], rekapLive: any[], dateRange: DateRan
         .map((host, index) => ({ ...host, rank: index + 1 }));
 }
 
-
-// Komponen kerangka pemuatan
 function LeaderboardSkeleton() {
     return (
         <section>
@@ -248,7 +275,10 @@ function LeaderboardSkeleton() {
                 <Skeleton className="h-9 w-24 rounded-lg" />
                 <Skeleton className="h-9 w-32 rounded-lg" />
             </div>
-            <Skeleton className="h-96" />
+            <Skeleton className="h-64" />
+            <div className="mt-8">
+                <Skeleton className="h-96" />
+            </div>
         </section>
     );
 }

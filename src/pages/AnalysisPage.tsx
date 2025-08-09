@@ -1,29 +1,16 @@
-import React, { useContext, useState, useMemo, useEffect, Fragment } from 'react';
+import React, { useContext, useState, useMemo, useEffect } from 'react';
 import { AppContext, AppContextType } from '../App';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight, CalendarDays, BarChart2, TrendingUp, TrendingDown, Diamond, Hourglass, Target, CheckCircle } from 'lucide-react';
 import Modal from '../components/Modal';
-import { Line } from 'react-chartjs-2';
-import {
-  Chart as ChartJS,
-  CategoryScale,
-  LinearScale,
-  PointElement,
-  LineElement,
-  Title,
-  Tooltip,
-  Legend,
-} from 'chart.js';
+import { Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend } from 'chart.js';
+import { motion } from 'framer-motion';
 
-ChartJS.register(
-  CategoryScale,
-  LinearScale,
-  PointElement,
-  LineElement,
-  Title,
-  Tooltip,
-  Legend
-);
+// Impor komponen
+import Calendar from '../components/analysis/Calendar';
+import TrendChart from '../components/analysis/TrendChart';
+import AnimatedCard from '../components/dashboard/AnimatedCard'; // Kita gunakan lagi komponen animasi dari dasbor
 
+ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend);
 
 // Tipe data untuk hasil kalkulasi performa
 interface PerformanceData {
@@ -64,10 +51,10 @@ function calculateMonthlyPerformance(hostId: number, year: number, month: number
         acc[dateKey].minutes += r.durasi_menit;
         acc[dateKey].revenue += r.pendapatan;
         return acc;
-    }, {} as DailyData);
+    }, {} as { [key: string]: { minutes: number; revenue: number } });
 
     let achievedWorkDays = 0;
-    (Object.values(dailyData) as DailySummary[]).forEach((daySummary) => {
+    (Object.values(dailyData) as { minutes: number; revenue: number }[]).forEach((daySummary) => {
         if (daySummary.minutes >= minWorkMinutes) {
             achievedWorkDays++;
         }
@@ -107,26 +94,19 @@ function calculateMonthlyPerformance(hostId: number, year: number, month: number
         revenuePerDay: revenuePerDay
     };
 }
-
-// Fungsi ini diekspor agar bisa digunakan oleh halaman Gaji
 export function calculatePayroll(hostId: number, year: number, month: number, hosts: any[], rekapLive: any[]) {
     const host = hosts.find(h => h.id === hostId);
     if (!host) {
         return null;
     }
-
     const hostRekaps = rekapLive.filter(r => {
         const recDate = new Date(r.tanggal_live);
         return r.host_id === hostId && recDate.getFullYear() === year && recDate.getMonth() === month && r.status === 'approved';
     });
-
     const totalDiamonds = hostRekaps.reduce((sum, r) => sum + r.pendapatan, 0);
     const totalMinutes = hostRekaps.reduce((sum, r) => sum + r.durasi_menit, 0);
     const totalHours = totalMinutes / 60;
-    
     const workDays = new Set(hostRekaps.map(r => r.tanggal_live)).size;
-
-    // Hitung Bonus berdasarkan target diamond
     let bonus = 0;
     if (totalDiamonds >= 300000) bonus = 5000000;
     else if (totalDiamonds >= 250000) bonus = 4000000;
@@ -138,38 +118,29 @@ export function calculatePayroll(hostId: number, year: number, month: number, ho
     else if (totalDiamonds >= 70000) bonus = 700000;
     else if (totalDiamonds >= 60000) bonus = 600000;
     else if (totalDiamonds >= 50000) bonus = 500000;
-
-    // Hitung Potongan Gaji Pokok
     const targetDays = 26;
     const targetHours = 156;
     const baseSalary = host.gaji_pokok || 0;
-    
     const daysPercentage = Math.min(1, workDays / targetDays);
     const hoursPercentage = totalHours > 0 ? Math.min(1, totalHours / targetHours) : 0;
-    
     const achievementPercentage = Math.min(daysPercentage, hoursPercentage);
     const adjustedBaseSalary = baseSalary * achievementPercentage;
     const deduction = baseSalary - adjustedBaseSalary;
-
     const finalSalary = adjustedBaseSalary + bonus;
-
-    return {
-        hostName: host.nama_host,
-        totalHours,
-        totalDiamonds,
-        baseSalary,
-        bonus,
-        deduction,
-        adjustedBaseSalary,
-        finalSalary,
-        workDays,
-        targetDays,
-        targetHours,
-    };
+    return { hostName: host.nama_host, totalHours, totalDiamonds, baseSalary, bonus, deduction, adjustedBaseSalary, finalSalary, workDays, targetDays, targetHours };
 }
 
+// Varian untuk container animasi
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.05
+    }
+  }
+};
 
-// Komponen ini adalah halaman Analisis Kinerja.
 export default function AnalysisPage() {
     const { data, session } = useContext(AppContext) as AppContextType;
     const [currentDate, setCurrentDate] = useState(new Date());
@@ -193,62 +164,59 @@ export default function AnalysisPage() {
     }, [selectedHostId, currentDate, data.rekapLive]);
 
     const kpiCards = [
-        { title: 'Hari Kerja Tercapai', value: performance.workDays },
-        { title: 'Target Hari Kerja', value: 26 },
-        { title: 'Jatah Libur Sebulan', value: performance.offDayEntitlement },
-        { title: 'Sisa Jatah Libur', value: performance.remainingOffDays },
-        { title: 'Total Jam Live', value: `${performance.totalHours.toFixed(1)} jam` },
-        { title: 'Keseimbangan Jam', value: `${performance.hourBalance.toFixed(1)} jam` },
-        { title: 'Total Diamond Bulan Ini', value: `${new Intl.NumberFormat().format(performance.totalDiamonds)} 💎` },
-        { title: 'Diamond per Hari (Efisiensi)', value: `${new Intl.NumberFormat().format(performance.revenuePerDay)} 💎/hari` },
+        { title: 'Hari Kerja Tercapai', value: performance.workDays, icon: CheckCircle },
+        { title: 'Target Hari Kerja', value: 26, icon: Target },
+        { title: 'Jatah Libur', value: performance.offDayEntitlement, icon: CalendarDays },
+        { title: 'Sisa Jatah Libur', value: performance.remainingOffDays, icon: CalendarDays },
+        { title: 'Total Jam Live', value: `${performance.totalHours.toFixed(1)} jam`, icon: Hourglass },
+        { title: 'Keseimbangan Jam', value: `${performance.hourBalance.toFixed(1)} jam`, icon: performance.hourBalance >= 0 ? TrendingUp : TrendingDown },
+        { title: 'Total Diamond', value: `${new Intl.NumberFormat().format(performance.totalDiamonds)}`, icon: Diamond },
+        { title: 'Diamond per Hari', value: `${new Intl.NumberFormat().format(performance.revenuePerDay)}`, icon: BarChart2 },
     ];
 
-    const handlePrevMonth = () => {
-        setCurrentDate(prev => new Date(prev.getFullYear(), prev.getMonth() - 1, 1));
-    };
-
-    const handleNextMonth = () => {
-        setCurrentDate(prev => new Date(prev.getFullYear(), prev.getMonth() + 1, 1));
-    };
-    
-    const handleDayClick = (day: number) => {
-        setSelectedDay(day);
-        setIsDetailModalOpen(true);
-    };
-
-    const handleCloseModal = () => {
-        setIsDetailModalOpen(false);
-        setSelectedDay(null);
-    };
+    const handlePrevMonth = () => setCurrentDate(prev => new Date(prev.getFullYear(), prev.getMonth() - 1, 1));
+    const handleNextMonth = () => setCurrentDate(prev => new Date(prev.getFullYear(), prev.getMonth() + 1, 1));
+    const handleDayClick = (day: number) => { setSelectedDay(day); setIsDetailModalOpen(true); };
+    const handleCloseModal = () => { setIsDetailModalOpen(false); setSelectedDay(null); };
 
     return (
         <section>
-            <div className="bg-white dark:bg-stone-800 p-6 rounded-xl shadow-sm border border-stone-100 dark:border-stone-700 mb-8">
+            <div className="bg-white/80 dark:bg-stone-900/80 backdrop-blur-sm p-4 rounded-xl border border-purple-300 dark:border-cyan-400/30 shadow-lg mb-8">
                 <div className="flex flex-col md:flex-row justify-between items-center">
                     {isSuperAdmin && (
                         <select 
                             value={selectedHostId} 
                             onChange={(e) => setSelectedHostId(e.target.value)}
-                            className="bg-stone-50 border border-stone-300 text-stone-900 text-sm rounded-lg focus:ring-purple-500 focus:border-purple-500 block w-full md:w-auto p-2.5 dark:bg-stone-700 dark:border-stone-600 dark:placeholder-stone-400 dark:text-white"
+                            className="bg-stone-100 dark:bg-stone-800 border border-stone-300 dark:border-stone-600 text-stone-900 dark:text-white text-sm rounded-lg focus:ring-purple-500 focus:border-purple-500 block w-full md:w-auto p-2.5"
                         >
                             {data.hosts.map(host => <option key={host.id} value={host.id}>{host.nama_host}</option>)}
                         </select>
                     )}
                     <div className="flex items-center space-x-2 mt-4 md:mt-0">
                         <button onClick={handlePrevMonth} className="p-2 rounded-md hover:bg-stone-200 dark:hover:bg-stone-700"><ChevronLeft /></button>
-                        <h3 className="font-semibold text-lg mx-2 text-center w-32">{currentDate.toLocaleString('id-ID', { month: 'long', year: 'numeric' })}</h3>
+                        <h3 className="font-semibold text-lg mx-2 text-center w-32 text-stone-800 dark:text-white">{currentDate.toLocaleString('id-ID', { month: 'long', year: 'numeric' })}</h3>
                         <button onClick={handleNextMonth} className="p-2 rounded-md hover:bg-stone-200 dark:hover:bg-stone-700"><ChevronRight /></button>
                     </div>
                 </div>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            
+            <motion.div 
+                className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-4 gap-4 mb-8"
+                variants={containerVariants}
+                initial="hidden"
+                animate="visible"
+            >
                 {kpiCards.map(card => (
-                    <div key={card.title} className="bg-white dark:bg-stone-800 p-6 rounded-xl shadow-sm border border-stone-100 dark:border-stone-700">
-                        <h3 className="text-sm font-medium text-stone-500 dark:text-stone-400">{card.title}</h3>
-                        <p className="text-3xl font-bold mt-2 text-stone-900 dark:text-white">{card.value}</p>
-                    </div>
+                    <AnimatedCard key={card.title}>
+                        <div className="bg-white/80 dark:bg-stone-900/80 backdrop-blur-sm p-4 rounded-xl border border-purple-300 dark:border-cyan-400/30 shadow-lg h-full">
+                            <card.icon className="h-6 w-6 text-purple-500 dark:text-cyan-400 mb-2" />
+                            <h3 className="text-xs font-medium text-stone-500 dark:text-stone-400 truncate">{card.title}</h3>
+                            <p className="text-2xl font-bold mt-1 text-stone-800 dark:text-white">{card.value}</p>
+                        </div>
+                    </AnimatedCard>
                 ))}
-            </div>
+            </motion.div>
+            
             <Calendar currentDate={currentDate} selectedHostId={selectedHostId} onDayClick={handleDayClick} />
             
             <TrendChart selectedHostId={selectedHostId} />
@@ -267,133 +235,7 @@ export default function AnalysisPage() {
     );
 }
 
-// Komponen Kalender
-function Calendar({ currentDate, selectedHostId, onDayClick }: { currentDate: Date, selectedHostId: string, onDayClick: (day: number) => void }) {
-    const { data } = useContext(AppContext) as AppContextType;
-    
-    const year = currentDate.getFullYear();
-    const month = currentDate.getMonth();
-    
-    const dailyData = useMemo(() => {
-        const hostRekaps = data.rekapLive.filter(r => 
-            r.host_id === parseInt(selectedHostId) && r.status === 'approved'
-        );
-
-        return hostRekaps.reduce((acc, r) => {
-            const [recYear, recMonth, recDay] = r.tanggal_live.split('-').map(Number);
-            if (recYear === year && (recMonth - 1) === month) {
-                if (!acc[recDay]) {
-                    acc[recDay] = { totalMinutes: 0, totalDiamonds: 0 };
-                }
-                acc[recDay].totalMinutes += r.durasi_menit;
-                acc[recDay].totalDiamonds += r.pendapatan;
-            }
-            return acc;
-        }, {} as { [key: number]: { totalMinutes: number, totalDiamonds: number } });
-    }, [data.rekapLive, selectedHostId, year, month]);
-
-    const firstDayOfMonth = new Date(year, month, 1).getDay();
-    const daysInMonth = new Date(year, month + 1, 0).getDate();
-    const startDay = (firstDayOfMonth === 0) ? 6 : firstDayOfMonth - 1;
-
-    const daysArray = Array.from({ length: daysInMonth }, (_, i) => i + 1);
-    const emptyStartDays = Array.from({ length: startDay });
-
-    return (
-        <div className="mt-8 bg-white dark:bg-stone-800 rounded-xl shadow-sm border border-stone-100 dark:border-stone-700 p-4">
-            <div className="grid grid-cols-7 gap-1 text-center font-semibold text-stone-600 dark:text-stone-300 mb-2">
-                {['Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab', 'Min'].map(day => <div key={day} className="text-xs md:text-sm">{day}</div>)}
-            </div>
-            <div className="grid grid-cols-7 gap-1">
-                {emptyStartDays.map((_, i) => <div key={`empty-${i}`} className="border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-800/50 rounded-md h-16 md:h-32"></div>)}
-                {daysArray.map(day => {
-                    const dayData = dailyData[day];
-                    const isLive = dayData && dayData.totalMinutes >= 120;
-                    const clickableClass = isLive ? 'cursor-pointer hover:bg-stone-100 dark:hover:bg-stone-700' : '';
-                    
-                    return (
-                        <div key={day} onClick={() => isLive && onDayClick(day)} className={`border border-stone-200 dark:border-stone-700 p-1 md:p-2 rounded-md h-16 md:h-32 flex flex-col ${clickableClass}`}>
-                            <div className="font-bold text-stone-800 dark:text-stone-200 text-xs md:text-base">{day}</div>
-                            <div className="mt-1">
-                                <span className={`px-2 py-0.5 inline-flex text-xs leading-5 font-semibold rounded-full ${isLive ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300' : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300'}`}>
-                                    {isLive ? 'Live' : 'Absent'}
-                                </span>
-                            </div>
-                            {isLive && (
-                                <div className="hidden md:flex text-xs mt-2 space-y-1 flex-col">
-                                    <p className="flex justify-between"><span>Jam:</span> <span>{`${Math.floor(dayData.totalMinutes / 60)}j ${dayData.totalMinutes % 60}m`}</span></p>
-                                    <p className="flex justify-between"><span>Diamond:</span> <span>{new Intl.NumberFormat().format(dayData.totalDiamonds)}</span></p>
-                                </div>
-                            )}
-                        </div>
-                    );
-                })}
-            </div>
-        </div>
-    );
-}
-
-// Komponen Grafik Tren 30 Hari
-function TrendChart({ selectedHostId }: { selectedHostId: string }) {
-    const { data } = useContext(AppContext) as AppContextType;
-    const [metric, setMetric] = useState('revenue'); // 'revenue' atau 'duration'
-
-    const trendData = useMemo(() => {
-        const labels: string[] = [];
-        const revenueData: number[] = [];
-        const durationData: number[] = [];
-
-        const hostRekaps = data.rekapLive.filter(r => r.host_id === parseInt(selectedHostId) && r.status === 'approved');
-
-        for (let i = 29; i >= 0; i--) {
-            const date = new Date();
-            date.setDate(date.getDate() - i);
-            const dateString = date.toISOString().split('T')[0];
-            labels.push(date.toLocaleDateString('id-ID', { day: '2-digit', month: 'short' }));
-
-            const rekapsForDay = hostRekaps.filter(r => r.tanggal_live === dateString);
-            
-            const dailyRevenue = rekapsForDay.reduce((sum, r) => sum + r.pendapatan, 0);
-            const dailyDuration = rekapsForDay.reduce((sum, r) => sum + r.durasi_menit, 0);
-
-            revenueData.push(dailyRevenue);
-            durationData.push(dailyDuration);
-        }
-
-        return { labels, revenueData, durationData };
-    }, [data.rekapLive, selectedHostId]);
-
-    const chartData = {
-        labels: trendData.labels,
-        datasets: [
-            {
-                label: metric === 'revenue' ? 'Pendapatan Diamond' : 'Durasi Live (Menit)',
-                data: metric === 'revenue' ? trendData.revenueData : trendData.durationData,
-                borderColor: 'rgb(168, 85, 247)',
-                backgroundColor: 'rgba(168, 85, 247, 0.1)',
-                fill: true,
-                tension: 0.4,
-            },
-        ],
-    };
-
-    return (
-        <div className="mt-8 bg-white dark:bg-stone-800 p-6 rounded-xl shadow-sm border border-stone-100 dark:border-stone-700">
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4">
-                <h2 className="text-xl font-semibold">Tren Kinerja 30 Hari Terakhir</h2>
-                <div className="flex items-center space-x-2 mt-2 sm:mt-0 bg-stone-100 dark:bg-stone-700 p-1 rounded-lg">
-                    <button onClick={() => setMetric('revenue')} className={`px-3 py-1 text-sm font-semibold rounded-md ${metric === 'revenue' ? 'bg-white dark:bg-stone-800 shadow' : 'text-stone-600 dark:text-stone-300'}`}>Diamond</button>
-                    <button onClick={() => setMetric('duration')} className={`px-3 py-1 text-sm font-semibold rounded-md ${metric === 'duration' ? 'bg-white dark:bg-stone-800 shadow' : 'text-stone-600 dark:text-stone-300'}`}>Durasi</button>
-                </div>
-            </div>
-            <div className="relative h-80">
-                <Line data={chartData} options={{ responsive: true, maintainAspectRatio: false }} />
-            </div>
-        </div>
-    );
-}
-
-// Komponen baru untuk konten modal detail kalender
+// Komponen modal detail kalender
 function CalendarDetailModal({ isOpen, onClose, day, month, year, selectedHostId }: { isOpen: boolean, onClose: () => void, day: number, month: number, year: number, selectedHostId: string }) {
     const { data } = useContext(AppContext) as AppContextType;
     const dateString = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;

@@ -9,7 +9,6 @@ const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 export const supabase = createClient(supabaseUrl, supabaseKey);
 
-// Tipe data untuk konteks aplikasi
 export interface AppContextType {
     page: string;
     setPage: (page: string) => void;
@@ -34,6 +33,8 @@ export interface AppData {
     announcements: any[];
     announcementReads: any[];
     announcementReactions: any[];
+    achievements: any[];
+    hostAchievements: any[];
 }
 
 export const AppContext = createContext<AppContextType | null>(null);
@@ -56,6 +57,8 @@ export default function App() {
         announcements: [],
         announcementReads: [],
         announcementReactions: [],
+        achievements: [],
+        hostAchievements: [],
     });
     
     const [authLoading, setAuthLoading] = useState(true);
@@ -92,13 +95,17 @@ export default function App() {
                 { data: tiktokAccounts },
                 { data: announcements },
                 { data: announcementReads },
-                { data: announcementReactions }
+                { data: announcementReactions },
+                { data: achievements },
+                { data: hostAchievements }
             ] = await Promise.all([
                 supabase.from('hosts').select('*'),
                 supabase.from('tiktok_accounts').select('*'),
                 supabase.from('announcements').select('*').order('is_pinned', { ascending: false }).order('created_at', { ascending: false }),
                 supabase.from('announcement_reads').select('*'),
-                supabase.from('announcement_reactions').select('*')
+                supabase.from('announcement_reactions').select('*'),
+                supabase.from('achievements').select('*'),
+                supabase.from('host_achievements').select('*')
             ]);
             
             let users: any[] = [];
@@ -108,11 +115,9 @@ export default function App() {
                 const { data: userList, error: userError } = await supabase.functions.invoke('list-all-users');
                 if (userError) throw userError;
                 users = userList;
-
                 const { data } = await supabase.from('rekap_live').select('*');
                 rekapLive = data;
             } else {
-                // --- PERBAIKAN FINAL: Langsung gunakan host_id dari metadata pengguna ---
                 const hostId = user.user_metadata?.host_id;
                 if (hostId) {
                     const { data } = await supabase.from('rekap_live').select('*').eq('host_id', hostId);
@@ -130,6 +135,8 @@ export default function App() {
                 announcements: announcements || [],
                 announcementReads: announcementReads || [],
                 announcementReactions: announcementReactions || [],
+                achievements: achievements || [],
+                hostAchievements: hostAchievements || [],
             });
         } catch (error) {
             console.error("Error fetching data:", error);
@@ -142,13 +149,30 @@ export default function App() {
             fetchData(session);
             setIsQuoteBannerVisible(true);
         } else {
-            setData({ loading: false, hosts: [], rekapLive: [], tiktokAccounts: [], users: [], user: null, announcements: [], announcementReads: [], announcementReactions: [] });
+            setData({ loading: false, hosts: [], rekapLive: [], tiktokAccounts: [], users: [], user: null, announcements: [], announcementReads: [], announcementReactions: [], achievements: [], hostAchievements: [] });
         }
     }, [session, fetchData]);
 
     useEffect(() => {
         if (!session) return;
 
+        const hostId = session.user.user_metadata?.host_id;
+        const achievementsChannel = supabase.channel('host_achievements_realtime')
+            .on('postgres_changes', { 
+                event: 'INSERT', 
+                schema: 'public', 
+                table: 'host_achievements',
+                filter: `host_id=eq.${hostId}`
+            }, (payload) => {
+                const newAchievement = data.achievements.find(a => a.id === payload.new.achievement_id);
+                if (newAchievement) {
+                    showNotification(`🏆 Pencapaian Terbuka: ${newAchievement.name}!`);
+                }
+                fetchData(session);
+            })
+            .subscribe();
+
+        // --- PERBAIKAN DI SINI: Melengkapi kode yang terpotong ---
         const readsChannel = supabase.channel('announcement_reads_realtime')
             .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'announcement_reads' }, (payload) => {
                 setData(prev => ({ ...prev, announcementReads: [...prev.announcementReads, payload.new] }));
@@ -162,27 +186,17 @@ export default function App() {
             .subscribe();
 
         return () => {
+            supabase.removeChannel(achievementsChannel);
             supabase.removeChannel(readsChannel);
             supabase.removeChannel(reactionsChannel);
         };
-    }, [session, fetchData]);
+    }, [session, fetchData, data.achievements]);
 
-    const logout = async () => {
-        await supabase.auth.signOut();
-        setPage('dashboard');
-    };
-
-    const showNotification = (message: string, isError = false) => {
-        setNotification({ message, isError });
-        setTimeout(() => setNotification(null), 3000);
-    };
+    const logout = async () => { await supabase.auth.signOut(); setPage('dashboard'); };
+    const showNotification = (message: string, isError = false) => { setNotification({ message, isError }); setTimeout(() => setNotification(null), 5000); };
 
     if (authLoading) {
-        return (
-            <div className="flex h-screen items-center justify-center bg-stone-100 dark:bg-stone-900">
-                <LayoutDashboard className="h-8 w-8 animate-spin text-purple-500" />
-            </div>
-        );
+        return <div className="flex h-screen items-center justify-center bg-stone-100 dark:bg-stone-900"><LayoutDashboard className="h-8 w-8 animate-spin text-purple-500" /></div>;
     }
     
     return (

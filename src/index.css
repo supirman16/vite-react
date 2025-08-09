@@ -8,7 +8,6 @@
   }
 }
 
-/* Menambahkan kembali kelas gradien kustom kita */
 @layer components {
   .unity-gradient-bg {
     @apply bg-gradient-to-r from-purple-600 to-blue-500 text-white;
@@ -22,4 +21,40 @@
   .live-badge-ping {
     @apply absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75 animate-ping;
   }
+  .nav-item-active {
+    @apply relative;
+  }
+  .nav-item-active::before {
+    content: '';
+    @apply absolute left-0 top-1/2 -translate-y-1/2 h-3/4 w-1 rounded-r-full bg-purple-600 dark:bg-cyan-400 shadow-[0_0_10px] shadow-purple-600/50 dark:shadow-cyan-400/50;
+    animation: fade-in-fast 0.3s ease-out;
+  }
+
+  /* --- PENAMBAHAN BARU UNTUK LATAR BELAKANG MODAL --- */
+  .gaming-modal-bg {
+    background-image: linear-gradient(theme('colors.purple.500 / 0.05') 1px, transparent 1px), linear-gradient(to right, theme('colors.purple.500 / 0.05') 1px, transparent 1px);
+    background-size: 2rem 2rem;
+  }
+  .dark .gaming-modal-bg {
+    background-image: linear-gradient(theme('colors.cyan.400 / 0.1') 1px, transparent 1px), linear-gradient(to right, theme('colors.cyan.400 / 0.1') 1px, transparent 1px);
+  }
+}
+
+/* Media query untuk tabel mobile */
+@media (max-width: 767px) {
+    .md\:table-header-group {
+        display: none;
+    }
+    .md\:table-cell.hidden {
+        display: none;
+    }
+    .block.md\:table-row .hidden.md\:table-cell {
+        display: none;
+    }
+    .block.md\:table-row > .md\:table-cell:not(:first-child) {
+        display: none;
+    }
+    .block.md\:table-row > .p-4.md\:px-6.md\:py-4.md\:table-cell {
+        display: block;
+    }
 }
