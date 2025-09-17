@@ -26,27 +26,11 @@ export default function RekapPage() {
     const years = Array.from({ length: 6 }, (_, i) => new Date().getFullYear() - i);
     const months = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
 
-    const handleViewDetail = (rekap: any) => { 
-        setSelectedRekap(rekap); 
-        setIsDetailModalOpen(true); 
-    };
-    const handleCloseDetail = () => { 
-        setIsDetailModalOpen(false); 
-        setSelectedRekap(null); 
-    };
-    const handleAdd = () => { 
-        setSelectedRekap(null); 
-        setIsFormModalOpen(true); 
-    };
-    const handleEdit = (rekap: any) => { 
-        setSelectedRekap(rekap); 
-        setIsDetailModalOpen(false); 
-        setIsFormModalOpen(true); };
-
-    const handleDelete = (rekap: any) => { 
-        setRekapToDelete(rekap); 
-        setIsConfirmOpen(true); 
-    };
+    const handleViewDetail = (rekap: any) => { setSelectedRekap(rekap); setIsDetailModalOpen(true); };
+    const handleCloseDetail = () => { setIsDetailModalOpen(false); setSelectedRekap(null); };
+    const handleAdd = () => { setSelectedRekap(null); setIsFormModalOpen(true); };
+    const handleEdit = (rekap: any) => { setSelectedRekap(rekap); setIsDetailModalOpen(false); setIsFormModalOpen(true); };
+    const handleDelete = (rekap: any) => { setRekapToDelete(rekap); setIsConfirmOpen(true); };
 
     const handleConfirmDelete = async () => {
         if (!rekapToDelete) return;
@@ -63,13 +47,7 @@ export default function RekapPage() {
         }
     };
 
-    const StatusButton = ({ status, label }: { status: string, label: string }) => ( 
-    <button 
-    onClick={() => setSelectedStatus(status)} 
-    className={`px-3 py-1 text-sm font-semibold rounded-md transition-colors ${selectedStatus === status ? 'unity-gradient-bg text-white' : 'bg-stone-200 dark:bg-stone-700 hover:bg-stone-300 dark:hover:bg-stone-600 text-stone-700 dark:text-stone-200'}`}>
-        {label}
-        </button> 
-        );
+    const StatusButton = ({ status, label }: { status: string, label: string }) => ( <button onClick={() => setSelectedStatus(status)} className={`px-3 py-1 text-sm font-semibold rounded-md transition-colors ${selectedStatus === status ? 'unity-gradient-bg text-white' : 'bg-stone-200 dark:bg-stone-700 hover:bg-stone-300 dark:hover:bg-stone-600 text-stone-700 dark:text-stone-200'}`}>{label}</button> );
     const commonSelectClasses = "bg-stone-50 border border-stone-300 text-stone-900 text-sm rounded-lg focus:ring-purple-500 focus:border-purple-500 block w-full p-2.5 dark:bg-stone-700 dark:border-stone-600 dark:placeholder-stone-400 dark:text-white";
 
     return (
@@ -79,19 +57,12 @@ export default function RekapPage() {
                     <h2 className="text-xl font-semibold text-stone-800 dark:text-stone-100">Manajemen Rekap Live</h2>
                     <p className="text-sm text-stone-500 dark:text-stone-400 mt-1">Saring, lihat, dan kelola semua riwayat sesi live.</p>
                 </div>
-                <button onClick={handleAdd} className="mt-4 sm:mt-0 unity-gradient-bg font-semibold px-4 py-2.5 rounded-lg shadow-sm hover:opacity-90 flex items-center">
-                    <Plus className="h-5 w-5 mr-2" />
-                    Tambah Rekap
-                    </button>
+                <button onClick={handleAdd} className="mt-4 sm:mt-0 unity-gradient-bg font-semibold px-4 py-2.5 rounded-lg shadow-sm hover:opacity-90 flex items-center"><Plus className="h-5 w-5 mr-2" />Tambah Rekap</button>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6 p-4 bg-white/80 dark:bg-stone-900/80 backdrop-blur-sm rounded-xl border border-purple-300 dark:border-cyan-400/30 shadow-lg">
                 <div className="flex items-center space-x-2">
-                    <select value={month} onChange={(e) => setMonth(parseInt(e.target.value))} className={commonSelectClasses}>
-                        {months.map((m, i) => <option key={i} value={i}>{m}</option>)}
-                        </select>
-                    <select value={year} onChange={(e) => setYear(parseInt(e.target.value))} className={commonSelectClasses}>
-                        {years.map(y => <option key={y} value={y}>{y}</option>)}
-                        </select>
+                    <select value={month} onChange={(e) => setMonth(parseInt(e.target.value))} className={commonSelectClasses}>{months.map((m, i) => <option key={i} value={i}>{m}</option>)}</select>
+                    <select value={year} onChange={(e) => setYear(parseInt(e.target.value))} className={commonSelectClasses}>{years.map(y => <option key={y} value={y}>{y}</option>)}</select>
                 </div>
                 {isSuperAdmin && (
                     <>
@@ -100,9 +71,7 @@ export default function RekapPage() {
                     </>
                 )}
                 <div className="flex items-center space-x-2 p-1 bg-stone-100 dark:bg-stone-900 rounded-lg">
-                    <StatusButton status="all" label="Semua" />
-                    <StatusButton status="pending" label="Pending" />
-                    <StatusButton status="approved" label="Approved" />
+                    <StatusButton status="all" label="Semua" /><StatusButton status="pending" label="Pending" /><StatusButton status="approved" label="Approved" />
                 </div>
             </div>
             <RekapTable filters={{ month, year, selectedHost, selectedTiktok, selectedStatus }} onViewDetail={handleViewDetail} onAdd={handleAdd} />
@@ -243,6 +212,9 @@ function RekapDetailModal({ isOpen, onClose, rekap, onEdit, onDelete }: { isOpen
         </Modal>
     );
 }
+// ==================================================================
+// --- PERUBAHAN UTAMA ADA DI KOMPONEN MODAL DI BAWAH INI ---
+// ==================================================================
 function RekapModal({ isOpen, onClose, rekap }: { isOpen: boolean, onClose: () => void, rekap: any | null }) {
     const { data, session, setData, showNotification } = useContext(AppContext) as AppContextType;
     const isSuperAdmin = session!.user.user_metadata?.role === 'superadmin';
@@ -250,34 +222,35 @@ function RekapModal({ isOpen, onClose, rekap }: { isOpen: boolean, onClose: () =
     const [duration, setDuration] = useState({ hours: '0', minutes: '0' });
     const [calculatedEndTime, setCalculatedEndTime] = useState('--:--');
     const [loading, setLoading] = useState(false);
-    useEffect(() => {
-            if (rekap && rekap.durasi_menit) {
-                const hours = Math.floor(rekap.durasi_menit / 60);
-                const minutes = rekap.durasi_menit % 60;
-                setDuration({ hours: hours.toString(), minutes: minutes.toString() });
-            } else {
-                setDuration({ hours: '5', minutes: '0' });
-            }
-        }, [rekap]);
-    
-        useEffect(() => {
-            const { waktu_mulai } = formData;
-            const hours = parseInt(duration.hours, 10) || 0;
-            const minutes = parseInt(duration.minutes, 10) || 0;
-            if (waktu_mulai) {
-                const [startHours, startMinutes] = waktu_mulai.split(':').map(Number);
-                const startDate = new Date();
-                startDate.setHours(startHours, startMinutes, 0, 0);
-                const endDate = new Date(startDate.getTime() + (hours * 60 + minutes) * 60000);
-                const endHours = String(endDate.getHours()).padStart(2, '0');
-                const endMinutes = String(endDate.getMinutes()).padStart(2, '0');
-                setCalculatedEndTime(`${endHours}:${endMinutes}`);
-            }
-        }, [formData.waktu_mulai, duration]);
-    
-        const handleFormChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => { const { id, value } = e.target; setFormData(prev => ({ ...prev, [id]: value })); };
-        const handleDurationChange = (e: React.ChangeEvent<HTMLInputElement>) => { const { id, value } = e.target; const sanitizedValue = value.replace(/[^0-9]/g, '').slice(0, 2).replace(/^0+/, '') || '0'; setDuration(prev => ({ ...prev, [id]: sanitizedValue })); };
 
+    useEffect(() => {
+        if (rekap && rekap.durasi_menit) {
+            const hours = Math.floor(rekap.durasi_menit / 60);
+            const minutes = rekap.durasi_menit % 60;
+            setDuration({ hours: hours.toString(), minutes: minutes.toString() });
+        } else {
+            setDuration({ hours: '5', minutes: '0' });
+        }
+    }, [rekap]);
+
+    useEffect(() => {
+        const { waktu_mulai } = formData;
+        const hours = parseInt(duration.hours, 10) || 0;
+        const minutes = parseInt(duration.minutes, 10) || 0;
+        if (waktu_mulai) {
+            const [startHours, startMinutes] = waktu_mulai.split(':').map(Number);
+            const startDate = new Date();
+            startDate.setHours(startHours, startMinutes, 0, 0);
+            const endDate = new Date(startDate.getTime() + (hours * 60 + minutes) * 60000);
+            const endHours = String(endDate.getHours()).padStart(2, '0');
+            const endMinutes = String(endDate.getMinutes()).padStart(2, '0');
+            setCalculatedEndTime(`${endHours}:${endMinutes}`);
+        }
+    }, [formData.waktu_mulai, duration]);
+
+    const handleFormChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => { const { id, value } = e.target; setFormData(prev => ({ ...prev, [id]: value })); };
+    const handleDurationChange = (e: React.ChangeEvent<HTMLInputElement>) => { const { id, value } = e.target; const sanitizedValue = value.replace(/[^0-9]/g, '').slice(0, 2).replace(/^0+/, '') || '0'; setDuration(prev => ({ ...prev, [id]: sanitizedValue })); };
+    
     const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault(); setLoading(true);
         const totalDurationMinutes = (parseInt(duration.hours, 10) || 0) * 60 + (parseInt(duration.minutes, 10) || 0);
