@@ -212,9 +212,7 @@ function RekapDetailModal({ isOpen, onClose, rekap, onEdit, onDelete }: { isOpen
         </Modal>
     );
 }
-// ==================================================================
-// --- PERUBAHAN UTAMA ADA DI KOMPONEN MODAL DI BAWAH INI ---
-// ==================================================================
+
 function RekapModal({ isOpen, onClose, rekap }: { isOpen: boolean, onClose: () => void, rekap: any | null }) {
     const { data, session, setData, showNotification } = useContext(AppContext) as AppContextType;
     const isSuperAdmin = session!.user.user_metadata?.role === 'superadmin';
@@ -274,6 +272,7 @@ function RekapModal({ isOpen, onClose, rekap }: { isOpen: boolean, onClose: () =
     };
 
     const commonInputClasses = "bg-stone-50 border border-stone-300 text-stone-900 text-sm rounded-lg focus:ring-purple-500 focus:border-purple-500 block w-full p-2.5 dark:bg-stone-700 dark:border-stone-600 dark:placeholder-stone-400 dark:text-white";
+    
     return (
         <Modal isOpen={isOpen} onClose={onClose} title={rekap ? 'Ubah Rekap Live' : 'Tambah Rekap Baru'}>
             <form onSubmit={handleSubmit} className="space-y-4">
@@ -282,9 +281,9 @@ function RekapModal({ isOpen, onClose, rekap }: { isOpen: boolean, onClose: () =
                 <div><label htmlFor="tanggal_live" className="block mb-2 text-sm font-medium text-stone-900 dark:text-stone-300">Tanggal Live</label><input id="tanggal_live" type="date" value={formData.tanggal_live} onChange={handleFormChange} required className={commonInputClasses} /></div>
                 <div className="grid grid-cols-2 gap-4">
                     <div><label htmlFor="waktu_mulai" className="block mb-2 text-sm font-medium text-stone-900 dark:text-stone-300">Waktu Mulai</label><input id="waktu_mulai" type="time" value={formData.waktu_mulai} onChange={handleFormChange} required className={commonInputClasses} /></div>
-                    <div><label htmlFor="duration" className="block mb-2 text-sm font-medium text-stone-900 dark:text-stone-300">Durasi</label><div className="flex items-center space-x-2"><input id="hours" type="number" value={duration.hours} onChange={handleDurationChange} className={commonInputClasses} placeholder="Jam" min="0" /><span className="text-stone-500">j</span><input id="minutes" type="number" value={duration.minutes} onChange={handleDurationChange} className={commonInputClasses} placeholder="Menit" min="0" max="59"/><span className="text-stone-500">m</span></div></div>
+                    <div><label htmlFor="duration" className="block mb-2 text-sm font-medium text-stone-900 dark:text-stone-300">Durasi</label><div className="flex items-center space-x-2"><input id="hours" type="number" value={duration.hours} onChange={handleDurationChange} className={commonInputClasses} placeholder="Jam" min="0" /><span className="text-stone-500 dark:text-stone-400">j</span><input id="minutes" type="number" value={duration.minutes} onChange={handleDurationChange} className={commonInputClasses} placeholder="Menit" min="0" max="59"/><span className="text-stone-500 dark:text-stone-400">m</span></div></div>
                 </div>
-                <div><label className="block mb-2 text-sm font-medium text-stone-900 dark:text-stone-300">Jam Selesai (dihitung otomatis)</label><div className="bg-stone-100 dark:bg-stone-800 p-2.5 rounded-lg text-center font-mono">{calculatedEndTime}</div></div>
+                <div><label className="block mb-2 text-sm font-medium text-stone-900 dark:text-stone-300">Jam Selesai (dihitung otomatis)</label><div className="bg-stone-100 dark:bg-stone-800 p-2.5 rounded-lg text-center font-mono text-stone-800 dark:text-stone-200">{calculatedEndTime}</div></div>
                 <div><label htmlFor="pendapatan" className="block mb-2 text-sm font-medium text-stone-900 dark:text-stone-300">Pendapatan (Diamond)</label><input id="pendapatan" type="number" value={formData.pendapatan} onChange={handleFormChange} placeholder="Contoh: 5500" required className={commonInputClasses} /></div>
                 <div><label htmlFor="catatan" className="block mb-2 text-sm font-medium text-stone-900 dark:text-stone-300">Catatan</label><textarea id="catatan" value={formData.catatan} onChange={handleFormChange} placeholder="Topik live, kendala, dll..." rows={3} className={commonInputClasses}></textarea></div>
                 <div className="flex justify-end space-x-4 pt-4"><button type="button" onClick={onClose} className="px-5 py-2.5 text-sm font-medium text-stone-700 bg-stone-100 rounded-lg hover:bg-stone-200 dark:bg-stone-700 dark:text-stone-300 dark:hover:bg-stone-600">Batal</button><button type="submit" disabled={loading} className="unity-gradient-bg font-semibold px-5 py-2.5 rounded-lg shadow-sm hover:opacity-90 flex items-center justify-center disabled:opacity-75">{loading ? 'Menyimpan...' : 'Simpan'}</button></div>
