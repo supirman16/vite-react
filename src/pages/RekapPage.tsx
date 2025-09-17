@@ -1,4 +1,4 @@
-import { useContext, useState, useMemo } from 'react';
+import { useContext, useState, useMemo, useEffect } from 'react';
 import { AppContext, AppContextType, supabase } from '../App';
 import { Plus, Check, XCircle, Edit, Trash2, Diamond } from 'lucide-react';
 import Modal from '../components/Modal';
@@ -26,11 +26,27 @@ export default function RekapPage() {
     const years = Array.from({ length: 6 }, (_, i) => new Date().getFullYear() - i);
     const months = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
 
-    const handleViewDetail = (rekap: any) => { setSelectedRekap(rekap); setIsDetailModalOpen(true); };
-    const handleCloseDetail = () => { setIsDetailModalOpen(false); setSelectedRekap(null); };
-    const handleAdd = () => { setSelectedRekap(null); setIsFormModalOpen(true); };
-    const handleEdit = (rekap: any) => { setSelectedRekap(rekap); setIsDetailModalOpen(false); setIsFormModalOpen(true); };
-    const handleDelete = (rekap: any) => { setRekapToDelete(rekap); setIsConfirmOpen(true); };
+    const handleViewDetail = (rekap: any) => { 
+        setSelectedRekap(rekap); 
+        setIsDetailModalOpen(true); 
+    };
+    const handleCloseDetail = () => { 
+        setIsDetailModalOpen(false); 
+        setSelectedRekap(null); 
+    };
+    const handleAdd = () => { 
+        setSelectedRekap(null); 
+        setIsFormModalOpen(true); 
+    };
+    const handleEdit = (rekap: any) => { 
+        setSelectedRekap(rekap); 
+        setIsDetailModalOpen(false); 
+        setIsFormModalOpen(true); };
+
+    const handleDelete = (rekap: any) => { 
+        setRekapToDelete(rekap); 
+        setIsConfirmOpen(true); 
+    };
 
     const handleConfirmDelete = async () => {
         if (!rekapToDelete) return;
@@ -47,7 +63,13 @@ export default function RekapPage() {
         }
     };
 
-    const StatusButton = ({ status, label }: { status: string, label: string }) => ( <button onClick={() => setSelectedStatus(status)} className={`px-3 py-1 text-sm font-semibold rounded-md transition-colors ${selectedStatus === status ? 'unity-gradient-bg text-white' : 'bg-stone-200 dark:bg-stone-700 hover:bg-stone-300 dark:hover:bg-stone-600 text-stone-700 dark:text-stone-200'}`}>{label}</button> );
+    const StatusButton = ({ status, label }: { status: string, label: string }) => ( 
+    <button 
+    onClick={() => setSelectedStatus(status)} 
+    className={`px-3 py-1 text-sm font-semibold rounded-md transition-colors ${selectedStatus === status ? 'unity-gradient-bg text-white' : 'bg-stone-200 dark:bg-stone-700 hover:bg-stone-300 dark:hover:bg-stone-600 text-stone-700 dark:text-stone-200'}`}>
+        {label}
+        </button> 
+        );
     const commonSelectClasses = "bg-stone-50 border border-stone-300 text-stone-900 text-sm rounded-lg focus:ring-purple-500 focus:border-purple-500 block w-full p-2.5 dark:bg-stone-700 dark:border-stone-600 dark:placeholder-stone-400 dark:text-white";
 
     return (
@@ -57,12 +79,19 @@ export default function RekapPage() {
                     <h2 className="text-xl font-semibold text-stone-800 dark:text-stone-100">Manajemen Rekap Live</h2>
                     <p className="text-sm text-stone-500 dark:text-stone-400 mt-1">Saring, lihat, dan kelola semua riwayat sesi live.</p>
                 </div>
-                <button onClick={handleAdd} className="mt-4 sm:mt-0 unity-gradient-bg font-semibold px-4 py-2.5 rounded-lg shadow-sm hover:opacity-90 flex items-center"><Plus className="h-5 w-5 mr-2" />Tambah Rekap</button>
+                <button onClick={handleAdd} className="mt-4 sm:mt-0 unity-gradient-bg font-semibold px-4 py-2.5 rounded-lg shadow-sm hover:opacity-90 flex items-center">
+                    <Plus className="h-5 w-5 mr-2" />
+                    Tambah Rekap
+                    </button>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6 p-4 bg-white/80 dark:bg-stone-900/80 backdrop-blur-sm rounded-xl border border-purple-300 dark:border-cyan-400/30 shadow-lg">
                 <div className="flex items-center space-x-2">
-                    <select value={month} onChange={(e) => setMonth(parseInt(e.target.value))} className={commonSelectClasses}>{months.map((m, i) => <option key={i} value={i}>{m}</option>)}</select>
-                    <select value={year} onChange={(e) => setYear(parseInt(e.target.value))} className={commonSelectClasses}>{years.map(y => <option key={y} value={y}>{y}</option>)}</select>
+                    <select value={month} onChange={(e) => setMonth(parseInt(e.target.value))} className={commonSelectClasses}>
+                        {months.map((m, i) => <option key={i} value={i}>{m}</option>)}
+                        </select>
+                    <select value={year} onChange={(e) => setYear(parseInt(e.target.value))} className={commonSelectClasses}>
+                        {years.map(y => <option key={y} value={y}>{y}</option>)}
+                        </select>
                 </div>
                 {isSuperAdmin && (
                     <>
@@ -71,7 +100,9 @@ export default function RekapPage() {
                     </>
                 )}
                 <div className="flex items-center space-x-2 p-1 bg-stone-100 dark:bg-stone-900 rounded-lg">
-                    <StatusButton status="all" label="Semua" /><StatusButton status="pending" label="Pending" /><StatusButton status="approved" label="Approved" />
+                    <StatusButton status="all" label="Semua" />
+                    <StatusButton status="pending" label="Pending" />
+                    <StatusButton status="approved" label="Approved" />
                 </div>
             </div>
             <RekapTable filters={{ month, year, selectedHost, selectedTiktok, selectedStatus }} onViewDetail={handleViewDetail} onAdd={handleAdd} />
@@ -147,7 +178,7 @@ function RekapTable({ filters, onViewDetail, onAdd }: { filters: any, onViewDeta
                                 <td className="hidden md:table-cell px-6 py-4">{tiktokAccount?.username || 'N/A'}</td>
                                 <td className="hidden md:table-cell px-6 py-4">{formatDuration(rekap.durasi_menit)}</td>
                                 <td className="hidden md:table-cell px-6 py-4">{new Intl.NumberFormat().format(rekap.pendapatan)}</td>
-                                <td className="hidden md:table-cell px-6 py-4"><span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${rekap.status === 'approved' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}`}>{rekap.status}</span></td>
+                                <td className="hidden md:table-cell px-6 py-4"><span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${rekap.status === 'approved' ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300' : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300'}`}>{rekap.status}</span></td>
                                 <td className="hidden md:table-cell px-6 py-4 text-center"><button onClick={(e) => { e.stopPropagation(); onViewDetail(rekap); }} className="font-medium text-purple-600 hover:underline dark:text-purple-500">Lihat Detail</button></td>
                             </tr>
                         );
@@ -158,7 +189,6 @@ function RekapTable({ filters, onViewDetail, onAdd }: { filters: any, onViewDeta
     );
 }
 
-// ... Sisa komponen tidak perlu diubah ...
 function RekapTableSkeleton({ isSuperAdmin }: { isSuperAdmin: boolean }) {
     return (
         <div className="space-y-4 md:space-y-0">
@@ -174,6 +204,7 @@ function RekapTableSkeleton({ isSuperAdmin }: { isSuperAdmin: boolean }) {
         </div>
     );
 }
+
 function RekapDetailModal({ isOpen, onClose, rekap, onEdit, onDelete }: { isOpen: boolean, onClose: () => void, rekap: any, onEdit: (rekap: any) => void, onDelete: (rekap: any) => void }) {
     const { data, session, setData, showNotification } = useContext(AppContext) as AppContextType;
     const isSuperAdmin = session!.user.user_metadata?.role === 'superadmin';
@@ -215,16 +246,42 @@ function RekapDetailModal({ isOpen, onClose, rekap, onEdit, onDelete }: { isOpen
 function RekapModal({ isOpen, onClose, rekap }: { isOpen: boolean, onClose: () => void, rekap: any | null }) {
     const { data, session, setData, showNotification } = useContext(AppContext) as AppContextType;
     const isSuperAdmin = session!.user.user_metadata?.role === 'superadmin';
-    const [formData, setFormData] = useState({ host_id: rekap?.host_id || (isSuperAdmin ? '' : session!.user.user_metadata.host_id), tiktok_account_id: rekap?.tiktok_account_id || '', tanggal_live: rekap?.tanggal_live || new Date().toISOString().split('T')[0], waktu_mulai: rekap?.waktu_mulai || '13:00', waktu_selesai: rekap?.waktu_selesai || '18:00', pendapatan: rekap?.pendapatan || '', catatan: rekap?.catatan || '' });
+    const [formData, setFormData] = useState({ host_id: rekap?.host_id || (isSuperAdmin ? '' : session!.user.user_metadata.host_id), tiktok_account_id: rekap?.tiktok_account_id || '', tanggal_live: rekap?.tanggal_live || new Date().toISOString().split('T')[0], waktu_mulai: rekap?.waktu_mulai || '13:00', pendapatan: rekap?.pendapatan || '', catatan: rekap?.catatan || '' });
+    const [duration, setDuration] = useState({ hours: '0', minutes: '0' });
+    const [calculatedEndTime, setCalculatedEndTime] = useState('--:--');
     const [loading, setLoading] = useState(false);
-    const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => { const { id, value } = e.target; setFormData(prev => ({ ...prev, [id]: value })); };
+    useEffect(() => {
+            if (rekap && rekap.durasi_menit) {
+                const hours = Math.floor(rekap.durasi_menit / 60);
+                const minutes = rekap.durasi_menit % 60;
+                setDuration({ hours: hours.toString(), minutes: minutes.toString() });
+            } else {
+                setDuration({ hours: '5', minutes: '0' });
+            }
+        }, [rekap]);
+    
+        useEffect(() => {
+            const { waktu_mulai } = formData;
+            const hours = parseInt(duration.hours, 10) || 0;
+            const minutes = parseInt(duration.minutes, 10) || 0;
+            if (waktu_mulai) {
+                const [startHours, startMinutes] = waktu_mulai.split(':').map(Number);
+                const startDate = new Date();
+                startDate.setHours(startHours, startMinutes, 0, 0);
+                const endDate = new Date(startDate.getTime() + (hours * 60 + minutes) * 60000);
+                const endHours = String(endDate.getHours()).padStart(2, '0');
+                const endMinutes = String(endDate.getMinutes()).padStart(2, '0');
+                setCalculatedEndTime(`${endHours}:${endMinutes}`);
+            }
+        }, [formData.waktu_mulai, duration]);
+    
+        const handleFormChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => { const { id, value } = e.target; setFormData(prev => ({ ...prev, [id]: value })); };
+        const handleDurationChange = (e: React.ChangeEvent<HTMLInputElement>) => { const { id, value } = e.target; const sanitizedValue = value.replace(/[^0-9]/g, '').slice(0, 2).replace(/^0+/, '') || '0'; setDuration(prev => ({ ...prev, [id]: sanitizedValue })); };
+
     const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault(); setLoading(true);
-        const startDateTime = new Date(`${formData.tanggal_live}T${formData.waktu_mulai}`);
-        let endDateTime = new Date(`${formData.tanggal_live}T${formData.waktu_selesai}`);
-        if (endDateTime <= startDateTime) { endDateTime.setDate(endDateTime.getDate() + 1); }
-        const duration = Math.round((endDateTime.getTime() - startDateTime.getTime()) / (1000 * 60));
-        const rekapData = { ...formData, durasi_menit: duration };
+        const totalDurationMinutes = (parseInt(duration.hours, 10) || 0) * 60 + (parseInt(duration.minutes, 10) || 0);
+        const rekapData = { ...formData, durasi_menit: totalDurationMinutes, waktu_selesai: calculatedEndTime };
         try {
             if (rekap) {
                 const { data: updatedRekap, error } = await supabase.from('rekap_live').update(rekapData).eq('id', rekap.id).select().single();
@@ -242,18 +299,24 @@ function RekapModal({ isOpen, onClose, rekap }: { isOpen: boolean, onClose: () =
             showNotification(`Gagal menyimpan: ${error.message}`, true);
         } finally { setLoading(false); }
     };
+
     const commonInputClasses = "bg-stone-50 border border-stone-300 text-stone-900 text-sm rounded-lg focus:ring-purple-500 focus:border-purple-500 block w-full p-2.5 dark:bg-stone-700 dark:border-stone-600 dark:placeholder-stone-400 dark:text-white";
     return (
         <Modal isOpen={isOpen} onClose={onClose} title={rekap ? 'Ubah Rekap Live' : 'Tambah Rekap Baru'}>
             <form onSubmit={handleSubmit} className="space-y-4">
-                <div><label htmlFor="host_id" className="block mb-2 text-sm font-medium">Pilih Host</label><select id="host_id" value={formData.host_id} onChange={handleChange} disabled={!isSuperAdmin} required className={commonInputClasses}><option value="">Pilih Host</option>{data.hosts.map(h => <option key={h.id} value={h.id}>{h.nama_host}</option>)}</select></div>
-                <div><label htmlFor="tiktok_account_id" className="block mb-2 text-sm font-medium">Akun TikTok</label><select id="tiktok_account_id" value={formData.tiktok_account_id} onChange={handleChange} required className={commonInputClasses}><option value="">Pilih Akun TikTok</option>{data.tiktokAccounts.map(acc => <option key={acc.id} value={acc.id}>{acc.username}</option>)}</select></div>
-                <div><label htmlFor="tanggal_live" className="block mb-2 text-sm font-medium">Tanggal Live</label><input id="tanggal_live" type="date" value={formData.tanggal_live} onChange={handleChange} required className={commonInputClasses} /></div>
-                <div className="grid grid-cols-2 gap-4"><div><label htmlFor="waktu_mulai" className="block mb-2 text-sm font-medium">Waktu Mulai</label><input id="waktu_mulai" type="time" value={formData.waktu_mulai} onChange={handleChange} required className={commonInputClasses} /></div><div><label htmlFor="waktu_selesai" className="block mb-2 text-sm font-medium">Waktu Selesai</label><input id="waktu_selesai" type="time" value={formData.waktu_selesai} onChange={handleChange} required className={commonInputClasses} /></div></div>
-                <div><label htmlFor="pendapatan" className="block mb-2 text-sm font-medium">Pendapatan (Diamond)</label><input id="pendapatan" type="number" value={formData.pendapatan} onChange={handleChange} placeholder="Contoh: 5500" required className={commonInputClasses} /></div>
-                <div><label htmlFor="catatan" className="block mb-2 text-sm font-medium">Catatan</label><textarea id="catatan" value={formData.catatan} onChange={handleChange} placeholder="Topik live, dll..." rows={3} className={commonInputClasses}></textarea></div>
-                <div className="flex justify-end space-x-4 pt-4"><button type="button" onClick={onClose} className="px-5 py-2.5 text-sm font-medium text-white bg-stone-100 rounded-lg hover:bg-stone-200 dark:bg-stone-700 dark:text-stone-300 dark:hover:bg-stone-600">Batal</button><button type="submit" disabled={loading} className="unity-gradient-bg font-semibold px-5 py-2.5 rounded-lg shadow-sm hover:opacity-90 flex items-center justify-center disabled:opacity-75">{loading ? 'Menyimpan...' : 'Simpan'}</button></div>
+                <div><label htmlFor="host_id" className="block mb-2 text-sm font-medium text-stone-900 dark:text-stone-300">Pilih Host</label><select id="host_id" value={formData.host_id} onChange={handleFormChange} disabled={!isSuperAdmin} required className={commonInputClasses}><option value="">Pilih Host</option>{data.hosts.map(h => <option key={h.id} value={h.id}>{h.nama_host}</option>)}</select></div>
+                <div><label htmlFor="tiktok_account_id" className="block mb-2 text-sm font-medium text-stone-900 dark:text-stone-300">Akun TikTok</label><select id="tiktok_account_id" value={formData.tiktok_account_id} onChange={handleFormChange} required className={commonInputClasses}><option value="">Pilih Akun TikTok</option>{data.tiktokAccounts.map(acc => <option key={acc.id} value={acc.id}>{acc.username}</option>)}</select></div>
+                <div><label htmlFor="tanggal_live" className="block mb-2 text-sm font-medium text-stone-900 dark:text-stone-300">Tanggal Live</label><input id="tanggal_live" type="date" value={formData.tanggal_live} onChange={handleFormChange} required className={commonInputClasses} /></div>
+                <div className="grid grid-cols-2 gap-4">
+                    <div><label htmlFor="waktu_mulai" className="block mb-2 text-sm font-medium text-stone-900 dark:text-stone-300">Waktu Mulai</label><input id="waktu_mulai" type="time" value={formData.waktu_mulai} onChange={handleFormChange} required className={commonInputClasses} /></div>
+                    <div><label htmlFor="duration" className="block mb-2 text-sm font-medium text-stone-900 dark:text-stone-300">Durasi</label><div className="flex items-center space-x-2"><input id="hours" type="number" value={duration.hours} onChange={handleDurationChange} className={commonInputClasses} placeholder="Jam" min="0" /><span className="text-stone-500">j</span><input id="minutes" type="number" value={duration.minutes} onChange={handleDurationChange} className={commonInputClasses} placeholder="Menit" min="0" max="59"/><span className="text-stone-500">m</span></div></div>
+                </div>
+                <div><label className="block mb-2 text-sm font-medium text-stone-900 dark:text-stone-300">Jam Selesai (dihitung otomatis)</label><div className="bg-stone-100 dark:bg-stone-800 p-2.5 rounded-lg text-center font-mono">{calculatedEndTime}</div></div>
+                <div><label htmlFor="pendapatan" className="block mb-2 text-sm font-medium text-stone-900 dark:text-stone-300">Pendapatan (Diamond)</label><input id="pendapatan" type="number" value={formData.pendapatan} onChange={handleFormChange} placeholder="Contoh: 5500" required className={commonInputClasses} /></div>
+                <div><label htmlFor="catatan" className="block mb-2 text-sm font-medium text-stone-900 dark:text-stone-300">Catatan</label><textarea id="catatan" value={formData.catatan} onChange={handleFormChange} placeholder="Topik live, kendala, dll..." rows={3} className={commonInputClasses}></textarea></div>
+                <div className="flex justify-end space-x-4 pt-4"><button type="button" onClick={onClose} className="px-5 py-2.5 text-sm font-medium text-stone-700 bg-stone-100 rounded-lg hover:bg-stone-200 dark:bg-stone-700 dark:text-stone-300 dark:hover:bg-stone-600">Batal</button><button type="submit" disabled={loading} className="unity-gradient-bg font-semibold px-5 py-2.5 rounded-lg shadow-sm hover:opacity-90 flex items-center justify-center disabled:opacity-75">{loading ? 'Menyimpan...' : 'Simpan'}</button></div>
             </form>
         </Modal>
     );
 }
+
