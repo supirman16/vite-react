@@ -241,11 +241,7 @@ ALTER TABLE public.platform_live_data DISABLE ROW LEVEL SECURITY;`;
         return `${year}-${month}-${day}`;
     };
 
-    const formatMinutes = (totalMinutes: number) => {
-        const h = Math.floor(totalMinutes / 60);
-        const m = totalMinutes % 60;
-        return h > 0 ? `${h}j ${m}m` : `${m}m`;
-    };
+
 
     // Date Parser for "MM/DD/YYYY HH:mm"
     const parseDateTime = (str: string) => {
@@ -589,11 +585,7 @@ ALTER TABLE public.platform_live_data DISABLE ROW LEVEL SECURITY;`;
         }
     };
 
-    const formatTime = (date: Date) => {
-        const h = String(date.getHours()).padStart(2, '0');
-        const m = String(date.getMinutes()).padStart(2, '0');
-        return `${h}:${m}`;
-    };
+
 
     // File Drag & Drop Handlers
     const handleDragOver = (e: React.DragEvent) => {
@@ -839,152 +831,18 @@ ALTER TABLE public.platform_live_data DISABLE ROW LEVEL SECURITY;`;
                                 </tr>
                             </thead>
                             <tbody className="divide-y border-stone-900 dark:divide-stone-850 font-bold text-xs">
-                                {auditResults.map((audit, idx) => {
-                                    const dateObj = new Date(audit.platformData.start_time);
-                                    const formattedDate = dateObj.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
-                                    const formattedTimeRange = `${formatTime(dateObj)} - ${formatTime(new Date(audit.platformData.end_time))}`;
-                                    
-                                    const statusStyle = getStatusBadgeStyle(audit.status);
-                                    
-                                    // Handle list of hosts to choose from for the automatic generation of forgotten live reports
-                                    // If a TikTok account is shared by multiple hosts, we allow selecting the correct host!
-                                    const [selectedHostId, setSelectedHostId] = useState(
-                                        audit.matchedHost?.id || (data.hosts[0]?.id || '')
-                                    );
-
-                                    return (
-                                        <tr key={idx} className="hover:bg-pink-500/5 dark:hover:bg-cyan-400/5 transition-colors group">
-                                            
-                                            {/* Account Info */}
-                                            <td className="p-4">
-                                                <div className="flex items-center gap-2.5">
-                                                    <div className="w-8 h-8 rounded-full bg-stone-150 dark:bg-stone-800 border-2 border-stone-900 dark:border-stone-700 flex items-center justify-center text-xs font-black shadow-sm group-hover:scale-105 transition-transform">
-                                                        {audit.platformData.username.charAt(0).toUpperCase()}
-                                                    </div>
-                                                    <div>
-                                                        <span className="block font-black text-stone-900 dark:text-white text-xs">{audit.platformData.username}</span>
-                                                        <span className="block text-[10px] text-stone-400 dark:text-stone-500 uppercase tracking-wider mt-0.5">
-                                                            {audit.matchedAccount ? `ID: ${audit.matchedAccount.id.substring(0, 4)}...` : 'Belum Ditautkan'}
-                                                        </span>
-                                                    </div>
-                                                </div>
-                                            </td>
-
-                                            {/* Live Time */}
-                                            <td className="p-4">
-                                                <span className="block font-extrabold text-stone-900 dark:text-stone-200 text-xs">{formattedDate}</span>
-                                                <span className="block text-[10px] text-stone-400 dark:text-stone-500 font-mono mt-0.5">{formattedTimeRange}</span>
-                                            </td>
-
-                                            {/* Platform Data */}
-                                            <td className="p-4 space-y-1">
-                                                <span className="block text-[11px] font-extrabold text-stone-900 dark:text-stone-200 flex items-center gap-1">
-                                                    🖥️ <span className="font-mono">{formatMinutes(audit.platformData.durasi_menit)}</span> ({audit.platformData.duration})
-                                                </span>
-                                                <span className="block text-[11px] font-black text-pink-500 dark:text-cyan-400 flex items-center gap-1 font-mono">
-                                                    💎 {audit.platformData.diamonds.toLocaleString('id-ID')}
-                                                </span>
-                                            </td>
-
-                                            {/* Host Rekap Claimed Data */}
-                                            <td className="p-4">
-                                                {audit.matchedRekap ? (
-                                                    <div className="space-y-1">
-                                                        <span className="block text-[11px] font-extrabold text-stone-900 dark:text-stone-200 flex items-center gap-1">
-                                                            👤 <span className="font-extrabold text-stone-900 dark:text-white underline">{audit.matchedHost?.nama_host || 'Unknown'}</span>
-                                                        </span>
-                                                        <span className="block text-[10px] text-stone-500 dark:text-stone-450 flex items-center gap-1">
-                                                            ⏱️ Claimed: <span className="font-mono">{formatMinutes(audit.matchedRekap.durasi_menit)}</span>
-                                                        </span>
-                                                        <span className="block text-[10px] text-stone-500 dark:text-stone-450 flex items-center gap-1 font-mono">
-                                                            💎 Claimed: {audit.matchedRekap.pendapatan.toLocaleString('id-ID')}
-                                                        </span>
-                                                    </div>
-                                                ) : (
-                                                    <span className="text-[10px] uppercase font-black text-stone-400 dark:text-stone-500 italic">Tidak ada klaim</span>
-                                                )}
-                                            </td>
-
-                                            {/* Audit Result Status */}
-                                            <td className="p-4">
-                                                <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 border-2 border-stone-900 dark:border-stone-150 rounded-xl text-[10px] font-black uppercase tracking-wider shadow-[2px_2px_0px_#000] ${statusStyle.badgeClass}`}>
-                                                    <statusStyle.Icon className="h-3.5 w-3.5" />
-                                                    <span>{statusStyle.label}</span>
-                                                </span>
-                                                {audit.differenceDetails && (
-                                                    <span className="block text-[9px] font-black text-red-500 dark:text-red-400 mt-1 max-w-[200px] leading-relaxed">
-                                                        {audit.differenceDetails}
-                                                    </span>
-                                                )}
-                                            </td>
-
-                                            {/* Action Button: Automated Revision & Forgotten Creation */}
-                                            <td className="p-4 text-center">
-                                                <div className="flex items-center justify-center gap-2">
-                                                    
-                                                    {audit.status === 'match' && (
-                                                        <span className="text-[10px] uppercase font-black text-emerald-500 dark:text-emerald-400 flex items-center gap-1">
-                                                            <CheckCircle className="h-4 w-4" />
-                                                            <span>Laporan Sah ✓</span>
-                                                        </span>
-                                                    )}
-
-                                                    {(audit.status === 'diff_diamonds' || audit.status === 'diff_duration') && audit.matchedRekap && (
-                                                        <button
-                                                            onClick={() => handleAutoRevise(audit)}
-                                                            disabled={loading}
-                                                            className="px-3 py-1.5 border-2 border-stone-900 dark:border-stone-850 bg-yellow-400 text-stone-900 font-extrabold text-[10px] rounded-xl shadow-[2px_2px_0px_#000] hover:translate-y-[1px] hover:shadow-[1px_1px_0px_#000] active:translate-y-[2px] active:shadow-[0px_0px_0px_#000] transition-all flex items-center gap-1 shrink-0"
-                                                        >
-                                                            <RefreshCw className="h-3.5 w-3.5" />
-                                                            <span>Revisi Otomatis 🛠️</span>
-                                                        </button>
-                                                    )}
-
-                                                    {audit.status === 'no_rekap' && (
-                                                        <div className="flex flex-col sm:flex-row items-center gap-2 w-full max-w-[280px]">
-                                                            {/* Dropdown to assign correct host - Crucial for shared shift accounts! */}
-                                                            <select
-                                                                value={selectedHostId}
-                                                                onChange={(e) => setSelectedHostId(e.target.value)}
-                                                                className="px-2 py-1.5 text-[10px] font-bold bg-white dark:bg-stone-800 border-2 border-stone-900 dark:border-stone-700 rounded-xl focus:outline-none w-full max-w-[140px]"
-                                                            >
-                                                                {data.hosts.map(h => (
-                                                                    <option key={h.id} value={h.id}>{h.nama_host}</option>
-                                                                ))}
-                                                            </select>
-
-                                                            <button
-                                                                onClick={() => handleCreateMissingRekap(audit, selectedHostId)}
-                                                                disabled={loading}
-                                                                className="px-3 py-1.5 border-2 border-stone-900 dark:border-stone-850 bg-gradient-to-r from-pink-500 to-cyan-500 text-white font-extrabold text-[10px] rounded-xl shadow-[2px_2px_0px_#000] hover:translate-y-[1px] hover:shadow-[1px_1px_0px_#000] active:translate-y-[2px] active:shadow-[0px_0px_0px_#000] transition-all flex items-center gap-1 shrink-0"
-                                                            >
-                                                                <PlusCircle className="h-3.5 w-3.5" />
-                                                                <span>Buat Rekap 📝</span>
-                                                            </button>
-                                                        </div>
-                                                    )}
-
-                                                    {audit.status === 'unknown_account' && (
-                                                        <span className="text-[10px] uppercase font-black text-stone-400 dark:text-stone-500 flex items-center gap-1 select-none italic">
-                                                            <HelpCircle className="h-3.5 w-3.5" />
-                                                            <span>Hubungkan Akun TikTok ➜</span>
-                                                        </span>
-                                                    )}
-
-                                                    {/* Delete Platform Record Fallback */}
-                                                    <button
-                                                        onClick={() => handleDeleteRecord(audit.platformData)}
-                                                        className="p-1.5 text-stone-400 hover:text-red-500 dark:text-stone-600 hover:dark:text-red-400 transition-colors ml-1"
-                                                        title="Hapus data platform ini"
-                                                    >
-                                                        <Trash2 className="h-3.5 w-3.5" />
-                                                    </button>
-                                                </div>
-                                            </td>
-
-                                        </tr>
-                                    );
-                                })}
+                                {auditResults.map((audit, idx) => (
+                                    <AuditRow
+                                        key={idx}
+                                        audit={audit}
+                                        idx={idx}
+                                        hosts={data.hosts}
+                                        loading={loading}
+                                        onAutoRevise={handleAutoRevise}
+                                        onCreateMissingRekap={handleCreateMissingRekap}
+                                        onDeleteRecord={handleDeleteRecord}
+                                    />
+                                ))}
                             </tbody>
                         </table>
                     )}
@@ -1047,3 +905,172 @@ const getStatusBadgeStyle = (status: AuditResult['status']) => {
             };
     }
 };
+
+const formatTime = (date: Date) => {
+    const h = String(date.getHours()).padStart(2, '0');
+    const m = String(date.getMinutes()).padStart(2, '0');
+    return `${h}:${m}`;
+};
+
+const formatMinutes = (totalMinutes: number) => {
+    const h = Math.floor(totalMinutes / 60);
+    const m = totalMinutes % 60;
+    return h > 0 ? `${h}j ${m}m` : `${m}m`;
+};
+
+// Sub-component for rendering each Audit row safely with its own legal state hook
+interface AuditRowProps {
+    audit: AuditResult;
+    idx: number;
+    hosts: any[];
+    loading: boolean;
+    onAutoRevise: (audit: AuditResult) => void;
+    onCreateMissingRekap: (audit: AuditResult, hostId: string) => void;
+    onDeleteRecord: (record: PlatformLiveData) => void;
+}
+
+function AuditRow({ audit, idx, hosts, loading, onAutoRevise, onCreateMissingRekap, onDeleteRecord }: AuditRowProps) {
+    const dateObj = new Date(audit.platformData.start_time);
+    const formattedDate = dateObj.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
+    const formattedTimeRange = `${formatTime(dateObj)} - ${formatTime(new Date(audit.platformData.end_time))}`;
+    
+    const statusStyle = getStatusBadgeStyle(audit.status);
+    
+    // Legal React state hook inside custom component!
+    const [selectedHostId, setSelectedHostId] = useState(
+        audit.matchedHost?.id || (hosts[0]?.id || '')
+    );
+
+    return (
+        <tr className="hover:bg-pink-500/5 dark:hover:bg-cyan-400/5 transition-colors group">
+            
+            {/* Account Info */}
+            <td className="p-4">
+                <div className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-full bg-stone-150 dark:bg-stone-800 border-2 border-stone-900 dark:border-stone-700 flex items-center justify-center text-xs font-black shadow-sm group-hover:scale-105 transition-transform">
+                        {audit.platformData.username.charAt(0).toUpperCase()}
+                    </div>
+                    <div>
+                        <span className="block font-black text-stone-900 dark:text-white text-xs">{audit.platformData.username}</span>
+                        <span className="block text-[10px] text-stone-400 dark:text-stone-500 uppercase tracking-wider mt-0.5">
+                            {audit.matchedAccount ? `ID: ${audit.matchedAccount.id.substring(0, 4)}...` : 'Belum Ditautkan'}
+                        </span>
+                    </div>
+                </div>
+            </td>
+
+            {/* Live Time */}
+            <td className="p-4">
+                <span className="block font-extrabold text-stone-900 dark:text-stone-200 text-xs">{formattedDate}</span>
+                <span className="block text-[10px] text-stone-400 dark:text-stone-500 font-mono mt-0.5">{formattedTimeRange}</span>
+            </td>
+
+            {/* Platform Data */}
+            <td className="p-4 space-y-1">
+                <span className="block text-[11px] font-extrabold text-stone-900 dark:text-stone-200 flex items-center gap-1">
+                    🖥️ <span className="font-mono">{formatMinutes(audit.platformData.durasi_menit)}</span> ({audit.platformData.duration})
+                </span>
+                <span className="block text-[11px] font-black text-pink-500 dark:text-cyan-400 flex items-center gap-1 font-mono">
+                    💎 {audit.platformData.diamonds.toLocaleString('id-ID')}
+                </span>
+            </td>
+
+            {/* Host Rekap Claimed Data */}
+            <td className="p-4">
+                {audit.matchedRekap ? (
+                    <div className="space-y-1">
+                        <span className="block text-[11px] font-extrabold text-stone-900 dark:text-stone-200 flex items-center gap-1">
+                            👤 <span className="font-extrabold text-stone-900 dark:text-white underline">{audit.matchedHost?.nama_host || 'Unknown'}</span>
+                        </span>
+                        <span className="block text-[10px] text-stone-500 dark:text-stone-450 flex items-center gap-1">
+                            ⏱️ Claimed: <span className="font-mono">{formatMinutes(audit.matchedRekap.durasi_menit)}</span>
+                        </span>
+                        <span className="block text-[10px] text-stone-500 dark:text-stone-450 flex items-center gap-1 font-mono">
+                            💎 Claimed: {audit.matchedRekap.pendapatan.toLocaleString('id-ID')}
+                        </span>
+                    </div>
+                ) : (
+                    <span className="text-[10px] uppercase font-black text-stone-400 dark:text-stone-500 italic">Tidak ada klaim</span>
+                )}
+            </td>
+
+            {/* Audit Result Status */}
+            <td className="p-4">
+                <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 border-2 border-stone-900 dark:border-stone-150 rounded-xl text-[10px] font-black uppercase tracking-wider shadow-[2px_2px_0px_#000] ${statusStyle.badgeClass}`}>
+                    <statusStyle.Icon className="h-3.5 w-3.5" />
+                    <span>{statusStyle.label}</span>
+                </span>
+                {audit.differenceDetails && (
+                    <span className="block text-[9px] font-black text-red-500 dark:text-red-400 mt-1 max-w-[200px] leading-relaxed">
+                        {audit.differenceDetails}
+                    </span>
+                )}
+            </td>
+
+            {/* Action Button: Automated Revision & Forgotten Creation */}
+            <td className="p-4 text-center">
+                <div className="flex items-center justify-center gap-2">
+                    
+                    {audit.status === 'match' && (
+                        <span className="text-[10px] uppercase font-black text-emerald-500 dark:text-emerald-400 flex items-center gap-1">
+                            <CheckCircle className="h-4 w-4" />
+                            <span>Laporan Sah ✓</span>
+                        </span>
+                    )}
+
+                    {(audit.status === 'diff_diamonds' || audit.status === 'diff_duration') && audit.matchedRekap && (
+                        <button
+                            onClick={() => onAutoRevise(audit)}
+                            disabled={loading}
+                            className="px-3 py-1.5 border-2 border-stone-900 dark:border-stone-850 bg-yellow-400 text-stone-900 font-extrabold text-[10px] rounded-xl shadow-[2px_2px_0px_#000] hover:translate-y-[1px] hover:shadow-[1px_1px_0px_#000] active:translate-y-[2px] active:shadow-[0px_0px_0px_#000] transition-all flex items-center gap-1 shrink-0"
+                        >
+                            <RefreshCw className="h-3.5 w-3.5" />
+                            <span>Revisi Otomatis 🛠️</span>
+                        </button>
+                    )}
+
+                    {audit.status === 'no_rekap' && (
+                        <div className="flex flex-col sm:flex-row items-center gap-2 w-full max-w-[280px]">
+                            {/* Dropdown to assign correct host - Crucial for shared shift accounts! */}
+                            <select
+                                value={selectedHostId}
+                                onChange={(e) => setSelectedHostId(e.target.value)}
+                                className="px-2 py-1.5 text-[10px] font-bold bg-white dark:bg-stone-800 border-2 border-stone-900 dark:border-stone-700 rounded-xl focus:outline-none w-full max-w-[140px]"
+                            >
+                                {hosts.map(h => (
+                                    <option key={h.id} value={h.id}>{h.nama_host}</option>
+                                ))}
+                            </select>
+
+                            <button
+                                onClick={() => onCreateMissingRekap(audit, selectedHostId)}
+                                disabled={loading}
+                                className="px-3 py-1.5 border-2 border-stone-900 dark:border-stone-850 bg-gradient-to-r from-pink-500 to-cyan-500 text-white font-extrabold text-[10px] rounded-xl shadow-[2px_2px_0px_#000] hover:translate-y-[1px] hover:shadow-[1px_1px_0px_#000] active:translate-y-[2px] active:shadow-[0px_0px_0px_#000] transition-all flex items-center gap-1 shrink-0"
+                            >
+                                <PlusCircle className="h-3.5 w-3.5" />
+                                <span>Buat Rekap 📝</span>
+                            </button>
+                        </div>
+                    )}
+
+                    {audit.status === 'unknown_account' && (
+                        <span className="text-[10px] uppercase font-black text-stone-400 dark:text-stone-500 flex items-center gap-1 select-none italic">
+                            <HelpCircle className="h-3.5 w-3.5" />
+                            <span>Hubungkan Akun TikTok ➜</span>
+                        </span>
+                    )}
+
+                    {/* Delete Platform Record Fallback */}
+                    <button
+                        onClick={() => onDeleteRecord(audit.platformData)}
+                        className="p-1.5 text-stone-400 hover:text-red-500 dark:text-stone-600 hover:dark:text-red-400 transition-colors ml-1"
+                        title="Hapus data platform ini"
+                    >
+                        <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                </div>
+            </td>
+
+        </tr>
+    );
+}
