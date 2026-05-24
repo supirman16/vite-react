@@ -129,7 +129,7 @@ ALTER TABLE public.platform_live_data DISABLE ROW LEVEL SECURITY;`;
             // Find which host rekap corresponds to this specific platform live record by checking:
             // a) Start/End time overlaps or closest hours
             // b) Or diamond counts
-            let bestMatchRekap = null;
+            let bestMatchRekap: any = null;
 
             if (matchingRekaps.length === 1) {
                 bestMatchRekap = matchingRekaps[0];
