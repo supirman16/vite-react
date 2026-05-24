@@ -294,7 +294,7 @@ ALTER TABLE public.platform_live_data DISABLE ROW LEVEL SECURITY;`;
             let bestPlatform: PlatformLiveData | null = null;
             let bestScore = -1;
 
-            matchingPlatforms.forEach(p => {
+            for (const p of matchingPlatforms) {
                 let score = 0;
 
                 // 1. Start Time Score (max 40 pts)
@@ -308,7 +308,7 @@ ALTER TABLE public.platform_live_data DISABLE ROW LEVEL SECURITY;`;
 
                 // Enforce maximum start-time gap restriction of 180 minutes (3 hours)
                 if (timeDiffMins > 180) {
-                    return; // Skip this platform record entirely as it is a completely different shift/time
+                    continue; // Skip this platform record entirely as it is a completely different shift/time
                 }
 
                 if (timeDiffMins <= 30) score += 40;
@@ -332,7 +332,7 @@ ALTER TABLE public.platform_live_data DISABLE ROW LEVEL SECURITY;`;
                     bestScore = score;
                     bestPlatform = p;
                 }
-            });
+            }
 
             if (!bestPlatform) {
                 return {
