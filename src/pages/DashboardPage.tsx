@@ -92,17 +92,43 @@ function SuperadminDashboard() {
     const formatDuration = (minutes: number) => `${Math.floor(minutes / 60)}j ${minutes % 60}m`;
     
     const kpiData = [
-        { title: 'Total Host Aktif', value: data.hosts.filter(h => h.status === 'Aktif').length, icon: Gem },
-        { title: 'Total Jam Live', value: formatDuration(dynamicStats.totalMinutes), icon: Clock },
-        { title: 'Total Diamond', value: `${formatDiamond(dynamicStats.totalDiamonds)} 💎`, icon: Gem },
-        { title: 'Efisiensi Agensi', value: `${formatDiamond(dynamicStats.agencyEfficiency)} 💎/jam`, icon: BarChart },
-        { title: 'Total Sesi Live', value: dynamicStats.totalSessions.toLocaleString(), icon: Clock },
-        { title: 'Host Paling Aktif', value: dynamicStats.mostActiveHost, icon: Crown },
+        { title: 'Total Host Aktif', value: data.hosts.filter(h => h.status === 'Aktif').length, icon: Gem, shout: 'ACTIVE!' },
+        { title: 'Total Jam Live', value: formatDuration(dynamicStats.totalMinutes), icon: Clock, shout: 'TIRELESS!' },
+        { title: 'Total Diamond', value: `${formatDiamond(dynamicStats.totalDiamonds)} 💎`, icon: Gem, shout: 'RICH!' },
+        { title: 'Efisiensi Agensi', value: `${formatDiamond(dynamicStats.agencyEfficiency)} 💎/jam`, icon: BarChart, shout: 'BOOM!' },
+        { title: 'Total Sesi Live', value: dynamicStats.totalSessions.toLocaleString(), icon: Clock, shout: 'NONSTOP!' },
+        { title: 'Host Paling Aktif', value: dynamicStats.mostActiveHost, icon: Crown, shout: 'CROWN!' },
     ];
     
     return (
         <section>
-            <DateRangeFilter selectedRange={dateRange} onSelectRange={setDateRange} />
+            {/* Premium Welcoming Hero Banner with Dashboard Mascot */}
+            <div className="flex flex-col md:flex-row gap-6 mb-8 items-stretch justify-between relative overflow-hidden bg-white dark:bg-stone-900 p-6 rounded-2xl border-[3px] border-stone-900 dark:border-stone-100 shadow-[6px_6px_0px_0px_#ec4899] dark:shadow-[6px_6px_0px_0px_#06b6d4] manga-screentone transition-all duration-300">
+                <div className="flex-1 flex flex-col justify-between z-10">
+                    <div>
+                        <h2 className="text-3xl font-extrabold text-stone-900 dark:text-white bangers-font tracking-wider">
+                            PUSAT KOMANDO AGENSI ( •̀ ω •́)y
+                        </h2>
+                        <p className="text-sm font-bold text-stone-500 dark:text-stone-400 mt-2 max-w-xl">
+                            Kelola performa agensi secara keseluruhan, pantau pencapaian diamond para host, dan dapatkan analisis cerdas bertenaga AI secara instan!
+                        </p>
+                    </div>
+                    
+                    <div className="mt-6 -mb-6">
+                        <DateRangeFilter selectedRange={dateRange} onSelectRange={setDateRange} />
+                    </div>
+                </div>
+                
+                {/* Large floating anime character sticker - Circular Comic Medallion */}
+                <div className="hidden md:flex items-center justify-center shrink-0 w-36 h-36 relative -my-2 -mr-2 rounded-full overflow-hidden border-[3px] border-stone-900 dark:border-stone-100 bg-white dark:bg-stone-800 shadow-[4px_4px_0px_0px_#ec4899] dark:shadow-[4px_4px_0px_0px_#06b6d4] select-none pointer-events-none z-10 animate-float-slow">
+                    <img 
+                        src="/dashboard_mascot.png" 
+                        alt="Dashboard Mascot" 
+                        className="w-full h-full object-cover rounded-full"
+                    />
+                </div>
+            </div>
+
             <GeminiAnalysisCard filteredRekap={filteredRekap} hosts={data.hosts} dateRange={dateRange} />
             
             <motion.div 
@@ -113,14 +139,18 @@ function SuperadminDashboard() {
             >
                 {kpiData.map((kpi) => ( 
                     <AnimatedCard key={kpi.title}>
-                        <div className="bg-white/80 dark:bg-stone-900/80 backdrop-blur-sm p-6 rounded-xl border border-purple-300 dark:border-cyan-400/30 shadow-lg h-full">
+                        <div className="bg-white dark:bg-stone-900 p-6 rounded-xl h-full manga-panel-interactive relative group">
+                            {/* Comic Pop-Up Hover Shout Badge */}
+                            <div className="absolute -top-3.5 -right-2 bg-yellow-400 border-2 border-stone-900 text-stone-900 text-[10px] font-extrabold uppercase px-2 py-0.5 rounded shadow-[2px_2px_0px_#000] rotate-12 scale-0 group-hover:scale-100 transition-all duration-300 origin-bottom-left bangers-font text-xs tracking-wider z-20 select-none">
+                                {kpi.shout}
+                            </div>
                             <div className="flex items-center gap-4">
-                                <div className="p-3 rounded-lg unity-gradient-bg">
+                                <div className="p-3 rounded-lg unity-gradient-bg border-2 border-stone-900 dark:border-stone-100 shadow-[2px_2px_0px_0px_#000] dark:shadow-[2px_2px_0px_0px_#fff] shrink-0">
                                     <kpi.icon className="h-6 w-6 text-white" />
                                 </div>
-                                <div>
-                                    <h3 className="text-sm font-medium text-stone-500 dark:text-stone-400">{kpi.title}</h3>
-                                    <p className="text-2xl font-bold text-stone-800 dark:text-white truncate">{kpi.value}</p>
+                                <div className="overflow-hidden">
+                                    <h3 className="text-xs font-extrabold text-stone-500 dark:text-stone-400 uppercase tracking-wider">{kpi.title}</h3>
+                                    <p className="text-xl font-extrabold text-stone-800 dark:text-white truncate mt-1">{kpi.value}</p>
                                 </div>
                             </div>
                         </div>
@@ -177,15 +207,40 @@ function HostDashboard() {
     const formatDuration = (minutes: number) => `${Math.floor(minutes / 60)}j ${minutes % 60}m`;
 
     const kpiData = [
-        { title: 'Total Diamond Anda', value: `${formatDiamond(personalStats.totalDiamonds)} `, icon: Gem },
-        { title: 'Total Jam Live Anda', value: formatDuration(personalStats.totalMinutes), icon: Clock },
-        { title: 'Efisiensi Anda', value: `${formatDiamond(personalStats.efficiency)} 💎/jam`, icon: BarChart },
-        { title: 'Peringkat Anda', value: personalStats.rank, icon: Trophy },
+        { title: 'Total Diamond Anda', value: `${formatDiamond(personalStats.totalDiamonds)} `, icon: Gem, shout: 'RICH!' },
+        { title: 'Total Jam Live Anda', value: formatDuration(personalStats.totalMinutes), icon: Clock, shout: 'ACTIVE!' },
+        { title: 'Efisiensi Anda', value: `${formatDiamond(personalStats.efficiency)} 💎/jam`, icon: BarChart, shout: 'SUPER!' },
+        { title: 'Peringkat Anda', value: personalStats.rank, icon: Trophy, shout: 'CROWN!' },
     ];
 
     return (
         <section>
-            <DateRangeFilter selectedRange={dateRange} onSelectRange={setDateRange} />
+            {/* Premium Welcoming Hero Banner with Dashboard Mascot */}
+            <div className="flex flex-col md:flex-row gap-6 mb-8 items-stretch justify-between relative overflow-hidden bg-white dark:bg-stone-900 p-6 rounded-2xl border-[3px] border-stone-900 dark:border-stone-100 shadow-[6px_6px_0px_0px_#ec4899] dark:shadow-[6px_6px_0px_0px_#06b6d4] manga-screentone transition-all duration-300">
+                <div className="flex-1 flex flex-col justify-between z-10">
+                    <div>
+                        <h2 className="text-3xl font-extrabold text-stone-900 dark:text-white bangers-font tracking-wider">
+                            RUANG KERJA LIVE SENPAI (≧◡≦)
+                        </h2>
+                        <p className="text-sm font-bold text-stone-500 dark:text-stone-400 mt-2 max-w-xl">
+                            Pantau perolehan diamond harian Anda, capai target bulanan, dan tinjau performa streaming Anda dengan bantuan asisten cerdas AI.
+                        </p>
+                    </div>
+                    
+                    <div className="mt-6 -mb-6">
+                        <DateRangeFilter selectedRange={dateRange} onSelectRange={setDateRange} />
+                    </div>
+                </div>
+                
+                {/* Large floating anime character sticker - Circular Comic Medallion */}
+                <div className="hidden md:flex items-center justify-center shrink-0 w-36 h-36 relative -my-2 -mr-2 rounded-full overflow-hidden border-[3px] border-stone-900 dark:border-stone-100 bg-white dark:bg-stone-800 shadow-[4px_4px_0px_0px_#ec4899] dark:shadow-[4px_4px_0px_0px_#06b6d4] select-none pointer-events-none z-10 animate-float-slow">
+                    <img 
+                        src="/dashboard_mascot.png" 
+                        alt="Dashboard Mascot" 
+                        className="w-full h-full object-cover rounded-full"
+                    />
+                </div>
+            </div>
             
             {currentHost && <div className="mb-8"><TargetProgressWidget host={currentHost} rekapData={data.rekapLive} /></div>}
 
@@ -197,14 +252,18 @@ function HostDashboard() {
             >
                 {kpiData.map((kpi) => (
                     <AnimatedCard key={kpi.title}>
-                        <div className="bg-white/80 dark:bg-stone-900/80 backdrop-blur-sm p-6 rounded-xl border border-purple-300 dark:border-cyan-400/30 shadow-lg h-full">
-                           <div className="flex items-center gap-4">
-                                <div className="p-3 rounded-lg unity-gradient-bg">
+                        <div className="bg-white dark:bg-stone-900 p-6 rounded-xl h-full manga-panel-interactive relative group">
+                            {/* Comic Pop-Up Hover Shout Badge */}
+                            <div className="absolute -top-3.5 -right-2 bg-yellow-400 border-2 border-stone-900 text-stone-900 text-[10px] font-extrabold uppercase px-2 py-0.5 rounded shadow-[2px_2px_0px_#000] rotate-12 scale-0 group-hover:scale-100 transition-all duration-300 origin-bottom-left bangers-font text-xs tracking-wider z-20 select-none">
+                                {kpi.shout}
+                            </div>
+                            <div className="flex items-center gap-4">
+                                <div className="p-3 rounded-lg unity-gradient-bg border-2 border-stone-900 dark:border-stone-100 shadow-[2px_2px_0px_0px_#000] dark:shadow-[2px_2px_0px_0px_#fff] shrink-0">
                                     <kpi.icon className="h-6 w-6 text-white" />
                                 </div>
-                                <div>
-                                    <h3 className="text-sm font-medium text-stone-500 dark:text-stone-400">{kpi.title}</h3>
-                                    <p className="text-2xl font-bold text-stone-800 dark:text-white truncate">{kpi.value}</p>
+                                <div className="overflow-hidden">
+                                    <h3 className="text-xs font-extrabold text-stone-500 dark:text-stone-400 uppercase tracking-wider">{kpi.title}</h3>
+                                    <p className="text-xl font-extrabold text-stone-800 dark:text-white truncate mt-1">{kpi.value}</p>
                                 </div>
                             </div>
                         </div>

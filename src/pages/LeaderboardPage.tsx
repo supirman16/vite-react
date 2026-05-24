@@ -55,9 +55,9 @@ function SuperadminLeaderboard() {
             
             <Top3Showcase hosts={top3} />
 
-            <div className="mt-8 bg-white dark:bg-stone-900/50 backdrop-blur-sm rounded-xl border border-stone-200 dark:border-stone-700 overflow-hidden">
+            <div className="mt-8 bg-white dark:bg-stone-900 rounded-xl border-[3px] border-stone-900 dark:border-stone-100 shadow-[5px_5px_0px_0px_#ec4899] dark:shadow-[5px_5px_0px_0px_#06b6d4] overflow-hidden transition-all duration-300">
                 <table className="w-full text-sm text-left text-stone-600 dark:text-stone-300">
-                    <thead className="text-xs text-purple-600 dark:text-cyan-400 uppercase bg-stone-100 dark:bg-black/30">
+                    <thead className="text-xs text-stone-900 dark:text-stone-200 uppercase bg-stone-100 dark:bg-stone-800 border-b-[3px] border-stone-900 dark:border-stone-100 font-extrabold">
                         <tr>
                             <th scope="col" className="px-6 py-4 text-center">Peringkat</th>
                             <th scope="col" className="px-6 py-4">Nama Host</th>
@@ -66,15 +66,15 @@ function SuperadminLeaderboard() {
                     </thead>
                     <tbody>
                         {others.length > 0 ? others.map((host) => (
-                            <tr key={host.id} className="border-b border-stone-200 dark:border-stone-800 hover:bg-stone-50 dark:hover:bg-stone-800/60 transition-colors">
+                            <tr key={host.id} className="border-b-2 border-stone-900 dark:border-stone-800 hover:bg-stone-50 dark:hover:bg-stone-800/60 transition-colors">
                                 <td className="px-6 py-4 font-bold text-xl text-stone-800 dark:text-white text-center">{host.rank}</td>
-                                <td className="px-6 py-4 font-semibold text-stone-800 dark:text-white">{host.nama_host}</td>
-                                <td className="px-6 py-4 font-mono text-lg">{new Intl.NumberFormat().format(host.totalDiamonds)}</td>
+                                <td className="px-6 py-4 font-extrabold text-stone-800 dark:text-white">{host.nama_host}</td>
+                                <td className="px-6 py-4 font-mono text-lg font-bold">{new Intl.NumberFormat().format(host.totalDiamonds)}</td>
                             </tr>
                         )) : (
                             <tr>
-                                <td colSpan={3} className="text-center py-8 text-stone-500">
-                                    Tidak ada data peringkat lain untuk ditampilkan.
+                                <td colSpan={3} className="text-center py-8 text-stone-500 font-bold">
+                                    Tidak ada data peringkat lain untuk ditampilkan. (・_・;)
                                 </td>
                             </tr>
                         )}
@@ -139,21 +139,21 @@ function HostLeaderboard() {
             <DateRangeFilter selectedRange={dateRange} onSelectRange={setDateRange} />
 
             {currentUserRank && (
-                <div className="mb-8 p-6 bg-white dark:bg-stone-900/50 backdrop-blur-sm rounded-xl border border-stone-200 dark:border-stone-700 grid grid-cols-1 md:grid-cols-3 gap-6 text-center md:text-left">
-                    <div className="flex flex-col items-center md:items-start">
-                        <p className="text-sm text-stone-500 dark:text-stone-400 uppercase tracking-wider">Peringkat Anda</p>
-                        <p className="text-5xl font-bold unity-gradient-text">#{currentUserRank.rank}</p>
+                <div className="mb-8 p-6 bg-white dark:bg-stone-900 rounded-2xl border-[3px] border-stone-900 dark:border-stone-100 shadow-[6px_6px_0px_0px_#ec4899] dark:shadow-[6px_6px_0px_0px_#06b6d4] grid grid-cols-1 md:grid-cols-3 gap-6 text-center md:text-left relative overflow-hidden manga-screentone transition-all duration-300">
+                    <div className="flex flex-col items-center md:items-start z-10">
+                        <p className="text-xs font-extrabold text-stone-500 dark:text-stone-400 uppercase tracking-wider">Peringkat Anda</p>
+                        <p className="text-5xl font-extrabold unity-gradient-text bangers-font mt-1">#{currentUserRank.rank}</p>
                     </div>
-                    <div className="flex flex-col items-center md:items-start">
-                        <p className="text-sm text-stone-500 dark:text-stone-400 uppercase tracking-wider">Total Diamond</p>
-                        <p className="text-3xl font-semibold text-stone-800 dark:text-white">{new Intl.NumberFormat().format(currentUserRank.totalDiamonds)} 💎</p>
+                    <div className="flex flex-col items-center md:items-start z-10">
+                        <p className="text-xs font-extrabold text-stone-500 dark:text-stone-400 uppercase tracking-wider">Total Diamond</p>
+                        <p className="text-3xl font-extrabold text-stone-800 dark:text-white mt-1">{new Intl.NumberFormat().format(currentUserRank.totalDiamonds)} 💎</p>
                     </div>
                     {currentUserRank.rank > 1 && (
-                         <div className="flex flex-col items-center md:items-start">
-                            <p className="text-sm text-stone-500 dark:text-stone-400 uppercase tracking-wider">Kejar Peringkat Atas</p>
-                            <p className="text-3xl font-semibold text-green-500 dark:text-green-400 flex items-center">
-                                <ArrowUpCircle className="h-6 w-6 mr-2"/>
-                                {new Intl.NumberFormat().format(diamondsToNextRank)}
+                         <div className="flex flex-col items-center md:items-start z-10">
+                            <p className="text-xs font-extrabold text-stone-500 dark:text-stone-400 uppercase tracking-wider">Kejar Peringkat Atas</p>
+                            <p className="text-3xl font-extrabold text-green-500 dark:text-green-400 flex items-center mt-1">
+                                <ArrowUpCircle className="h-6 w-6 mr-2 animate-bounce"/>
+                                +{new Intl.NumberFormat().format(diamondsToNextRank)} 💎
                             </p>
                         </div>
                     )}
@@ -162,9 +162,9 @@ function HostLeaderboard() {
 
             <Top3Showcase hosts={top3} />
 
-            <div className="mt-8 bg-white dark:bg-stone-900/50 backdrop-blur-sm rounded-xl border border-stone-200 dark:border-stone-700 overflow-hidden">
+            <div className="mt-8 bg-white dark:bg-stone-900 rounded-xl border-[3px] border-stone-900 dark:border-stone-100 shadow-[5px_5px_0px_0px_#ec4899] dark:shadow-[5px_5px_0px_0px_#06b6d4] overflow-hidden transition-all duration-300">
                  <table className="w-full text-sm text-left text-stone-600 dark:text-stone-300">
-                    <thead className="text-xs text-purple-600 dark:text-cyan-400 uppercase bg-stone-100 dark:bg-black/30">
+                    <thead className="text-xs text-stone-900 dark:text-stone-200 uppercase bg-stone-100 dark:bg-stone-800 border-b-[3px] border-stone-900 dark:border-stone-100 font-extrabold">
                         <tr>
                             <th scope="col" className="px-6 py-4 text-center">Peringkat</th>
                             <th scope="col" className="px-6 py-4">Nama Host</th>
@@ -173,10 +173,10 @@ function HostLeaderboard() {
                     </thead>
                     <tbody>
                         {others.map((host) => (
-                            <tr key={host.id} className={`border-b border-stone-200 dark:border-stone-800 transition-colors ${host.id === hostId ? 'unity-gradient-bg text-white' : 'hover:bg-stone-50 dark:hover:bg-stone-800/60'}`}>
-                                <td className="px-6 py-4 font-bold text-xl text-center">{host.rank}</td>
-                                <td className="px-6 py-4 font-semibold">{host.nama_host}</td>
-                                <td className="px-6 py-4 font-mono text-lg">{new Intl.NumberFormat().format(host.totalDiamonds)}</td>
+                            <tr key={host.id} className={`border-b-2 border-stone-900 dark:border-stone-800/50 transition-colors ${host.id === hostId ? 'bg-gradient-to-r from-pink-500/20 via-purple-500/20 to-cyan-500/20 border-pink-500 dark:border-cyan-400' : 'hover:bg-stone-50 dark:hover:bg-stone-800/60'}`}>
+                                <td className={`px-6 py-4 font-bold text-xl text-center ${host.id === hostId ? 'text-pink-600 dark:text-cyan-300' : 'text-stone-800 dark:text-stone-200'}`}>{host.rank}</td>
+                                <td className={`px-6 py-4 font-extrabold ${host.id === hostId ? 'text-pink-600 dark:text-cyan-300' : 'text-stone-900 dark:text-white'}`}>{host.nama_host}</td>
+                                <td className={`px-6 py-4 font-mono text-lg font-bold ${host.id === hostId ? 'text-pink-600 dark:text-cyan-300' : ''}`}>{new Intl.NumberFormat().format(host.totalDiamonds)}</td>
                             </tr>
                         ))}
                     </tbody>
@@ -193,29 +193,33 @@ function HostLeaderboard() {
 function Top3Showcase({ hosts }: { hosts: LeaderboardEntry[] }) {
     const podiumOrder = [1, 0, 2]; // Index untuk juara 2, 1, 3
     const podiumStyles = [
-        { rank: 1, color: 'gold', shadow: 'shadow-[0_0_20px_gold]', border: 'border-yellow-400', height: 'mt-0' },
-        { rank: 2, color: '#A0A0A0', shadow: 'shadow-[0_0_20px_#C0C0C0]', border: 'border-stone-400', height: 'mt-8' },
-        { rank: 3, color: '#CD7F32', shadow: 'shadow-[0_0_20px_#CD7F32]', border: 'border-yellow-600', height: 'mt-12' },
+        { rank: 1, color: 'text-yellow-500 dark:text-yellow-400', shadow: 'shadow-[5px_5px_0px_0px_#eab308]', border: 'border-yellow-400', height: 'mt-0 border-[3px] z-10 scale-105', bgClass: 'bg-yellow-50/70 dark:bg-yellow-950/20', badgeBg: 'bg-yellow-400 text-stone-900' },
+        { rank: 2, color: 'text-stone-400 dark:text-stone-300', shadow: 'shadow-[4px_4px_0px_0px_#a8a29e]', border: 'border-stone-400', height: 'mt-8 border-[3px]', bgClass: 'bg-stone-50/70 dark:bg-stone-900/40', badgeBg: 'bg-stone-400 text-white' },
+        { rank: 3, color: 'text-amber-700 dark:text-amber-500', shadow: 'shadow-[4px_4px_0px_0px_#b45309]', border: 'border-yellow-600', height: 'mt-12 border-[3px]', bgClass: 'bg-amber-50/40 dark:bg-amber-950/10', badgeBg: 'bg-amber-700 text-white' },
     ];
 
     const podiumHosts = podiumOrder.map(index => hosts[index]).filter(Boolean);
 
     return (
-        <div className="relative flex justify-center items-end gap-4 px-4 pt-8 min-h-[280px]">
+        <div className="relative flex justify-center items-end gap-4 px-4 pt-10 min-h-[300px] max-w-3xl mx-auto">
             {podiumHosts.map((host) => {
                 const style = podiumStyles.find(s => s.rank === host.rank)!;
                 return (
                     <motion.div 
                         key={host.id} 
-                        className={`w-1/3 max-w-xs flex flex-col items-center p-4 rounded-t-lg bg-white/80 dark:bg-stone-900/80 backdrop-blur-sm border-2 ${style.border} ${style.height} ${style.shadow}`}
+                        className={`w-1/3 max-w-[200px] flex flex-col items-center p-4 rounded-t-2xl border-stone-900 dark:border-stone-100 ${style.border} ${style.height} ${style.shadow} ${style.bgClass} relative overflow-hidden manga-screentone`}
                         initial={{ opacity: 0, y: 50 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ duration: 0.5, delay: (4 - host.rank) * 0.2 }}
                     >
-                        <Award size={48} color={style.color} style={{ filter: `drop-shadow(0 0 10px ${style.color})` }} />
-                        <h3 className="text-xl font-bold text-stone-800 dark:text-white mt-2 truncate">{host.nama_host}</h3>
-                        <p className="font-semibold text-2xl" style={{ color: style.color }}>#{host.rank}</p>
-                        <p className="font-mono text-lg text-stone-800 dark:text-white mt-1">{new Intl.NumberFormat().format(host.totalDiamonds)} 💎</p>
+                        {/* Sticker Rank Badge */}
+                        <div className={`absolute top-2 right-2 w-8 h-8 rounded-full border-2 border-stone-900 flex items-center justify-center font-extrabold text-xs shadow-[1.5px_1.5px_0px_#000] rotate-12 bangers-font ${style.badgeBg}`}>
+                            #{host.rank}
+                        </div>
+
+                        <Trophy size={40} className={`${style.color} filter drop-shadow-[0_2px_8px_rgba(0,0,0,0.15)] ${host.rank === 1 ? 'animate-bounce' : ''}`} />
+                        <h3 className="text-sm sm:text-base font-extrabold text-stone-900 dark:text-white mt-3 truncate w-full text-center">{host.nama_host}</h3>
+                        <p className="font-mono text-xs sm:text-sm font-bold text-stone-600 dark:text-stone-300 mt-1">{new Intl.NumberFormat().format(host.totalDiamonds)} 💎</p>
                     </motion.div>
                 )
             })}
@@ -230,8 +234,20 @@ function DateRangeFilter({ selectedRange, onSelectRange }: { selectedRange: Date
         { id: 'thisMonth', label: 'Bulan Ini' },
     ];
     return (
-        <div className="flex flex-wrap items-center gap-2 mb-6">
-            {ranges.map(range => ( <button key={range.id} onClick={() => onSelectRange(range.id)} className={`px-4 py-2 text-sm font-bold rounded-md transition-all duration-200 border-2 border-transparent hover:border-purple-500 dark:hover:border-cyan-400 ${ selectedRange === range.id ? 'unity-gradient-bg text-white shadow-[0_0_15px_rgba(168,85,247,0.5)]' : 'bg-white dark:bg-stone-800 text-stone-600 dark:text-stone-300 hover:text-stone-900 dark:hover:text-white' }`}>{range.label}</button>))}
+        <div className="flex flex-wrap items-center gap-2 mb-6 p-1 bg-stone-100 dark:bg-stone-800 rounded-lg max-w-md border-2 border-stone-900 dark:border-stone-700">
+            {ranges.map(range => ( 
+                <button 
+                    key={range.id} 
+                    onClick={() => onSelectRange(range.id)} 
+                    className={`flex-1 py-1.5 px-3 text-xs font-extrabold rounded-md transition-all duration-200 border-2 border-transparent ${ 
+                        selectedRange === range.id 
+                            ? 'unity-gradient-bg text-white border-stone-900 dark:border-stone-100 shadow-[2px_2px_0px_0px_#000] dark:shadow-[2px_2px_0px_0px_#fff]' 
+                            : 'text-stone-600 dark:text-stone-300 hover:text-stone-900 dark:hover:text-white bg-transparent' 
+                    }`}
+                >
+                    {range.label}
+                </button>
+            ))}
         </div>
     );
 }

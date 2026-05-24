@@ -47,8 +47,19 @@ export default function RekapPage() {
         }
     };
 
-    const StatusButton = ({ status, label }: { status: string, label: string }) => ( <button onClick={() => setSelectedStatus(status)} className={`px-3 py-1 text-sm font-semibold rounded-md transition-colors ${selectedStatus === status ? 'unity-gradient-bg text-white' : 'bg-stone-200 dark:bg-stone-700 hover:bg-stone-300 dark:hover:bg-stone-600 text-stone-700 dark:text-stone-200'}`}>{label}</button> );
-    const commonSelectClasses = "bg-stone-50 border border-stone-300 text-stone-900 text-sm rounded-lg focus:ring-purple-500 focus:border-purple-500 block w-full p-2.5 dark:bg-stone-700 dark:border-stone-600 dark:placeholder-stone-400 dark:text-white";
+    const StatusButton = ({ status, label }: { status: string, label: string }) => ( 
+        <button 
+            onClick={() => setSelectedStatus(status)} 
+            className={`px-4 py-1.5 text-xs font-extrabold uppercase border-2 border-stone-900 dark:border-stone-100 shadow-[2px_2px_0px_#000] dark:shadow-[2px_2px_0px_#fff] transition-all hover:scale-105 active:translate-x-[1px] active:translate-y-[1px] active:shadow-none ${
+                selectedStatus === status 
+                    ? 'bg-pink-500 text-white dark:bg-cyan-500 dark:text-stone-950' 
+                    : 'bg-white dark:bg-stone-900 text-stone-700 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-800'
+            }`}
+        >
+            {label}
+        </button> 
+    );
+    const commonSelectClasses = "bg-white dark:bg-stone-900 border-[3px] border-stone-900 dark:border-stone-100 text-stone-900 dark:text-white text-sm font-bold block w-full p-2.5 shadow-[3px_3px_0px_#000] dark:shadow-[3px_3px_0px_#fff] focus:outline-none";
 
     return (
         <section>
@@ -59,7 +70,7 @@ export default function RekapPage() {
                 </div>
                 <button onClick={handleAdd} className="mt-4 sm:mt-0 unity-gradient-bg font-semibold px-4 py-2.5 rounded-lg shadow-sm hover:opacity-90 flex items-center"><Plus className="h-5 w-5 mr-2" />Tambah Rekap</button>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6 p-4 bg-white/80 dark:bg-stone-900/80 backdrop-blur-sm rounded-xl border border-purple-300 dark:border-cyan-400/30 shadow-lg">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8 p-6 bg-white dark:bg-stone-900 border-[3px] border-stone-900 dark:border-stone-100 shadow-[5px_5px_0px_0px_#ec4899] dark:shadow-[5px_5px_0px_0px_#06b6d4]">
                 <div className="flex items-center space-x-2">
                     <select value={month} onChange={(e) => setMonth(parseInt(e.target.value))} className={commonSelectClasses}>{months.map((m, i) => <option key={i} value={i}>{m}</option>)}</select>
                     <select value={year} onChange={(e) => setYear(parseInt(e.target.value))} className={commonSelectClasses}>{years.map(y => <option key={y} value={y}>{y}</option>)}</select>
@@ -70,7 +81,7 @@ export default function RekapPage() {
                         <select value={selectedTiktok} onChange={(e) => setSelectedTiktok(e.target.value)} className={commonSelectClasses}><option value="all">Semua Akun</option>{data.tiktokAccounts.map(acc => <option key={acc.id} value={acc.id}>{acc.username}</option>)}</select>
                     </>
                 )}
-                <div className="flex items-center space-x-2 p-1 bg-stone-100 dark:bg-stone-900 rounded-lg">
+                <div className="flex items-center justify-around gap-2 p-1 bg-stone-100 dark:bg-stone-800 border-[3px] border-stone-900 dark:border-stone-100 shadow-[3px_3px_0px_#000] dark:shadow-[3px_3px_0px_#fff] overflow-hidden">
                     <StatusButton status="all" label="Semua" /><StatusButton status="pending" label="Pending" /><StatusButton status="approved" label="Approved" />
                 </div>
             </div>
@@ -105,17 +116,17 @@ function RekapTable({ filters, onViewDetail, onAdd }: { filters: any, onViewDeta
     if (filteredData.length === 0) return <div className="bg-white dark:bg-stone-800 rounded-xl shadow-sm border border-stone-100 dark:border-stone-700"><EmptyState title="Belum Ada Rekap" message="Tidak ada data rekap live untuk ditampilkan pada periode ini. Coba buat yang baru." actionText="Tambah Rekap Baru" onActionClick={onAdd} /></div>;
 
     return (
-        <div className="bg-transparent md:bg-white/80 md:dark:bg-stone-900/80 md:backdrop-blur-sm rounded-xl md:shadow-lg md:border md:border-purple-300 md:dark:border-cyan-400/30 md:overflow-hidden">
-            <table className="w-full text-sm text-left text-stone-600 dark:text-stone-300">
-                <thead className="hidden md:table-header-group text-xs text-purple-600 dark:text-cyan-400 uppercase bg-stone-100 dark:bg-black/30">
+        <div className="bg-white dark:bg-stone-900 border-[3px] border-stone-900 dark:border-stone-100 shadow-[5px_5px_0px_0px_#ec4899] dark:shadow-[5px_5px_0px_0px_#06b6d4] overflow-x-auto overflow-hidden transition-all duration-300">
+            <table className="w-full text-sm text-left text-stone-600 dark:text-stone-300 border-collapse">
+                <thead className="hidden md:table-header-group text-xs text-stone-900 dark:text-stone-200 uppercase bg-stone-100 dark:bg-stone-800 border-b-[3px] border-stone-900 dark:border-stone-100 font-extrabold">
                     <tr>
-                        <th scope="col" className="px-6 py-3">Tanggal</th>
-                        {isSuperAdmin && <th scope="col" className="px-6 py-3">Host</th>}
-                        <th scope="col" className="px-6 py-3">Akun TikTok</th>
-                        <th scope="col" className="px-6 py-3">Durasi</th>
-                        <th scope="col" className="px-6 py-3">Diamond</th>
-                        <th scope="col" className="px-6 py-3">Status</th>
-                        <th scope="col" className="px-6 py-3 text-center">Aksi</th>
+                        <th scope="col" className="px-6 py-4">Tanggal</th>
+                        {isSuperAdmin && <th scope="col" className="px-6 py-4">Host</th>}
+                        <th scope="col" className="px-6 py-4">Akun TikTok</th>
+                        <th scope="col" className="px-6 py-4">Durasi</th>
+                        <th scope="col" className="px-6 py-4">Diamond</th>
+                        <th scope="col" className="px-6 py-4">Status</th>
+                        <th scope="col" className="px-6 py-4 text-center">Aksi</th>
                     </tr>
                 </thead>
                 <tbody className="block md:table-row-group">
@@ -123,7 +134,7 @@ function RekapTable({ filters, onViewDetail, onAdd }: { filters: any, onViewDeta
                         const host = data.hosts.find(h => h.id === rekap.host_id);
                         const tiktokAccount = data.tiktokAccounts.find(t => t.id === rekap.tiktok_account_id);
                         return (
-                            <tr key={rekap.id} onClick={() => onViewDetail(rekap)} className="block md:table-row bg-white dark:bg-stone-800/80 border-b dark:border-stone-700 mb-4 md:mb-0 rounded-lg md:rounded-none shadow-lg md:shadow-none cursor-pointer hover:bg-stone-50 dark:hover:bg-stone-800/50 transition-colors">
+                            <tr key={rekap.id} onClick={() => onViewDetail(rekap)} className="block md:table-row bg-white dark:bg-stone-900 border-b-2 border-stone-900 dark:border-stone-800 mb-4 md:mb-0 rounded-none cursor-pointer hover:bg-stone-50 dark:hover:bg-stone-800/60 transition-colors">
                                 <td className="p-4 md:hidden">
                                     <div className="flex justify-between items-start">
                                         <div className="flex-grow">
@@ -142,13 +153,21 @@ function RekapTable({ filters, onViewDetail, onAdd }: { filters: any, onViewDeta
                                         </div>
                                     </div>
                                 </td>
-                                <td className="hidden md:table-cell px-6 py-4 font-medium text-stone-900 dark:text-white">{formatDate(rekap.tanggal_live)}</td>
-                                {isSuperAdmin && <td className="hidden md:table-cell px-6 py-4 font-medium text-stone-900 dark:text-white">{host?.nama_host || 'N/A'}</td>}
-                                <td className="hidden md:table-cell px-6 py-4">{tiktokAccount?.username || 'N/A'}</td>
-                                <td className="hidden md:table-cell px-6 py-4">{formatDuration(rekap.durasi_menit)}</td>
-                                <td className="hidden md:table-cell px-6 py-4">{new Intl.NumberFormat().format(rekap.pendapatan)}</td>
-                                <td className="hidden md:table-cell px-6 py-4"><span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${rekap.status === 'approved' ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300' : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300'}`}>{rekap.status}</span></td>
-                                <td className="hidden md:table-cell px-6 py-4 text-center"><button onClick={(e) => { e.stopPropagation(); onViewDetail(rekap); }} className="font-medium text-purple-600 hover:underline dark:text-purple-500">Lihat Detail</button></td>
+                                <td className="hidden md:table-cell px-6 py-4 font-extrabold text-stone-900 dark:text-white">{formatDate(rekap.tanggal_live)}</td>
+                                {isSuperAdmin && <td className="hidden md:table-cell px-6 py-4 font-extrabold text-stone-900 dark:text-white">{host?.nama_host || 'N/A'}</td>}
+                                <td className="hidden md:table-cell px-6 py-4 font-bold">@{tiktokAccount?.username || 'N/A'}</td>
+                                <td className="hidden md:table-cell px-6 py-4 font-mono">{formatDuration(rekap.durasi_menit)}</td>
+                                <td className="hidden md:table-cell px-6 py-4 font-mono font-bold text-pink-600 dark:text-cyan-400">{new Intl.NumberFormat().format(rekap.pendapatan)} 💎</td>
+                                <td className="hidden md:table-cell px-6 py-4">
+                                    <span className={`px-3 py-1 text-xs font-extrabold uppercase border-2 border-stone-900 dark:border-stone-100 shadow-[1.5px_1.5px_0px_#000] dark:shadow-[1.5px_1.5px_0px_#fff] ${
+                                        rekap.status === 'approved' 
+                                            ? 'bg-green-400 text-stone-900' 
+                                            : 'bg-yellow-300 text-stone-900'
+                                    }`}>
+                                        {rekap.status}
+                                    </span>
+                                </td>
+                                <td className="hidden md:table-cell px-6 py-4 text-center"><button onClick={(e) => { e.stopPropagation(); onViewDetail(rekap); }} className="font-bold text-pink-500 hover:text-pink-700 dark:text-cyan-400 dark:hover:text-cyan-300">Rincian</button></td>
                             </tr>
                         );
                     })}

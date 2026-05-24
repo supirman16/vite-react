@@ -4,16 +4,31 @@
 
 @layer base {
   body {
-    @apply bg-stone-50 text-stone-800 dark:bg-stone-900 dark:text-stone-200 font-sans transition-colors duration-300;
+    @apply bg-stone-50 text-stone-900 dark:bg-stone-950 dark:text-stone-200 transition-colors duration-300;
+    font-family: 'Plus Jakarta Sans', 'Inter', sans-serif !important;
+    /* Cyber grid background pattern */
+    background-image: radial-gradient(rgba(168, 85, 247, 0.04) 1px, transparent 1px);
+    background-size: 24px 24px;
+  }
+  .dark body {
+    background-image: radial-gradient(rgba(6, 182, 212, 0.05) 1px, transparent 1px);
+    background-size: 24px 24px;
+  }
+  
+  /* Manga / Anime Rounded Typography */
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Fredoka', 'Inter', sans-serif !important;
+    font-weight: 700 !important;
+    letter-spacing: -0.01em;
   }
 }
 
 @layer components {
   .unity-gradient-bg {
-    @apply bg-gradient-to-r from-purple-600 to-blue-500 text-white;
+    @apply bg-gradient-to-r from-pink-500 via-purple-600 to-cyan-500 text-white;
   }
   .unity-gradient-text {
-    @apply bg-gradient-to-r from-purple-600 to-blue-500 bg-clip-text text-transparent;
+    @apply bg-gradient-to-r from-pink-500 via-purple-600 to-cyan-500 bg-clip-text text-transparent;
   }
   .live-badge {
     @apply relative inline-flex rounded-full h-3 w-3 bg-red-500;
@@ -26,11 +41,10 @@
   }
   .nav-item-active::before {
     content: '';
-    @apply absolute left-0 top-1/2 -translate-y-1/2 h-3/4 w-1 rounded-r-full bg-purple-600 dark:bg-cyan-400 shadow-[0_0_10px] shadow-purple-600/50 dark:shadow-cyan-400/50;
+    @apply absolute left-0 top-1/2 -translate-y-1/2 h-3/4 w-1.5 rounded-r-full bg-pink-500 dark:bg-cyan-400 shadow-[0_0_12px] shadow-pink-500/80 dark:shadow-cyan-400/80;
     animation: fade-in-fast 0.3s ease-out;
   }
 
-  /* --- PENAMBAHAN BARU UNTUK LATAR BELAKANG MODAL --- */
   .gaming-modal-bg {
     background-image: linear-gradient(theme('colors.purple.500 / 0.05') 1px, transparent 1px), linear-gradient(to right, theme('colors.purple.500 / 0.05') 1px, transparent 1px);
     background-size: 2rem 2rem;
@@ -38,6 +52,167 @@
   .dark .gaming-modal-bg {
     background-image: linear-gradient(theme('colors.cyan.400 / 0.1') 1px, transparent 1px), linear-gradient(to right, theme('colors.cyan.400 / 0.1') 1px, transparent 1px);
   }
+  
+  /* Animasi Melayang Lembut (Anime Float) */
+  .animate-float-slow {
+    animation: animeFloat 5s ease-in-out infinite;
+  }
+  .animate-float-fast {
+    animation: animeFloat 3s ease-in-out infinite;
+  }
+  
+  /* Cyberpunk Glowing Shadows */
+  .shadow-neon-pink {
+    box-shadow: 0 0 15px rgba(236, 72, 153, 0.4);
+  }
+  .shadow-neon-cyan {
+    box-shadow: 0 0 15px rgba(6, 182, 212, 0.4);
+  }
+  .shadow-neon-purple {
+    box-shadow: 0 0 15px rgba(168, 85, 247, 0.4);
+  }
+
+  /* ========================================================
+     MANGA & ANIME NEO-BRUTALIST STYLING (PERSONA 5 STYLE)
+     ======================================================== */
+  
+  /* Manga Panel: Thick Borders and Flat Offset Shadows */
+  .manga-panel {
+    border: 3px solid #1c1917 !important;
+    box-shadow: 4px 4px 0px 0px #ec4899 !important;
+  }
+  .dark .manga-panel {
+    border: 3px solid #f5f5f4 !important;
+    box-shadow: 4px 4px 0px 0px #06b6d4 !important;
+  }
+  
+  /* Interactive Manga Panel: moves slightly when hovered */
+  .manga-panel-interactive {
+    border: 3px solid #1c1917 !important;
+    box-shadow: 4px 4px 0px 0px #ec4899 !important;
+    transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  }
+  .manga-panel-interactive:hover {
+    transform: translate(-3px, -3px);
+    box-shadow: 7px 7px 0px 0px #ec4899 !important;
+  }
+  .manga-panel-interactive:active {
+    transform: translate(2px, 2px);
+    box-shadow: 2px 2px 0px 0px #ec4899 !important;
+  }
+  .dark .manga-panel-interactive {
+    border: 3px solid #f5f5f4 !important;
+    box-shadow: 4px 4px 0px 0px #06b6d4 !important;
+  }
+  .dark .manga-panel-interactive:hover {
+    transform: translate(-3px, -3px);
+    box-shadow: 7px 7px 0px 0px #06b6d4 !important;
+  }
+  .dark .manga-panel-interactive:active {
+    transform: translate(2px, 2px);
+    box-shadow: 2px 2px 0px 0px #06b6d4 !important;
+  }
+
+  /* Manga Screentone (Halftone dot shading pattern) */
+  .manga-screentone {
+    background-image: radial-gradient(rgba(168, 85, 247, 0.12) 15%, transparent 16%) !important;
+    background-size: 8px 8px !important;
+  }
+  .dark .manga-screentone {
+    background-image: radial-gradient(rgba(6, 182, 212, 0.12) 15%, transparent 16%) !important;
+    background-size: 8px 8px !important;
+  }
+
+  /* Manga Action Speed Lines */
+  .manga-speed-lines {
+    background: repeating-linear-gradient(90deg, rgba(236, 72, 153, 0.04), rgba(236, 72, 153, 0.04) 2px, transparent 2px, transparent 12px);
+  }
+  .dark .manga-speed-lines {
+    background: repeating-linear-gradient(90deg, rgba(6, 182, 212, 0.04), rgba(6, 182, 212, 0.04) 2px, transparent 2px, transparent 12px);
+  }
+
+  /* Bangers Comic Shout Font */
+  .bangers-font {
+    font-family: 'Bangers', cursive !important;
+    letter-spacing: 0.05em;
+  }
+}
+
+/* Dynamic Floating Particles Keyframes */
+@keyframes fallSakura {
+  0% {
+    transform: translateY(-20px) translateX(0) rotate(0deg);
+    opacity: 0;
+  }
+  10% {
+    opacity: 1;
+  }
+  90% {
+    opacity: 0.8;
+  }
+  100% {
+    transform: translateY(105vh) translateX(120px) rotate(360deg);
+    opacity: 0;
+  }
+}
+
+@keyframes riseSparks {
+  0% {
+    transform: translateY(105vh) translateX(0) scale(1);
+    opacity: 0;
+  }
+  10% {
+    opacity: 0.8;
+  }
+  90% {
+    opacity: 0.4;
+  }
+  100% {
+    transform: translateY(-20px) translateX(-60px) scale(0.6);
+    opacity: 0;
+  }
+}
+
+.animate-sakura {
+  animation: fallSakura linear infinite;
+}
+
+.animate-sparks {
+  animation: riseSparks linear infinite;
+}
+
+/* Keyframes Animasi */
+@keyframes animeFloat {
+  0%, 100% {
+    transform: translateY(0) scale(1);
+  }
+  50% {
+    transform: translateY(-8px) scale(1.02);
+  }
+}
+
+@keyframes fade-in-fast {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* Custom Scrollbars */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: rgba(28, 25, 23, 0.1);
+}
+.dark ::-webkit-scrollbar-track {
+  background: rgba(28, 25, 23, 0.4);
+}
+::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, #ec4899, #8b5cf6);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, #db2777, #7c3aed);
 }
 
 /* Media query untuk tabel mobile */

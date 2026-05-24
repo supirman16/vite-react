@@ -49,14 +49,26 @@ export default function HostsPage() {
                     Tambah Host Baru
                 </button>
             </div>
-            <div className="mb-4 flex flex-col sm:flex-row gap-4">
+            <div className="mb-6 flex flex-col sm:flex-row gap-6 items-stretch">
                 <div className="relative flex-grow">
-                    <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3"><Search className="h-5 w-5 text-stone-400" /></div>
-                    <input type="text" placeholder="Cari host berdasarkan nama..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="block w-full rounded-md border-0 bg-white dark:bg-stone-800 py-2.5 pl-10 text-stone-900 dark:text-white shadow-sm ring-1 ring-inset ring-stone-300 dark:ring-stone-700 placeholder:text-stone-400 focus:ring-2 focus:ring-inset focus:ring-purple-600 sm:text-sm" />
+                    <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-4"><Search className="h-5 w-5 text-stone-900 dark:text-stone-100 font-extrabold" /></div>
+                    <input 
+                        type="text" 
+                        placeholder="Cari nama host..." 
+                        value={searchQuery} 
+                        onChange={(e) => setSearchQuery(e.target.value)} 
+                        className="block w-full bg-white dark:bg-stone-900 border-[3px] border-stone-900 dark:border-stone-100 py-3 pl-12 text-stone-900 dark:text-white font-bold placeholder:text-stone-400 shadow-[3px_3px_0px_#000] dark:shadow-[3px_3px_0px_#fff] focus:outline-none" 
+                    />
                 </div>
-                <div className="flex items-center space-x-2">
-                    <input id="show-inactive" type="checkbox" checked={showInactive} onChange={(e) => setShowInactive(e.target.checked)} className="h-4 w-4 rounded border-stone-300 text-purple-600 focus:ring-purple-600" />
-                    <label htmlFor="show-inactive" className="text-sm text-stone-600 dark:text-stone-300">Tampilkan host tidak aktif</label>
+                <div className="flex items-center gap-3 bg-white dark:bg-stone-900 px-4 py-2 border-[3px] border-stone-900 dark:border-stone-100 shadow-[3px_3px_0px_#000] dark:shadow-[3px_3px_0px_#fff]">
+                    <input 
+                        id="show-inactive" 
+                        type="checkbox" 
+                        checked={showInactive} 
+                        onChange={(e) => setShowInactive(e.target.checked)} 
+                        className="h-4 w-4 text-pink-500 rounded border-2 border-stone-900 dark:border-stone-600 focus:ring-pink-500 bg-white dark:bg-stone-800" 
+                    />
+                    <label htmlFor="show-inactive" className="text-xs font-extrabold uppercase text-stone-900 dark:text-stone-200">Tampilkan host tidak aktif</label>
                 </div>
             </div>
             <HostsTable onEdit={handleEdit} onDelete={handleDelete} onViewProfile={handleViewProfile} searchQuery={searchQuery} showInactive={showInactive} />
@@ -89,18 +101,23 @@ function HostsTable({ onEdit, onDelete, onViewProfile, searchQuery, showInactive
     }, [data.hosts, sortKey, sortDirection, searchQuery, showInactive]);
 
     const formatDate = (dateString: string) => new Date(dateString).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
+    const formatRupiah = (num: number | undefined | null) => {
+        if (num === undefined || num === null) return 'Rp 0';
+        return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(num);
+    };
     const SortableHeader = ({ tKey, tLabel }: { tKey: string, tLabel: string }) => (<th scope="col" className="px-6 py-3 cursor-pointer hover:bg-stone-200 dark:hover:bg-stone-700" onClick={() => handleSort(tKey)}><div className="flex items-center">{tLabel}{sortKey === tKey && <ArrowUpDown className="ml-2 h-4 w-4" />}</div></th>);
 
     return (
-        <div className="bg-transparent md:bg-white/80 md:dark:bg-stone-900/80 md:backdrop-blur-sm rounded-xl md:shadow-lg md:border md:border-purple-300 md:dark:border-cyan-400/30 md:overflow-hidden">
-            <table className="w-full text-sm text-left text-stone-600 dark:text-stone-300">
-                <thead className="hidden md:table-header-group text-xs text-purple-600 dark:text-cyan-400 uppercase bg-stone-100 dark:bg-black/30">
+        <div className="bg-white dark:bg-stone-900 border-[3px] border-stone-900 dark:border-stone-100 shadow-[5px_5px_0px_0px_#ec4899] dark:shadow-[5px_5px_0px_0px_#06b6d4] overflow-x-auto overflow-hidden transition-all duration-300">
+            <table className="w-full text-sm text-left text-stone-600 dark:text-stone-300 border-collapse">
+                <thead className="hidden md:table-header-group text-xs text-stone-900 dark:text-stone-200 uppercase bg-stone-100 dark:bg-stone-800 border-b-[3px] border-stone-900 dark:border-stone-100 font-extrabold">
                     <tr>
                         <SortableHeader tKey="nama_host" tLabel="Nama Host" />
                         <SortableHeader tKey="platform" tLabel="Platform" />
                         <SortableHeader tKey="tanggal_bergabung" tLabel="Tgl Bergabung" />
+                        <SortableHeader tKey="gaji_pokok" tLabel="Gaji Pokok" />
                         <SortableHeader tKey="status" tLabel="Status" />
-                        <th scope="col" className="px-6 py-3 text-center">Aksi</th>
+                        <th scope="col" className="px-6 py-4 text-center">Aksi</th>
                     </tr>
                 </thead>
                 <tbody className="block md:table-row-group">
@@ -111,12 +128,13 @@ function HostsTable({ onEdit, onDelete, onViewProfile, searchQuery, showInactive
                             { label: 'Hapus', icon: Trash2, onClick: () => onDelete(host), className: 'text-red-600 dark:text-red-400' }
                         ];
                         return (
-                            <tr key={host.id} className={`block md:table-row bg-white dark:bg-stone-800/80 border-b dark:border-stone-700 mb-4 md:mb-0 rounded-lg md:rounded-none shadow-lg md:shadow-none transition-opacity ${host.status === 'Tidak Aktif' ? 'opacity-60' : ''}`}>
+                            <tr key={host.id} className={`block md:table-row bg-white dark:bg-stone-900 border-b-2 border-stone-900 dark:border-stone-800 mb-4 md:mb-0 rounded-none hover:bg-stone-50 dark:hover:bg-stone-800/60 transition-colors ${host.status === 'Tidak Aktif' ? 'opacity-50' : ''}`}>
                                 <td className="p-4 md:hidden">
                                     <div className="flex justify-between items-start">
                                         <div className="flex-grow overflow-hidden">
                                             <div className="font-bold text-lg text-stone-800 dark:text-white truncate">{host.nama_host}</div>
                                             <div className="text-xs text-stone-500">{host.platform} - Sejak {formatDate(host.tanggal_bergabung)}</div>
+                                            <div className="text-sm font-semibold text-purple-600 dark:text-cyan-400 mt-1">Gaji Pokok: {formatRupiah(host.gaji_pokok)}</div>
                                         </div>
                                         <div className="flex flex-col items-end space-y-2 flex-shrink-0 ml-4">
                                             <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${host.status === 'Aktif' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>{host.status}</span>
@@ -124,10 +142,19 @@ function HostsTable({ onEdit, onDelete, onViewProfile, searchQuery, showInactive
                                         </div>
                                     </div>
                                 </td>
-                                <td className="hidden md:table-cell px-6 py-4 font-medium text-stone-900 dark:text-white">{host.nama_host}</td>
-                                <td className="hidden md:table-cell px-6 py-4">{host.platform}</td>
-                                <td className="hidden md:table-cell px-6 py-4">{formatDate(host.tanggal_bergabung)}</td>
-                                <td className="hidden md:table-cell px-6 py-4"><span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${host.status === 'Aktif' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>{host.status}</span></td>
+                                <td className="hidden md:table-cell px-6 py-4 font-extrabold text-stone-900 dark:text-white">{host.nama_host}</td>
+                                <td className="hidden md:table-cell px-6 py-4 font-bold">{host.platform}</td>
+                                <td className="hidden md:table-cell px-6 py-4 font-mono">{formatDate(host.tanggal_bergabung)}</td>
+                                <td className="hidden md:table-cell px-6 py-4 font-mono font-bold text-pink-600 dark:text-cyan-400">{formatRupiah(host.gaji_pokok)}</td>
+                                <td className="hidden md:table-cell px-6 py-4">
+                                    <span className={`px-3 py-1 text-xs font-extrabold uppercase border-2 border-stone-900 dark:border-stone-100 shadow-[1.5px_1.5px_0px_#000] dark:shadow-[1.5px_1.5px_0px_#fff] ${
+                                        host.status === 'Aktif' 
+                                            ? 'bg-green-400 text-stone-900' 
+                                            : 'bg-red-400 text-stone-900'
+                                    }`}>
+                                        {host.status}
+                                    </span>
+                                </td>
                                 <td className="hidden md:table-cell px-6 py-4 text-center"><DropdownMenu actions={actions} /></td>
                             </tr>
                         );
@@ -140,20 +167,30 @@ function HostsTable({ onEdit, onDelete, onViewProfile, searchQuery, showInactive
 
 function HostModal({ isOpen, onClose, host }: { isOpen: boolean, onClose: () => void, host: any | null }) {
     const { setData, showNotification } = useContext(AppContext) as AppContextType;
-    const [formData, setFormData] = useState({ nama_host: host?.nama_host || '', platform: host?.platform || '', tanggal_bergabung: host?.tanggal_bergabung || new Date().toISOString().split('T')[0], status: host?.status || 'Aktif' });
+    const [formData, setFormData] = useState({
+        nama_host: host?.nama_host || '',
+        platform: host?.platform || '',
+        tanggal_bergabung: host?.tanggal_bergabung || new Date().toISOString().split('T')[0],
+        status: host?.status || 'Aktif',
+        gaji_pokok: host?.gaji_pokok !== undefined && host?.gaji_pokok !== null ? String(host.gaji_pokok) : ''
+    });
     const [loading, setLoading] = useState(false);
     const commonInputClasses = "bg-stone-50 border border-stone-300 text-stone-900 text-sm rounded-lg focus:ring-purple-500 focus:border-purple-500 block w-full p-2.5 dark:bg-stone-700 dark:border-stone-600 dark:placeholder-stone-400 dark:text-white";
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => { const { id, value } = e.target; setFormData(prev => ({ ...prev, [id]: value })); };
     const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault(); setLoading(true);
         try {
+            const submitData = {
+                ...formData,
+                gaji_pokok: formData.gaji_pokok === '' ? null : Number(formData.gaji_pokok)
+            };
             if (host) {
-                const { data: updatedHost, error } = await supabase.from('hosts').update(formData).eq('id', host.id).select().single();
+                const { data: updatedHost, error } = await supabase.from('hosts').update(submitData).eq('id', host.id).select().single();
                 if (error) throw error;
                 setData(prev => ({ ...prev, hosts: prev.hosts.map(h => h.id === host.id ? updatedHost : h) }));
                 showNotification('Data host berhasil diperbarui.');
             } else {
-                const { data: newHost, error } = await supabase.from('hosts').insert(formData).select().single();
+                const { data: newHost, error } = await supabase.from('hosts').insert(submitData).select().single();
                 if (error) throw error;
                 setData(prev => ({ ...prev, hosts: [...prev.hosts, newHost] }));
                 showNotification('Host baru berhasil ditambahkan.');
@@ -169,6 +206,7 @@ function HostModal({ isOpen, onClose, host }: { isOpen: boolean, onClose: () => 
                 <div><label htmlFor="nama_host" className="block mb-2 text-sm font-medium text-stone-900 dark:text-stone-300">Nama Host</label><input id="nama_host" type="text" value={formData.nama_host} onChange={handleChange} className={commonInputClasses} required /></div>
                 <div><label htmlFor="platform" className="block mb-2 text-sm font-medium text-stone-900 dark:text-stone-300">Platform</label><input id="platform" type="text" value={formData.platform} onChange={handleChange} className={commonInputClasses} required /></div>
                 <div><label htmlFor="tanggal_bergabung" className="block mb-2 text-sm font-medium text-stone-900 dark:text-stone-300">Tanggal Bergabung</label><input id="tanggal_bergabung" type="date" value={formData.tanggal_bergabung} onChange={handleChange} className={commonInputClasses} required /></div>
+                <div><label htmlFor="gaji_pokok" className="block mb-2 text-sm font-medium text-stone-900 dark:text-stone-300">Gaji Pokok (Rp)</label><input id="gaji_pokok" type="number" value={formData.gaji_pokok} onChange={handleChange} className={commonInputClasses} placeholder="Contoh: 3000000" /></div>
                 <div><label htmlFor="status" className="block mb-2 text-sm font-medium text-stone-900 dark:text-stone-300">Status</label><select id="status" value={formData.status} onChange={handleChange} className={commonInputClasses}><option value="Aktif">Aktif</option><option value="Tidak Aktif">Tidak Aktif</option></select></div>
                 <div className="flex justify-end space-x-4 pt-4"><button type="button" onClick={onClose} className="px-5 py-2.5 text-sm font-medium text-stone-700 bg-stone-100 rounded-lg hover:bg-stone-200 dark:bg-stone-700 dark:text-stone-300 dark:hover:bg-stone-600">Batal</button><button type="submit" disabled={loading} className="unity-gradient-bg text-white font-semibold px-5 py-2.5 rounded-lg shadow-sm hover:opacity-90 flex items-center justify-center disabled:opacity-75">{loading ? 'Menyimpan...' : 'Simpan'}</button></div>
             </form>

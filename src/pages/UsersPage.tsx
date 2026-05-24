@@ -44,7 +44,18 @@ export default function UsersPage() {
                     Tambah Pengguna Baru
                 </button>
             </div>
-            <div className="mb-4"><div className="relative"><div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3"><Search className="h-5 w-5 text-stone-400" /></div><input type="text" placeholder="Cari pengguna berdasarkan email..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="block w-full rounded-md border-0 bg-white dark:bg-stone-800 py-2.5 pl-10 text-stone-900 dark:text-white shadow-sm ring-1 ring-inset ring-stone-300 dark:ring-stone-700 placeholder:text-stone-400 focus:ring-2 focus:ring-inset focus:ring-purple-600 sm:text-sm" /></div></div>
+            <div className="mb-6">
+                <div className="relative">
+                    <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-4"><Search className="h-5 w-5 text-stone-900 dark:text-stone-100 font-extrabold" /></div>
+                    <input 
+                        type="text" 
+                        placeholder="Cari pengguna berdasarkan email..." 
+                        value={searchQuery} 
+                        onChange={(e) => setSearchQuery(e.target.value)} 
+                        className="block w-full bg-white dark:bg-stone-900 border-[3px] border-stone-900 dark:border-stone-100 py-3 pl-12 text-stone-900 dark:text-white font-bold placeholder:text-stone-400 shadow-[3px_3px_0px_#000] dark:shadow-[3px_3px_0px_#fff] focus:outline-none" 
+                    />
+                </div>
+            </div>
             <UsersTable onEdit={handleEdit} onDelete={handleDelete} searchQuery={searchQuery} />
             {isModalOpen && <UserModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} user={selectedUser} />}
             {isConfirmOpen && <ConfirmationModal isOpen={isConfirmOpen} onClose={() => setIsConfirmOpen(false)} onConfirm={handleConfirmDelete} title="Konfirmasi Hapus" message={`Apakah Anda yakin ingin menghapus pengguna "${userToDelete?.email}"?`} />}
@@ -75,14 +86,14 @@ function UsersTable({ onEdit, onDelete, searchQuery }: { onEdit: (user: any) => 
     const SortableHeader = ({ tKey, tLabel }: { tKey: string, tLabel: string }) => (<th scope="col" className="px-6 py-3 cursor-pointer hover:bg-stone-200 dark:hover:bg-stone-700" onClick={() => handleSort(tKey)}><div className="flex items-center">{tLabel}{sortKey === tKey && <ArrowUpDown className="ml-2 h-4 w-4" />}</div></th>);
 
     return (
-        <div className="bg-transparent md:bg-white/80 md:dark:bg-stone-900/80 md:backdrop-blur-sm rounded-xl md:shadow-lg md:border md:border-purple-300 md:dark:border-cyan-400/30 md:overflow-hidden">
-            <table className="w-full text-sm text-left text-stone-600 dark:text-stone-300">
-                <thead className="hidden md:table-header-group text-xs text-purple-600 dark:text-cyan-400 uppercase bg-stone-100 dark:bg-black/30">
+        <div className="bg-white dark:bg-stone-900 border-[3px] border-stone-900 dark:border-stone-100 shadow-[5px_5px_0px_0px_#ec4899] dark:shadow-[5px_5px_0px_0px_#06b6d4] overflow-x-auto overflow-hidden transition-all duration-300">
+            <table className="w-full text-sm text-left text-stone-600 dark:text-stone-300 border-collapse">
+                <thead className="hidden md:table-header-group text-xs text-stone-900 dark:text-stone-200 uppercase bg-stone-100 dark:bg-stone-800 border-b-[3px] border-stone-900 dark:border-stone-100 font-extrabold">
                     <tr>
                         <SortableHeader tKey="email" tLabel="Email" />
-                        <th scope="col" className="px-6 py-3">Peran</th>
-                        <th scope="col" className="px-6 py-3">Terhubung ke Host</th>
-                        <th scope="col" className="px-6 py-3 text-center">Aksi</th>
+                        <th scope="col" className="px-6 py-4">Peran</th>
+                        <th scope="col" className="px-6 py-4">Terhubung ke Host</th>
+                        <th scope="col" className="px-6 py-4 text-center">Aksi</th>
                     </tr>
                 </thead>
                 <tbody className="block md:table-row-group">
@@ -91,7 +102,7 @@ function UsersTable({ onEdit, onDelete, searchQuery }: { onEdit: (user: any) => 
                         const actions = [{ label: 'Ubah', icon: Edit, onClick: () => onEdit(user), className: 'text-purple-600 dark:text-purple-400' }];
                         if (session?.user?.id !== user.id) actions.push({ label: 'Hapus', icon: Trash2, onClick: () => onDelete(user), className: 'text-red-600 dark:text-red-400' });
                         return (
-                            <tr key={user.id} className="block md:table-row bg-white dark:bg-stone-800/80 border-b dark:border-stone-700 mb-4 md:mb-0 rounded-lg md:rounded-none shadow-lg md:shadow-none">
+                            <tr key={user.id} className="block md:table-row bg-white dark:bg-stone-900 border-b-2 border-stone-900 dark:border-stone-800 mb-4 md:mb-0 rounded-none hover:bg-stone-50 dark:hover:bg-stone-800/60 transition-colors">
                                 <td className="p-4 md:hidden">
                                     <div className="flex justify-between items-start">
                                         <div className="flex-grow overflow-hidden">
@@ -104,9 +115,9 @@ function UsersTable({ onEdit, onDelete, searchQuery }: { onEdit: (user: any) => 
                                         </div>
                                     </div>
                                 </td>
-                                <td className="hidden md:table-cell px-6 py-4 font-medium text-stone-900 dark:text-white">{user.email}</td>
-                                <td className="hidden md:table-cell px-6 py-4">{user.user_metadata.role}</td>
-                                <td className="hidden md:table-cell px-6 py-4">{host ? host.nama_host : '-'}</td>
+                                <td className="hidden md:table-cell px-6 py-4 font-extrabold text-stone-900 dark:text-white">{user.email}</td>
+                                <td className="hidden md:table-cell px-6 py-4 font-bold">{user.user_metadata.role}</td>
+                                <td className="hidden md:table-cell px-6 py-4 font-bold">{host ? host.nama_host : '-'}</td>
                                 <td className="hidden md:table-cell px-6 py-4 text-center"><DropdownMenu actions={actions} /></td>
                             </tr>
                         );

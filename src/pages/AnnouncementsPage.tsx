@@ -7,9 +7,9 @@ import DropdownMenu from '../components/DropdownMenu';
 import { marked } from 'marked';
 
 const categories: { [key: string]: { label: string; color: string; icon: React.ElementType } } = {
-    PENTING: { label: 'Penting', color: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300', icon: Megaphone },
-    INFO: { label: 'Info', color: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300', icon: Info },
-    EVENT: { label: 'Event', color: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300', icon: Calendar },
+    PENTING: { label: 'Penting', color: 'bg-red-100 text-red-800 dark:bg-red-950/40 dark:text-red-400 border-red-400 dark:border-red-500', icon: Megaphone },
+    INFO: { label: 'Info', color: 'bg-blue-100 text-blue-800 dark:bg-blue-950/40 dark:text-blue-400 border-blue-400 dark:border-blue-500', icon: Info },
+    EVENT: { label: 'Event', color: 'bg-green-100 text-green-800 dark:bg-green-950/40 dark:text-green-400 border-green-400 dark:border-green-500', icon: Calendar },
 };
 
 const availableReactions = ['👍', '🎉', '❤️', '💡'];
@@ -85,15 +85,15 @@ function SuperadminAnnouncementsView() {
                     Buat Pengumuman
                 </button>
             </div>
-            <div className="bg-white dark:bg-stone-800 rounded-xl shadow-sm border border-stone-100 dark:border-stone-700 overflow-x-auto">
-                <table className="w-full text-sm text-left text-stone-600 dark:text-stone-300">
-                    <thead className="text-xs text-stone-700 dark:text-stone-400 uppercase bg-stone-100 dark:bg-stone-700">
+            <div className="bg-white dark:bg-stone-900 border-[3px] border-stone-900 dark:border-stone-100 shadow-[5px_5px_0px_0px_#ec4899] dark:shadow-[5px_5px_0px_0px_#06b6d4] overflow-x-auto transition-all duration-300">
+                <table className="w-full text-sm text-left text-stone-600 dark:text-stone-300 border-collapse">
+                    <thead className="text-xs text-stone-900 dark:text-stone-200 uppercase bg-stone-100 dark:bg-stone-800 border-b-[3px] border-stone-900 dark:border-stone-100 font-extrabold">
                         <tr>
-                            <th scope="col" className="px-6 py-3">Judul</th>
-                            <th scope="col" className="px-6 py-3">Kategori</th>
-                            <th scope="col" className="px-6 py-3">Dilihat oleh Host</th>
-                            <th scope="col" className="px-6 py-3">Total Reaksi</th>
-                            <th scope="col" className="px-6 py-3 text-center">Aksi</th>
+                            <th scope="col" className="px-6 py-4">Judul</th>
+                            <th scope="col" className="px-6 py-4">Kategori</th>
+                            <th scope="col" className="px-6 py-4">Dilihat oleh Host</th>
+                            <th scope="col" className="px-6 py-4">Total Reaksi</th>
+                            <th scope="col" className="px-6 py-4 text-center">Aksi</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -106,18 +106,18 @@ function SuperadminAnnouncementsView() {
                             const reads = data.announcementReads.filter(r => r.announcement_id === announcement.id).length;
                             const reactions = data.announcementReactions.filter(r => r.announcement_id === announcement.id).length;
                             return (
-                                <tr key={announcement.id} className="bg-white dark:bg-stone-800 border-b dark:border-stone-700">
-                                    <td className="px-6 py-4 font-medium text-stone-900 dark:text-white flex items-center">
-                                        {announcement.is_pinned && <Pin className="h-4 w-4 mr-2 text-yellow-500" />}
+                                <tr key={announcement.id} className="bg-white dark:bg-stone-900 border-b-2 border-stone-900 dark:border-stone-800 hover:bg-stone-50 dark:hover:bg-stone-800/60 transition-colors">
+                                    <td className="px-6 py-4 font-extrabold text-stone-900 dark:text-white flex items-center">
+                                        {announcement.is_pinned && <Pin className="h-4 w-4 mr-2 text-yellow-500 fill-yellow-500" />}
                                         {announcement.title}
                                     </td>
                                     <td className="px-6 py-4">
-                                        <span className={`px-2 py-1 text-xs font-semibold rounded-full ${category.color}`}>
+                                        <span className={`px-3 py-1 text-xs font-extrabold uppercase border-2 border-stone-900 dark:border-stone-100 shadow-[2px_2px_0px_#000] dark:shadow-[2px_2px_0px_#fff] ${category.color}`}>
                                             {category.label}
                                         </span>
                                     </td>
-                                    <td className="px-6 py-4">{reads} / {data.hosts.length}</td>
-                                    <td className="px-6 py-4">{reactions}</td>
+                                    <td className="px-6 py-4 font-mono font-bold">{reads} / {data.hosts.length}</td>
+                                    <td className="px-6 py-4 font-mono font-bold">{reactions}</td>
                                     <td className="px-6 py-4 text-center">
                                         <DropdownMenu actions={actions} />
                                     </td>
@@ -177,7 +177,7 @@ function AnnouncementCard({ announcement, isFeatured = false }: { announcement: 
                 acc[reaction.emoji] = (acc[reaction.emoji] || 0) + 1;
                 return acc;
             }, {} as Record<string, number>);
-        return Object.entries(grouped).sort((a, b) => b[1] - a[1]);
+        return (Object.entries(grouped) as [string, number][]).sort((a, b) => b[1] - a[1]);
     }, [data.announcementReactions, announcement.id]);
 
     const myReaction = useMemo(() => 
@@ -237,19 +237,19 @@ function AnnouncementCard({ announcement, isFeatured = false }: { announcement: 
 
     const category = categories[announcement.category] || categories['INFO'];
     const cardClasses = isFeatured 
-        ? "bg-white dark:bg-stone-800 p-6 rounded-2xl shadow-lg border border-purple-200 dark:border-purple-800"
-        : "bg-white dark:bg-stone-800 p-5 rounded-xl shadow-md border border-stone-100 dark:border-stone-700";
+        ? "bg-white dark:bg-stone-900 p-6 rounded-xl border-[3px] border-stone-900 dark:border-stone-100 shadow-[5px_5px_0px_0px_#ec4899] dark:shadow-[5px_5px_0px_0px_#06b6d4] manga-screentone transition-all duration-300 hover:translate-y-[-2px]"
+        : "bg-white dark:bg-stone-900 p-5 rounded-xl border-[3px] border-stone-900 dark:border-stone-100 shadow-[4px_4px_0px_0px_#ec4899] dark:shadow-[4px_4px_0px_0px_#06b6d4] transition-all duration-300 hover:translate-y-[-2px]";
 
     return (
         <div ref={cardRef} className={cardClasses}>
             <div className="flex justify-between items-start">
                 <div className="flex items-center gap-4">
-                    {announcement.is_pinned && <Pin className="h-5 w-5 text-yellow-500 flex-shrink-0" />}
-                    <span className={`px-3 py-1 text-xs font-bold rounded-full ${category.color}`}>
+                    {announcement.is_pinned && <Pin className="h-5 w-5 text-yellow-500 fill-yellow-500 flex-shrink-0" />}
+                    <span className={`px-3 py-1 text-xs font-extrabold uppercase border-2 border-stone-900 dark:border-stone-100 shadow-[2px_2px_0px_#000] dark:shadow-[2px_2px_0px_#fff] ${category.color}`}>
                         {category.label}
                     </span>
                 </div>
-                {!isRead && <div className="w-3 h-3 bg-blue-500 rounded-full" title="Belum dibaca"></div>}
+                {!isRead && <div className="w-3.5 h-3.5 bg-cyan-500 dark:bg-cyan-400 border-2 border-stone-900 dark:border-stone-100 rounded-full animate-pulse shadow-[2px_2px_0px_#000] dark:shadow-[2px_2px_0px_#fff]" title="Belum dibaca"></div>}
             </div>
             <h3 className={`${isFeatured ? 'text-2xl' : 'text-md'} font-bold text-stone-900 dark:text-white mt-3 mb-2`}>{announcement.title}</h3>
             <div className="flex items-center text-xs text-stone-500 dark:text-stone-400 mt-1 mb-4">
@@ -259,21 +259,21 @@ function AnnouncementCard({ announcement, isFeatured = false }: { announcement: 
                 className={`prose prose-sm dark:prose-invert max-w-none ${!isFeatured && 'line-clamp-3'}`}
                 dangerouslySetInnerHTML={{ __html: marked(announcement.content || '') as string }} 
             />
-            <div className="flex items-center justify-between mt-4 pt-4 border-t border-stone-200 dark:border-stone-700">
-                <div className="flex items-center space-x-2">
+            <div className="flex items-center justify-between mt-6 pt-4 border-t-2 border-dashed border-stone-200 dark:border-stone-800">
+                <div className="flex items-center gap-2 flex-wrap">
                     {availableReactions.map(emoji => (
                         <button 
                             key={emoji}
                             onClick={() => handleReaction(emoji)}
-                            className={`px-2 py-1 rounded-full text-sm transition-transform transform hover:scale-110 ${myReaction?.emoji === emoji ? 'bg-blue-100 dark:bg-blue-900' : 'bg-stone-100 dark:bg-stone-700'}`}
+                            className={`px-3 py-1.5 text-sm font-bold border-2 border-stone-900 dark:border-stone-100 shadow-[2px_2px_0px_#000] dark:shadow-[2px_2px_0px_#fff] transition-all transform hover:scale-115 active:translate-x-[2px] active:translate-y-[2px] active:shadow-none ${myReaction?.emoji === emoji ? 'bg-pink-100 dark:bg-cyan-950 text-stone-900 dark:text-white' : 'bg-white dark:bg-stone-900 text-stone-700 dark:text-stone-300'}`}
                         >
                             {emoji}
                         </button>
                     ))}
                 </div>
-                <div className="flex items-center space-x-2">
+                <div className="flex items-center gap-2 flex-wrap justify-end">
                     {reactions.map(([emoji, count]) => (
-                        <span key={emoji} className="text-sm bg-stone-100 dark:bg-stone-700 px-2 py-1 rounded-full">{emoji} {count}</span>
+                        <span key={emoji} className="text-xs font-extrabold bg-stone-50 dark:bg-stone-800 px-2.5 py-1 border-2 border-stone-900 dark:border-stone-100 shadow-[2px_2px_0px_#000] dark:shadow-[2px_2px_0px_#fff]">{emoji} {count}</span>
                     ))}
                 </div>
             </div>

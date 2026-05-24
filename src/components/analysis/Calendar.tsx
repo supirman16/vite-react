@@ -41,11 +41,11 @@ export default function Calendar({ currentDate, selectedHostId, onDayClick }: Ca
     const formatDiamond = (num: number) => new Intl.NumberFormat().format(num);
 
     return (
-        <div className="mt-8 bg-white/50 dark:bg-stone-900/50 backdrop-blur-sm rounded-xl border border-purple-300 dark:border-cyan-400/30 shadow-lg p-4">
-            <div className="grid grid-cols-7 gap-1 text-center font-bold text-purple-600 dark:text-cyan-400 mb-2">
-                {['S', 'S', 'R', 'K', 'J', 'S', 'M'].map((day, i) => <div key={i} className="text-xs md:text-sm">{day}</div>)}
+        <div className="mt-8 bg-white dark:bg-stone-900 p-6 rounded-2xl border-[3px] border-stone-900 dark:border-stone-100 shadow-[6px_6px_0px_0px_#ec4899] dark:shadow-[6px_6px_0px_0px_#06b6d4] transition-colors duration-300">
+            <div className="grid grid-cols-7 gap-1 text-center font-extrabold text-stone-900 dark:text-stone-100 mb-4 border-b-2 border-stone-900 dark:border-stone-700 pb-3">
+                {['Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab', 'Min'].map((day, i) => <div key={i} className="text-xs md:text-sm tracking-wider uppercase">{day}</div>)}
             </div>
-            <div className="grid grid-cols-7 gap-2">
+            <div className="grid grid-cols-7 gap-3">
                 {emptyStartDays.map((_, i) => <div key={`empty-${i}`} className="h-20 md:h-24"></div>)}
                 {daysArray.map(day => {
                     const dayData = dailyData[day];
@@ -60,24 +60,18 @@ export default function Calendar({ currentDate, selectedHostId, onDayClick }: Ca
                             onClick={() => isLive && onDayClick(day)}
                             onMouseEnter={() => setHoveredDay(day)}
                             onMouseLeave={() => setHoveredDay(null)}
-                            // --- PERBAIKAN DI SINI: Menghapus 'overflow-hidden' ---
-                            className={`relative h-20 md:h-24 flex items-center justify-center rounded-lg transition-all duration-300 ${isLive ? 'bg-stone-50 dark:bg-stone-800/80 cursor-pointer' : 'bg-stone-200/50 dark:bg-stone-900/50 opacity-60'}`}
-                            whileHover={isLive ? { scale: 1.05, zIndex: 10 } : {}}
+                            className={`relative h-20 md:h-24 flex items-center justify-center rounded-xl transition-all duration-200 ${isLive ? 'bg-white dark:bg-stone-800 cursor-pointer border-[3px] border-stone-900 dark:border-stone-100 shadow-[3px_3px_0px_0px_#ec4899] dark:shadow-[3px_3px_0px_0px_#06b6d4] hover:shadow-[5px_5px_0px_0px_#ec4899] dark:hover:shadow-[5px_5px_0px_0px_#06b6d4] hover:-translate-x-0.5 hover:-translate-y-0.5' : 'bg-stone-100/40 dark:bg-stone-900/40 border-2 border-stone-200 dark:border-stone-800/60 opacity-40'}`}
                             initial={{ opacity: 0, scale: 0.9 }}
                             animate={{ opacity: 1, scale: 1 }}
                             transition={{ duration: 0.3, delay: day * 0.01 }}
                         >
-                            <div 
-                                className="absolute inset-0 transition-all duration-300 rounded-lg" // Menambahkan rounded-lg di sini
-                                style={{ boxShadow: isLive ? `0 0 12px rgba(${theme === 'dark' ? '34, 211, 238,' : '168, 85, 247,'} 0.4)` : 'none' }}
-                            ></div>
-                            <span className="font-bold text-stone-800 dark:text-stone-200 text-lg md:text-xl z-10">{day}</span>
+                            <span className="font-extrabold text-stone-900 dark:text-stone-100 text-lg md:text-xl z-10">{day}</span>
                             
                             {isLive && (
-                                <div className="absolute bottom-0 left-0 w-full h-full flex items-end">
+                                <div className="absolute bottom-0 left-0 w-full h-full flex items-end overflow-hidden rounded-b-[8px]">
                                     <div 
-                                        className="w-full unity-gradient-bg rounded-b-lg" // Menambahkan rounded-b-lg
-                                        style={{ height: `${barHeight}%`, opacity: 0.6, maskImage: 'linear-gradient(to top, white 20%, transparent 100%)' }}
+                                        className="w-full unity-gradient-bg"
+                                        style={{ height: `${barHeight}%`, opacity: 0.45, maskImage: 'linear-gradient(to top, white 20%, transparent 100%)' }}
                                     ></div>
                                 </div>
                             )}
@@ -89,15 +83,15 @@ export default function Calendar({ currentDate, selectedHostId, onDayClick }: Ca
                                         animate={{ opacity: 1, y: 0 }}
                                         exit={{ opacity: 0, y: 10 }}
                                         transition={{ duration: 0.2 }}
-                                        className="absolute bottom-full mb-2 w-max max-w-xs bg-black/80 backdrop-blur-sm text-white text-xs rounded-lg p-2 z-20 pointer-events-none"
+                                        className="absolute bottom-full mb-2 w-max max-w-xs bg-stone-950/95 border-2 border-stone-900 dark:border-stone-100 text-white text-xs rounded-xl p-3 z-30 pointer-events-none shadow-[3px_3px_0px_0px_#000]"
                                     >
                                         {isLive ? (
-                                            <div className="space-y-1">
-                                                <div className="flex items-center gap-2"><Clock size={14} /><span>Total Jam: {formatDuration(dayData.totalMinutes)}</span></div>
-                                                <div className="flex items-center gap-2"><Diamond size={14} /><span>Total Diamond: {formatDiamond(dayData.totalDiamonds)}</span></div>
+                                            <div className="space-y-1.5 font-bold">
+                                                <div className="flex items-center gap-2 text-pink-400 dark:text-cyan-400"><Clock size={14} /><span>Jam Live: {formatDuration(dayData.totalMinutes)}</span></div>
+                                                <div className="flex items-center gap-2 text-yellow-400"><Diamond size={14} /><span>Diamond: {formatDiamond(dayData.totalDiamonds)} 💎</span></div>
                                             </div>
                                         ) : (
-                                            <div className="flex items-center gap-2 text-red-400"><XCircle size={14} /><span>Absent</span></div>
+                                            <div className="flex items-center gap-2 text-red-400 font-bold"><XCircle size={14} /><span>Absen / Off</span></div>
                                         )}
                                     </motion.div>
                                 )}

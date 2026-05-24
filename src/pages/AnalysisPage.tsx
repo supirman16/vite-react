@@ -8,6 +8,7 @@ import { motion } from 'framer-motion';
 // Impor komponen
 import Calendar from '../components/analysis/Calendar';
 import TrendChart from '../components/analysis/TrendChart';
+import PlatformDistributionChart from '../components/analysis/PlatformDistributionChart';
 import AnimatedCard from '../components/dashboard/AnimatedCard'; // Kita gunakan lagi komponen animasi dari dasbor
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend);
@@ -127,7 +128,7 @@ export function calculatePayroll(hostId: number, year: number, month: number, ho
     const adjustedBaseSalary = baseSalary * achievementPercentage;
     const deduction = baseSalary - adjustedBaseSalary;
     const finalSalary = adjustedBaseSalary + bonus;
-    return { hostName: host.nama_host, totalHours, totalDiamonds, baseSalary, bonus, deduction, adjustedBaseSalary, finalSalary, workDays, targetDays, targetHours };
+    return { hostId: host.id, hostName: host.nama_host, bankName: host.nama_bank || '-', bankAccountNumber: host.nomor_rekening || '-', totalHours, totalDiamonds, baseSalary, bonus, deduction, adjustedBaseSalary, finalSalary, workDays, targetDays, targetHours };
 }
 
 // Varian untuk container animasi
@@ -219,7 +220,9 @@ export default function AnalysisPage() {
             
             <Calendar currentDate={currentDate} selectedHostId={selectedHostId} onDayClick={handleDayClick} />
             
-            <TrendChart selectedHostId={selectedHostId} />
+            <TrendChart selectedHostId={selectedHostId} currentDate={currentDate} />
+
+            <PlatformDistributionChart selectedHostId={selectedHostId} currentDate={currentDate} />
 
             {selectedDay && (
                 <CalendarDetailModal

@@ -42,17 +42,24 @@ export default function QuoteBanner() {
     }
 
     return (
-        <div className="flex items-center justify-between gap-x-6 bg-white/70 dark:bg-stone-900/70 backdrop-blur-lg px-6 py-2.5 sm:px-3.5 animate-fade-in border-b border-stone-200/80 dark:border-stone-800/80">
-            <div className="flex items-center gap-x-4">
-                <Sparkles className="h-5 w-5 text-yellow-500 hidden sm:block" />
-                <p className="text-sm leading-6 text-stone-800 dark:text-stone-200">
-                    {isLoading ? 'Memuat kutipan...' : quote}
-                </p>
+        <div className="flex items-center justify-between gap-x-6 bg-gradient-to-r from-pink-500/5 via-purple-500/5 to-cyan-500/5 backdrop-blur-md px-6 py-2 sm:px-3.5 animate-fade-in border-b-[3px] border-stone-900 dark:border-cyan-500/10 transition-colors duration-300">
+            <div className="flex items-center gap-x-3.5 overflow-hidden py-1">
+                {/* Mini Mascot Avatar - Manga Styled Circular Badge */}
+                <div className="h-8 w-8 rounded-full bg-pink-100 dark:bg-cyan-500/10 border-2 border-stone-900 dark:border-stone-100 flex items-center justify-center p-0.5 shadow-[2px_2px_0px_0px_#ec4899] dark:shadow-[2px_2px_0px_0px_#06b6d4] animate-float-fast shrink-0 overflow-hidden">
+                    <img src="/anime_mascot.png" alt="Mascot Avatar" className="w-full h-full object-cover rounded-full" />
+                </div>
+                
+                {/* Dialogue bubble-like speech: Comic Style */}
+                <div className="relative bg-white/95 dark:bg-stone-800 px-3 py-1.5 rounded-xl border-[3px] border-stone-900 dark:border-stone-100 shadow-[3px_3px_0px_0px_#ec4899] dark:shadow-[3px_3px_0px_0px_#06b6d4] max-w-xl text-xs sm:text-sm font-extrabold text-stone-900 dark:text-white truncate">
+                    {isLoading ? 'Memuat pesan harian... (・_・;)' : `"${quote}" (✿◡‿◡) ✨`}
+                    {/* Comic dialogue pointer tail */}
+                    <div className="absolute top-1/2 -left-1.5 -translate-y-1/2 w-2.5 h-2.5 bg-white dark:bg-stone-800 border-l-[3px] border-b-[3px] border-stone-900 dark:border-stone-100 transform rotate-45"></div>
+                </div>
             </div>
-            <div className="flex justify-end">
-                <button type="button" className="-m-3 p-3 focus-visible:outline-offset-[-4px] text-stone-600 dark:text-stone-300" onClick={handleClose}>
+            <div className="flex justify-end shrink-0">
+                <button type="button" className="-m-3 p-3 focus-visible:outline-offset-[-4px] text-stone-500 hover:text-pink-500 dark:text-stone-400 dark:hover:text-cyan-300 transition-colors" onClick={handleClose}>
                     <span className="sr-only">Tutup</span>
-                    <X className="h-5 w-5" aria-hidden="true" />
+                    <X className="h-4 w-4" aria-hidden="true" />
                 </button>
             </div>
         </div>

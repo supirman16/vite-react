@@ -24,8 +24,8 @@ export default function Modal({ isOpen, onClose, title, children }: { isOpen: bo
                     ></motion.div>
                     
                     <motion.div 
-                        // --- PERBAIKAN DI SINI: Menambahkan kelas latar belakang dan animasi baru ---
-                        className="relative flex flex-col bg-white/80 dark:bg-stone-900/80 backdrop-blur-xl rounded-xl w-full max-w-lg border animate-pulse-glow gaming-modal-bg animate-background-pan"
+                        // --- PERBAIKAN DI SINI: Menambahkan kelas latar belakang dan animasi baru dengan gaya Manga/Comic ---
+                        className="relative flex flex-col bg-white dark:bg-stone-900 rounded-xl w-full max-w-lg border-[3px] border-stone-900 dark:border-stone-100 shadow-[6px_6px_0px_0px_#ec4899] dark:shadow-[6px_6px_0px_0px_#06b6d4] gaming-modal-bg"
                         initial={{ opacity: 0, scale: 0.95 }}
                         animate={{ opacity: 1, scale: 1 }}
                         exit={{ opacity: 0, scale: 0.95 }}

@@ -1,6 +1,6 @@
 import { useContext, useState } from 'react';
 import { AppContext, AppContextType } from '../App';
-import { LayoutDashboard, Star, FileText, User, DollarSign, Settings, Users, TestTube2, Ticket, MoreHorizontal, X, BarChart3 } from 'lucide-react';
+import { LayoutDashboard, Star, FileText, User, DollarSign, Settings, Users, Ticket, MoreHorizontal, X, BarChart3 } from 'lucide-react';
 import Modal from './Modal';
 
 // Komponen ini adalah menu navigasi bawah untuk tampilan mobile.
@@ -13,7 +13,11 @@ export default function MobileMenu() {
         return null;
     }
 
-    const { page, setPage, session } = context as AppContextType;
+    const { page, setPage, session } = context;
+
+    if (!session) {
+        return null;
+    }
 
     // --- PERBAIKAN: Logika peran yang disederhanakan dan diperbaiki ---
     const userRole = session.user.user_metadata?.role;
@@ -36,7 +40,6 @@ export default function MobileMenu() {
         { id: 'analysis', label: 'Analisis', icon: BarChart3 },
         { id: 'users', label: 'Pengguna', icon: Users },
         { id: 'tiktok', label: 'Akun', icon: Ticket },
-        { id: 'livetest', label: 'Uji Live', icon: TestTube2 },
         { id: 'settings', label: 'Pengaturan', icon: Settings },
     ];
 

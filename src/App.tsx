@@ -2,6 +2,8 @@ import { useState, useEffect, createContext, useCallback } from 'react';
 import { createClient, Session } from '@supabase/supabase-js';
 import DashboardLayout from './components/DashboardLayout';
 import LoginPage from './components/LoginPage';
+import BackgroundParticles from './components/BackgroundParticles';
+import RulesBoardModal from './components/RulesBoardModal';
 import { LayoutDashboard } from 'lucide-react';
 
 // Konfigurasi Supabase
@@ -35,6 +37,7 @@ export interface AppData {
     announcementReactions: any[];
     achievements: any[];
     hostAchievements: any[];
+    payouts: any[];
 }
 
 export const AppContext = createContext<AppContextType | null>(null);
@@ -46,6 +49,7 @@ export default function App() {
     const [notification, setNotification] = useState<{ message: string; isError: boolean } | null>(null);
     const [theme, setTheme] = useState(localStorage.getItem('theme') || 'light');
     const [isQuoteBannerVisible, setIsQuoteBannerVisible] = useState(true);
+    const [showRulesBoard, setShowRulesBoard] = useState(false);
     
     const [data, setData] = useState<AppData>({
         loading: true,
@@ -59,6 +63,7 @@ export default function App() {
         announcementReactions: [],
         achievements: [],
         hostAchievements: [],
+        payouts: [],
     });
     
     const [authLoading, setAuthLoading] = useState(true);
@@ -76,8 +81,11 @@ export default function App() {
             setAuthLoading(false);
         });
 
-        const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+        const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
             setSession(session);
+            if (event === 'SIGNED_IN' && session) {
+                setShowRulesBoard(true);
+            }
             if (authLoading) setAuthLoading(false); 
         });
 
@@ -125,6 +133,16 @@ export default function App() {
                 }
             }
 
+            let payouts: any[] = [];
+            try {
+                const { data: payoutData, error: payoutError } = await supabase.from('payouts').select('*');
+                if (!payoutError && payoutData) {
+                    payouts = payoutData;
+                }
+            } catch (payoutErr) {
+                console.warn("Table 'payouts' is not ready yet.", payoutErr);
+            }
+
             setData({
                 loading: false,
                 hosts: hosts || [],
@@ -137,6 +155,7 @@ export default function App() {
                 announcementReactions: announcementReactions || [],
                 achievements: achievements || [],
                 hostAchievements: hostAchievements || [],
+                payouts: payouts,
             });
         } catch (error) {
             console.error("Error fetching data:", error);
@@ -149,7 +168,7 @@ export default function App() {
             fetchData(session);
             setIsQuoteBannerVisible(true);
         } else {
-            setData({ loading: false, hosts: [], rekapLive: [], tiktokAccounts: [], users: [], user: null, announcements: [], announcementReads: [], announcementReactions: [], achievements: [], hostAchievements: [] });
+            setData({ loading: false, hosts: [], rekapLive: [], tiktokAccounts: [], users: [], user: null, announcements: [], announcementReads: [], announcementReactions: [], achievements: [], hostAchievements: [], payouts: [] });
         }
     }, [session, fetchData]);
 
@@ -185,10 +204,17 @@ export default function App() {
             })
             .subscribe();
 
+        const payoutsChannel = supabase.channel('payouts_realtime')
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'payouts' }, () => {
+                fetchData(session);
+            })
+            .subscribe();
+
         return () => {
             supabase.removeChannel(achievementsChannel);
             supabase.removeChannel(readsChannel);
             supabase.removeChannel(reactionsChannel);
+            supabase.removeChannel(payoutsChannel);
         };
     }, [session, fetchData, data.achievements]);
 
@@ -201,7 +227,9 @@ export default function App() {
     
     return (
         <AppContext.Provider value={{ page, setPage, session, logout, data, setData, showNotification, theme, setTheme, isQuoteBannerVisible, setIsQuoteBannerVisible }}>
+            <BackgroundParticles />
             {!session ? <LoginPage /> : <DashboardLayout />}
+            <RulesBoardModal isOpen={showRulesBoard} onClose={() => setShowRulesBoard(false)} />
             {notification && (
                 <div className={`fixed bottom-5 right-5 p-4 rounded-lg shadow-lg text-white ${notification.isError ? 'bg-red-500' : 'bg-green-500'}`}>
                     {notification.message}
