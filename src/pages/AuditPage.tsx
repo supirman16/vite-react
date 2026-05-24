@@ -49,7 +49,11 @@ export default function AuditPage() {
     diamonds INTEGER NOT NULL,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     CONSTRAINT unique_live_session UNIQUE (username, start_time, end_time)
-);`;
+);
+
+-- JIKA TERKENA ERROR RLS (ROW-LEVEL SECURITY),
+-- JALANKAN PERINTAH INI DI SUPABASE SQL EDITOR:
+ALTER TABLE public.platform_live_data DISABLE ROW LEVEL SECURITY;`;
 
     // Load platform data from Supabase or fallback LocalStorage
     useEffect(() => {
@@ -68,6 +72,11 @@ export default function AuditPage() {
                     const localData = JSON.parse(localStorage.getItem('platform_live_data') || '[]');
                     setPlatformRecords(localData);
                     console.log("Supabase table 'platform_live_data' not found. Using LocalStorage fallback database.");
+                } else if (error.code === '42501' || error.message?.toLowerCase().includes('row-level security') || error.message?.toLowerCase().includes('rls')) {
+                    // RLS active and blocking read
+                    const localData = JSON.parse(localStorage.getItem('platform_live_data') || '[]');
+                    setPlatformRecords(localData);
+                    console.log("Supabase RLS active. Using LocalStorage fallback database.");
                 } else {
                     throw error;
                 }
@@ -367,6 +376,24 @@ export default function AuditPage() {
         }
     };
 
+    // Helper to save platform data locally
+    const saveToLocalStorage = (newRecords: PlatformLiveData[]) => {
+        let existing = JSON.parse(localStorage.getItem('platform_live_data') || '[]');
+        if (duplicateOption === 'overwrite') {
+            // Filter out any matching duplicates first
+            existing = existing.filter((exist: any) => {
+                return !newRecords.some(
+                    r => r.username.toLowerCase() === exist.username.toLowerCase() &&
+                         r.start_time === exist.start_time &&
+                         r.end_time === exist.end_time
+                );
+            });
+        }
+        const merged = [...newRecords, ...existing];
+        localStorage.setItem('platform_live_data', JSON.stringify(merged));
+        setPlatformRecords(merged);
+    };
+
     // Save imported data to Supabase (or fallback LocalStorage)
     const saveDataToDB = async (newRecords: PlatformLiveData[], duplicatesSkipped: number) => {
         setIsSubmitting(true);
@@ -376,38 +403,38 @@ export default function AuditPage() {
             
             if (testError && testError.code === '42P01') {
                 // FALLBACK: LocalStorage
-                let existing = JSON.parse(localStorage.getItem('platform_live_data') || '[]');
-                if (duplicateOption === 'overwrite') {
-                    // Filter out any matching duplicates first
-                    existing = existing.filter((exist: any) => {
-                        return !newRecords.some(
-                            r => r.username.toLowerCase() === exist.username.toLowerCase() &&
-                                 r.start_time === exist.start_time &&
-                                 r.end_time === exist.end_time
-                        );
-                    });
-                }
-                const merged = [...newRecords, ...existing];
-                localStorage.setItem('platform_live_data', JSON.stringify(merged));
-                setPlatformRecords(merged);
-                
+                saveToLocalStorage(newRecords);
                 showNotification(`✓ Sukses Impor: Berhasil memuat ${newRecords.length} data baru ke LocalStorage (fallback). ${duplicatesSkipped} data duplikat dilewati.`);
             } else {
                 // CLOUD: Insert to Supabase platform_live_data
-                if (duplicateOption === 'overwrite') {
-                    // Since bulk UPSERT with custom composite unique key requires explicit setup,
-                    // we can do it by inserting one by one or using standard upsert
-                    const { error } = await supabase.from('platform_live_data').upsert(newRecords, {
-                        onConflict: 'username,start_time,end_time'
-                    });
-                    if (error) throw error;
-                } else {
-                    const { error } = await supabase.from('platform_live_data').insert(newRecords);
-                    if (error) throw error;
+                try {
+                    if (duplicateOption === 'overwrite') {
+                        // Since bulk UPSERT with custom composite unique key requires explicit setup,
+                        // we can do it by inserting one by one or using standard upsert
+                        const { error } = await supabase.from('platform_live_data').upsert(newRecords, {
+                            onConflict: 'username,start_time,end_time'
+                        });
+                        if (error) throw error;
+                    } else {
+                        const { error } = await supabase.from('platform_live_data').insert(newRecords);
+                        if (error) throw error;
+                    }
+                    
+                    await loadPlatformData();
+                    showNotification(`✓ Sukses Impor: Berhasil mengunggah ${newRecords.length} data baru ke database Supabase!`);
+                } catch (dbErr: any) {
+                    console.error("Database save error:", dbErr);
+                    const isRLS = dbErr.message?.toLowerCase().includes('row-level security') || 
+                                  dbErr.message?.toLowerCase().includes('rls') || 
+                                  dbErr.code === '42501';
+                    
+                    if (isRLS) {
+                        saveToLocalStorage(newRecords);
+                        showNotification(`⚠️ RLS Aktif: Tersimpan di Lokal (LocalStorage). Salin & jalankan SQL ALTER TABLE di panel kanan Supabase Editor untuk sinkronisasi cloud!`, true);
+                    } else {
+                        throw dbErr;
+                    }
                 }
-                
-                await loadPlatformData();
-                showNotification(`✓ Sukses Impor: Berhasil mengunggah ${newRecords.length} data baru ke database Supabase!`);
             }
 
             setCsvText('');
@@ -427,14 +454,22 @@ export default function AuditPage() {
         try {
             const { error } = await supabase.from('platform_live_data').delete().eq('username', record.username).eq('start_time', record.start_time);
             
-            if (error && error.code === '42P01') {
+            const isRLS = error && (error.code === '42501' || error.message?.toLowerCase().includes('row-level security') || error.message?.toLowerCase().includes('rls'));
+            
+            if ((error && error.code === '42P01') || isRLS) {
                 // Fallback delete
                 const updated = platformRecords.filter(
                     r => !(r.username === record.username && r.start_time === record.start_time)
                 );
                 localStorage.setItem('platform_live_data', JSON.stringify(updated));
                 setPlatformRecords(updated);
-                showNotification("Data lokal dihapus.");
+                if (isRLS) {
+                    showNotification("⚠️ RLS Aktif: Data lokal dihapus. Cloud terblokir RLS.", true);
+                } else {
+                    showNotification("Data lokal dihapus.");
+                }
+            } else if (error) {
+                throw error;
             } else {
                 await loadPlatformData();
                 showNotification("Data berhasil dihapus dari cloud.");
@@ -450,10 +485,19 @@ export default function AuditPage() {
 
         try {
             const { error } = await supabase.from('platform_live_data').delete().neq('username', '');
-            if (error && error.code === '42P01') {
+            
+            const isRLS = error && (error.code === '42501' || error.message?.toLowerCase().includes('row-level security') || error.message?.toLowerCase().includes('rls'));
+            
+            if ((error && error.code === '42P01') || isRLS) {
                 localStorage.removeItem('platform_live_data');
                 setPlatformRecords([]);
-                showNotification("Database lokal dikosongkan.");
+                if (isRLS) {
+                    showNotification("⚠️ RLS Aktif: Database lokal dikosongkan. Cloud terblokir RLS.", true);
+                } else {
+                    showNotification("Database lokal dikosongkan.");
+                }
+            } else if (error) {
+                throw error;
             } else {
                 await loadPlatformData();
                 showNotification("Seluruh data cloud berhasil dihapus.");
