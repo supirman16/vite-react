@@ -24,6 +24,15 @@ interface AuditResult {
     differenceDetails?: string;
 }
 
+interface HostVerificationResult {
+    rekap: any;
+    matchedAccount: any | null;
+    matchedHost: any | null;
+    matchedPlatform: PlatformLiveData | null;
+    status: 'verified' | 'mismatch' | 'ghost' | 'unknown_account';
+    differenceDetails?: string;
+}
+
 export default function AuditPage() {
     const context = useContext(AppContext);
     if (!context) return null;
@@ -33,6 +42,9 @@ export default function AuditPage() {
     const [isDragOver, setIsDragOver] = useState(false);
     const [platformRecords, setPlatformRecords] = useState<PlatformLiveData[]>([]);
     const [auditResults, setAuditResults] = useState<AuditResult[]>([]);
+    const [hostVerificationResults, setHostVerificationResults] = useState<HostVerificationResult[]>([]);
+    const [activeAuditTab, setActiveAuditTab] = useState<'platform' | 'host'>('platform');
+    const [sortBy, setSortBy] = useState<'date-desc' | 'date-asc' | 'diamonds-desc' | 'diamonds-asc' | 'username-asc'>('date-desc');
     const [loading, setLoading] = useState(false);
     const [dbLoading, setDbLoading] = useState(true);
     const [duplicateOption, setDuplicateOption] = useState<'skip' | 'overwrite'>('skip');
@@ -125,50 +137,52 @@ ALTER TABLE public.platform_live_data DISABLE ROW LEVEL SECURITY;`;
                 return rekap.tiktok_account_id === matchedAccount.id && rekap.tanggal_live === dateStr;
             });
 
-            // 3. Matchmaking logic for shared accounts:
+            // 3. Matchmaking logic:
             // Find which host rekap corresponds to this specific platform live record by checking:
-            // a) Start/End time overlaps or closest hours
-            // b) Or diamond counts
+            // a) Start time difference (in minutes)
+            // b) Diamond counts
+            // c) Duration difference
             let bestMatchRekap: any = null;
+            let bestScore = -1;
 
-            if (matchingRekaps.length === 1) {
-                bestMatchRekap = matchingRekaps[0];
-            } else if (matchingRekaps.length > 1) {
-                // If there are multiple host rekap inputs on the same account on the same day:
-                // Find the one that overlaps the time or has the closest diamond/duration
-                let bestScore = -1;
-                matchingRekaps.forEach(rekap => {
-                    let score = 0;
-                    
-                    // Direct diamond matches are highly characteristic
-                    if (rekap.pendapatan === platform.diamonds) {
-                        score += 10;
-                    } else if (Math.abs(rekap.pendapatan - platform.diamonds) < 100) {
-                        score += 3;
-                    }
+            matchingRekaps.forEach(rekap => {
+                let score = 0;
 
-                    // Check time overlap: e.g., if rekap.waktu_mulai matches platform's starting hours
-                    const platformStartHours = platformDate.getHours();
-                    const platformStartMins = platformDate.getMinutes();
-                    if (rekap.waktu_mulai) {
-                        const [rekapHours, rekapMins] = rekap.waktu_mulai.split(':').map(Number);
-                        const hourDiff = Math.abs(rekapHours - platformStartHours);
-                        if (hourDiff === 0) {
-                            score += 8;
-                            if (Math.abs(rekapMins - platformStartMins) < 15) {
-                                score += 4;
-                            }
-                        } else if (hourDiff <= 1) {
-                            score += 4;
-                        }
-                    }
+                // 1. Start Time Score (max 40 pts)
+                let timeDiffMins = 9999;
+                if (rekap.waktu_mulai) {
+                    const [rekapH, rekapM] = rekap.waktu_mulai.split(':').map(Number);
+                    const rekapStartDate = new Date(platformDate.getFullYear(), platformDate.getMonth(), platformDate.getDate(), rekapH, rekapM);
+                    timeDiffMins = Math.abs(rekapStartDate.getTime() - platformDate.getTime()) / (1000 * 60);
+                }
 
-                    if (score > bestScore) {
-                        bestScore = score;
-                        bestMatchRekap = rekap;
-                    }
-                });
-            }
+                // Enforce maximum start-time gap restriction of 180 minutes (3 hours)
+                if (timeDiffMins > 180) {
+                    return; // Skip this rekap entirely as it is a completely different shift/time
+                }
+
+                if (timeDiffMins <= 30) score += 40;
+                else if (timeDiffMins <= 90) score += 25;
+                else if (timeDiffMins <= 240) score += 10;
+
+                // 2. Diamonds Score (max 30 pts)
+                const diamondDiff = Math.abs(rekap.pendapatan - platform.diamonds);
+                if (diamondDiff === 0) score += 30;
+                else if (diamondDiff <= 50) score += 20;
+                else if (diamondDiff <= 200) score += 10;
+
+                // 3. Duration Score (max 30 pts)
+                const durationDiff = Math.abs(rekap.durasi_menit - platform.durasi_menit);
+                if (durationDiff <= 15) score += 30;
+                else if (durationDiff <= 45) score += 20;
+                else if (durationDiff <= 120) score += 10;
+
+                // We require a minimum score of 10 to consider it a candidate match
+                if (score >= 10 && score > bestScore) {
+                    bestScore = score;
+                    bestMatchRekap = rekap;
+                }
+            });
 
             // Determine host linked to the rekap, or fallback to the primary host of the account
             let matchedHost = null;
@@ -231,6 +245,139 @@ ALTER TABLE public.platform_live_data DISABLE ROW LEVEL SECURITY;`;
         });
 
         setAuditResults(results);
+    }, [platformRecords, data.rekapLive, data.tiktokAccounts, data.hosts]);
+
+    // Calculate Host Verification Results (finding ghost claims or unverified rekaps)
+    useEffect(() => {
+        if (platformRecords.length === 0) {
+            setHostVerificationResults([]);
+            return;
+        }
+
+        const platformDates = platformRecords.map(r => getLocalDateString(new Date(r.start_time)));
+        
+        // Filter host rekaps that fall on dates present in the imported platform records
+        const relevantRekaps = data.rekapLive.filter(rekap => platformDates.includes(rekap.tanggal_live));
+
+        const results = relevantRekaps.map(rekap => {
+            const matchedHost = data.hosts.find(h => h.id === rekap.host_id);
+            const matchedAccount = data.tiktokAccounts.find(acc => acc.id === rekap.tiktok_account_id);
+
+            if (!matchedAccount) {
+                return {
+                    rekap,
+                    matchedAccount: null,
+                    matchedHost,
+                    matchedPlatform: null,
+                    status: 'unknown_account' as const,
+                };
+            }
+
+            // Find matching platform records on same date and same username
+            const matchingPlatforms = platformRecords.filter(p => 
+                p.username.toLowerCase().trim() === matchedAccount.username.toLowerCase().trim() && 
+                getLocalDateString(new Date(p.start_time)) === rekap.tanggal_live
+            );
+
+            if (matchingPlatforms.length === 0) {
+                return {
+                    rekap,
+                    matchedAccount,
+                    matchedHost,
+                    matchedPlatform: null,
+                    status: 'ghost' as const,
+                    differenceDetails: `Ghost Input: Tidak ada aktivitas siaran terdaftar di platform pada tanggal ${rekap.tanggal_live}.`
+                };
+            }
+
+            // Matchmaking logic to find closest platform session:
+            let bestPlatform: PlatformLiveData | null = null;
+            let bestScore = -1;
+
+            matchingPlatforms.forEach(p => {
+                let score = 0;
+
+                // 1. Start Time Score (max 40 pts)
+                let timeDiffMins = 9999;
+                if (rekap.waktu_mulai) {
+                    const [rekapH, rekapM] = rekap.waktu_mulai.split(':').map(Number);
+                    const platformDate = new Date(p.start_time);
+                    const rekapStartDate = new Date(platformDate.getFullYear(), platformDate.getMonth(), platformDate.getDate(), rekapH, rekapM);
+                    timeDiffMins = Math.abs(rekapStartDate.getTime() - platformDate.getTime()) / (1000 * 60);
+                }
+
+                // Enforce maximum start-time gap restriction of 180 minutes (3 hours)
+                if (timeDiffMins > 180) {
+                    return; // Skip this platform record entirely as it is a completely different shift/time
+                }
+
+                if (timeDiffMins <= 30) score += 40;
+                else if (timeDiffMins <= 90) score += 25;
+                else if (timeDiffMins <= 240) score += 10;
+
+                // 2. Diamonds Score (max 30 pts)
+                const diamondDiff = Math.abs(p.diamonds - rekap.pendapatan);
+                if (diamondDiff === 0) score += 30;
+                else if (diamondDiff <= 50) score += 20;
+                else if (diamondDiff <= 200) score += 10;
+
+                // 3. Duration Score (max 30 pts)
+                const durationDiff = Math.abs(p.durasi_menit - rekap.durasi_menit);
+                if (durationDiff <= 15) score += 30;
+                else if (durationDiff <= 45) score += 20;
+                else if (durationDiff <= 120) score += 10;
+
+                // We require a minimum score of 10 to consider it a candidate match
+                if (score >= 10 && score > bestScore) {
+                    bestScore = score;
+                    bestPlatform = p;
+                }
+            });
+
+            if (!bestPlatform) {
+                return {
+                    rekap,
+                    matchedAccount,
+                    matchedHost,
+                    matchedPlatform: null,
+                    status: 'ghost' as const,
+                    differenceDetails: `Ghost Input: Laporan klaim host tidak memiliki sesi streaming yang cocok di platform.`
+                };
+            }
+
+            const diamondDiff = rekap.pendapatan !== bestPlatform.diamonds;
+            const durationDiff = Math.abs(rekap.durasi_menit - bestPlatform.durasi_menit) > 5;
+
+            if (diamondDiff || durationDiff) {
+                let details = '';
+                if (diamondDiff && durationDiff) {
+                    details = `Selisih Diamond (Klaim: ${rekap.pendapatan} vs Platform: ${bestPlatform.diamonds} 💎) & Durasi (Klaim: ${rekap.durasi_menit}m vs Platform: ${bestPlatform.durasi_menit}m)`;
+                } else if (diamondDiff) {
+                    details = `Selisih Diamond: Laporan klaim ${rekap.pendapatan} vs Platform ${bestPlatform.diamonds} 💎`;
+                } else {
+                    details = `Selisih Durasi: Laporan klaim ${formatMinutes(rekap.durasi_menit)} vs Platform ${bestPlatform.duration}`;
+                }
+
+                return {
+                    rekap,
+                    matchedAccount,
+                    matchedHost,
+                    matchedPlatform: bestPlatform,
+                    status: 'mismatch' as const,
+                    differenceDetails: details
+                };
+            }
+
+            return {
+                rekap,
+                matchedAccount,
+                matchedHost,
+                matchedPlatform: bestPlatform,
+                status: 'verified' as const,
+            };
+        });
+
+        setHostVerificationResults(results);
     }, [platformRecords, data.rekapLive, data.tiktokAccounts, data.hosts]);
 
     // Helpers
@@ -585,6 +732,26 @@ ALTER TABLE public.platform_live_data DISABLE ROW LEVEL SECURITY;`;
         }
     };
 
+    // Delete a host rekap report that is determined to be a Ghost Input / Excess Submission
+    const handleDeleteRekap = async (rekapId: string) => {
+        if (!window.confirm("Hapus rekap live host ini karena terbukti fiktif / tidak ada di platform siaran asli?")) return;
+        setLoading(true);
+        try {
+            const { error } = await supabase.from('rekap_live').delete().eq('id', rekapId);
+            if (error) throw error;
+            
+            setData(prev => ({
+                ...prev,
+                rekapLive: prev.rekapLive.filter(r => r.id !== rekapId)
+            }));
+            showNotification("✓ Sukses Hapus: Laporan rekap fiktif host berhasil dihapus dari database!");
+        } catch (err: any) {
+            showNotification("Gagal menghapus rekap: " + err.message, true);
+        } finally {
+            setLoading(false);
+        }
+    };
+
 
 
     // File Drag & Drop Handlers
@@ -626,6 +793,48 @@ ALTER TABLE public.platform_live_data DISABLE ROW LEVEL SECURITY;`;
             reader.readAsText(file);
         }
     };
+
+    const sortedAuditResults = [...auditResults].sort((a, b) => {
+        if (sortBy === 'date-desc') {
+            return new Date(b.platformData.start_time).getTime() - new Date(a.platformData.start_time).getTime();
+        }
+        if (sortBy === 'date-asc') {
+            return new Date(a.platformData.start_time).getTime() - new Date(b.platformData.start_time).getTime();
+        }
+        if (sortBy === 'diamonds-desc') {
+            return b.platformData.diamonds - a.platformData.diamonds;
+        }
+        if (sortBy === 'diamonds-asc') {
+            return a.platformData.diamonds - b.platformData.diamonds;
+        }
+        if (sortBy === 'username-asc') {
+            return a.platformData.username.localeCompare(b.platformData.username);
+        }
+        return 0;
+    });
+
+    const sortedVerificationResults = [...hostVerificationResults].sort((a, b) => {
+        if (sortBy === 'date-desc') {
+            return new Date(b.rekap.tanggal_live + 'T' + (b.rekap.waktu_mulai || '00:00')).getTime() - 
+                   new Date(a.rekap.tanggal_live + 'T' + (a.rekap.waktu_mulai || '00:00')).getTime();
+        }
+        if (sortBy === 'date-asc') {
+            return new Date(a.rekap.tanggal_live + 'T' + (a.rekap.waktu_mulai || '00:00')).getTime() - 
+                   new Date(b.rekap.tanggal_live + 'T' + (b.rekap.waktu_mulai || '00:00')).getTime();
+        }
+        if (sortBy === 'diamonds-desc') {
+            return b.rekap.pendapatan - a.rekap.pendapatan;
+        }
+        if (sortBy === 'diamonds-asc') {
+            return a.rekap.pendapatan - b.rekap.pendapatan;
+        }
+        if (sortBy === 'username-asc') {
+            const nameA = a.matchedHost?.nama_host || '';
+            const nameB = b.matchedHost?.nama_host || '';
+            return nameA.localeCompare(nameB);
+        }
+        return 0;
+    });
 
     return (
         <div className="space-y-6">
@@ -700,7 +909,7 @@ ALTER TABLE public.platform_live_data DISABLE ROW LEVEL SECURITY;`;
                                 onChange={(e) => setCsvText(e.target.value)}
                                 placeholder="Username&#9;Start time&#9;End time&#9;LIVE duration&#9;Diamonds&#10;nebula_play&#9;05/05/2026 16:50&#9;05/05/2026 18:51&#9;2h 0m 20s&#9;734&#10;nebula_play&#9;05/04/2026 19:00&#9;05/04/2026 23:26&#9;4h 26m 1s&#9;1087"
                                 rows={4}
-                                className="w-full text-xs font-bold font-mono p-3 bg-stone-50 dark:bg-stone-850 border-2 border-stone-900 dark:border-stone-800 rounded-xl focus:outline-none focus:ring-2 focus:ring-pink-500 dark:text-white"
+                                className="w-full text-xs font-bold font-mono p-3 bg-stone-50 dark:bg-stone-800 border-2 border-stone-900 dark:border-stone-800 rounded-xl focus:outline-none focus:ring-2 focus:ring-pink-500 dark:text-white"
                             ></textarea>
                         </div>
                     </div>
@@ -767,7 +976,7 @@ ALTER TABLE public.platform_live_data DISABLE ROW LEVEL SECURITY;`;
                         </div>
                     </div>
 
-                    <div className="bg-stone-950/80 dark:bg-stone-950 p-3 rounded-lg border-2 border-stone-900 dark:border-stone-850 mt-4 shadow-sm flex items-center justify-between">
+                    <div className="bg-stone-950/80 dark:bg-stone-950 p-3 rounded-lg border-2 border-stone-900 dark:border-stone-800 mt-4 shadow-sm flex items-center justify-between">
                         <span className="text-[10px] font-black text-pink-400 uppercase tracking-widest">Total Data Tersimpan:</span>
                         <span className="text-sm font-black text-white px-2 py-0.5 border border-white/20 rounded bg-stone-900">{platformRecords.length} Baris</span>
                     </div>
@@ -785,10 +994,26 @@ ALTER TABLE public.platform_live_data DISABLE ROW LEVEL SECURITY;`;
                         <h2 className="text-lg font-black uppercase text-stone-900 dark:text-white tracking-wide">Hasil Audit Perbandingan Rekap Live</h2>
                     </div>
 
-                    <div className="flex items-center gap-3">
+                    <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto justify-end">
+                        {/* Sort Selector */}
+                        <div className="flex items-center gap-2">
+                            <span className="text-[10px] font-black uppercase text-stone-500 dark:text-stone-400 tracking-wider">Urutkan:</span>
+                            <select
+                                value={sortBy}
+                                onChange={(e) => setSortBy(e.target.value as any)}
+                                className="px-2.5 py-1.5 text-[10px] font-extrabold bg-white dark:bg-stone-800 dark:text-white border-2 border-stone-900 dark:border-stone-700 rounded-xl focus:outline-none"
+                            >
+                                <option value="date-desc" className="dark:bg-stone-900 dark:text-white">📅 Terbaru</option>
+                                <option value="date-asc" className="dark:bg-stone-900 dark:text-white">📅 Terlama</option>
+                                <option value="diamonds-desc" className="dark:bg-stone-900 dark:text-white">💎 Diamond Tertinggi</option>
+                                <option value="diamonds-asc" className="dark:bg-stone-900 dark:text-white">💎 Diamond Terendah</option>
+                                <option value="username-asc" className="dark:bg-stone-900 dark:text-white">🔤 Akun / Host</option>
+                            </select>
+                        </div>
+
                         <button
                             onClick={loadPlatformData}
-                            className="p-2 border-2 border-stone-900 dark:border-stone-800 bg-white dark:bg-stone-800 text-stone-900 dark:text-white hover:bg-stone-100 rounded-xl shadow-[2px_2px_0px_#000] dark:shadow-[2px_2px_0px_#fff] hover:translate-y-[1px] active:translate-y-[2px]"
+                            className="p-2 border-2 border-stone-900 dark:border-stone-100 bg-white dark:bg-stone-800 text-stone-900 dark:text-white hover:bg-stone-100 dark:hover:bg-stone-700 rounded-xl shadow-[2px_2px_0px_#000] dark:shadow-[2px_2px_0px_#fff] hover:translate-y-[1px] active:translate-y-[2px]"
                             title="Segarkan data"
                         >
                             <RefreshCw className="h-4 w-4" />
@@ -797,10 +1022,38 @@ ALTER TABLE public.platform_live_data DISABLE ROW LEVEL SECURITY;`;
                         <button
                             onClick={handleClearAll}
                             disabled={platformRecords.length === 0}
-                            className="px-3 py-2 border-2 border-stone-900 dark:border-stone-850 bg-red-500 text-white font-extrabold text-xs rounded-xl shadow-[2px_2px_0px_#000] hover:translate-y-[1px] active:translate-y-[2px] disabled:opacity-50 transition-all flex items-center gap-1.5"
+                            className="px-3 py-2 border-2 border-stone-900 dark:border-stone-100 bg-red-500 text-white font-extrabold text-xs rounded-xl shadow-[2px_2px_0px_#000] dark:shadow-[2px_2px_0px_#fff] hover:translate-y-[1px] active:translate-y-[2px] disabled:opacity-50 transition-all flex items-center gap-1.5"
                         >
                             <Trash2 className="h-3.5 w-3.5" />
-                            <span>Kosongkan Data Platform</span>
+                            <span>Kosongkan Data</span>
+                        </button>
+                    </div>
+                </div>
+
+                {/* TAB SELECTOR */}
+                <div className="p-4 bg-stone-50/30 dark:bg-stone-950/20 border-b-2 border-stone-900 dark:border-stone-800">
+                    <div className="flex bg-stone-100 dark:bg-stone-800 p-1.5 rounded-2xl border-2 border-stone-900 dark:border-stone-700 shadow-[3px_3px_0px_#000] dark:shadow-[3px_3px_0px_#fff]">
+                        <button
+                            onClick={() => setActiveAuditTab('platform')}
+                            className={`flex-1 py-3 text-xs font-black rounded-xl uppercase tracking-wider transition-all flex items-center justify-center gap-2 ${
+                                activeAuditTab === 'platform'
+                                    ? 'bg-gradient-to-r from-pink-500 to-rose-500 text-white border-2 border-stone-900 dark:border-stone-100 shadow-[2px_2px_0px_#000] dark:shadow-[2px_2px_0px_#fff]'
+                                    : 'text-stone-500 dark:text-stone-400 hover:text-stone-800 dark:hover:text-stone-250'
+                            }`}
+                        >
+                            <Upload className="h-4 w-4" />
+                            <span>Audit Sesi Platform ({auditResults.length})</span>
+                        </button>
+                        <button
+                            onClick={() => setActiveAuditTab('host')}
+                            className={`flex-1 py-3 text-xs font-black rounded-xl uppercase tracking-wider transition-all flex items-center justify-center gap-2 ${
+                                activeAuditTab === 'host'
+                                    ? 'bg-gradient-to-r from-cyan-500 to-teal-500 text-white border-2 border-stone-900 dark:border-stone-100 shadow-[2px_2px_0px_#000] dark:shadow-[2px_2px_0px_#fff]'
+                                    : 'text-stone-500 dark:text-stone-450 hover:text-stone-800 dark:hover:text-stone-250'
+                            }`}
+                        >
+                            <UserCheck className="h-4 w-4" />
+                            <span>Verifikasi Klaim Host ({hostVerificationResults.length})</span>
                         </button>
                     </div>
                 </div>
@@ -812,37 +1065,69 @@ ALTER TABLE public.platform_live_data DISABLE ROW LEVEL SECURITY;`;
                             <RefreshCw className="h-8 w-8 animate-spin text-pink-500 mb-2" />
                             <span className="text-xs font-black uppercase tracking-wider">Menghubungkan ke database dan mengaudit...</span>
                         </div>
-                    ) : auditResults.length === 0 ? (
-                        <div className="p-12 text-center text-stone-500 dark:text-stone-400">
+                    ) : (activeAuditTab === 'platform' ? auditResults.length : hostVerificationResults.length) === 0 ? (
+                        <div className="p-12 text-center text-stone-500 dark:text-stone-450">
                             <Clipboard className="h-12 w-12 mx-auto text-stone-300 dark:text-stone-700 mb-3 animate-float-slow" />
-                            <span className="block text-sm font-black uppercase tracking-wider">Belum Ada Laporan Live Platform Terdaftar</span>
-                            <span className="block text-xs font-bold text-stone-400 dark:text-stone-500 mt-1">Silakan impor data platform siaran Senpai di atas menggunakan CSV/Excel copy-paste!</span>
+                            <span className="block text-sm font-black uppercase tracking-wider">
+                                {activeAuditTab === 'platform' 
+                                    ? "Belum Ada Laporan Live Platform Terdaftar" 
+                                    : "Belum Ada Klaim Laporan Host yang Relevan"}
+                            </span>
+                            <span className="block text-xs font-bold text-stone-400 dark:text-stone-500 mt-1">
+                                {activeAuditTab === 'platform'
+                                    ? "Silakan impor data platform siaran Senpai di atas menggunakan CSV/Excel copy-paste!"
+                                    : "Tidak ada data rekap live host pada rentang tanggal data platform terdaftar."}
+                            </span>
                         </div>
                     ) : (
                         <table className="w-full text-left border-collapse select-none">
                             <thead>
-                                <tr className="bg-stone-50 dark:bg-stone-850 border-b-[3px] border-stone-900 dark:border-stone-800 text-stone-900 dark:text-stone-100 text-[10px] font-black uppercase tracking-wider">
-                                    <th className="p-4">Akun Platform 👤</th>
-                                    <th className="p-4">Tanggal & Jam Siaran 📅</th>
-                                    <th className="p-4">Data Platform 🖥️</th>
-                                    <th className="p-4">Data Rekap Host 📝</th>
-                                    <th className="p-4">Status Hasil Audit 🚨</th>
-                                    <th className="p-4 text-center">Aksi / Tindakan Penyesuaian 🛠️</th>
+                                <tr className="bg-stone-100 dark:bg-stone-950 border-b-[3px] border-stone-900 dark:border-stone-800 text-stone-900 dark:text-stone-100 text-[10px] font-black uppercase tracking-wider">
+                                    {activeAuditTab === 'platform' ? (
+                                        <>
+                                            <th className="p-4">Akun Platform 👤</th>
+                                            <th className="p-4">Tanggal & Jam Siaran 📅</th>
+                                            <th className="p-4">Data Platform 🖥️</th>
+                                            <th className="p-4">Data Rekap Host 📝</th>
+                                            <th className="p-4">Status Hasil Audit 🚨</th>
+                                            <th className="p-4 text-center">Aksi / Tindakan Penyesuaian 🛠️</th>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <th className="p-4">Host & Akun TikTok 👤</th>
+                                            <th className="p-4">Tanggal & Waktu Klaim 📅</th>
+                                            <th className="p-4">Laporan Klaim Host 📝</th>
+                                            <th className="p-4">Data Asli Platform 🖥️</th>
+                                            <th className="p-4">Status Hasil Verifikasi 🚨</th>
+                                            <th className="p-4 text-center">Aksi / Tindakan Penyesuaian 🛠️</th>
+                                        </>
+                                    )}
                                 </tr>
                             </thead>
-                            <tbody className="divide-y border-stone-900 dark:divide-stone-850 font-bold text-xs">
-                                {auditResults.map((audit, idx) => (
-                                    <AuditRow
-                                        key={idx}
-                                        audit={audit}
-                                        idx={idx}
-                                        hosts={data.hosts}
-                                        loading={loading}
-                                        onAutoRevise={handleAutoRevise}
-                                        onCreateMissingRekap={handleCreateMissingRekap}
-                                        onDeleteRecord={handleDeleteRecord}
-                                    />
-                                ))}
+                            <tbody className="divide-y border-stone-900 dark:divide-stone-800 font-bold text-xs">
+                                {activeAuditTab === 'platform' 
+                                    ? sortedAuditResults.map((audit, idx) => (
+                                        <AuditRow
+                                            key={idx}
+                                            audit={audit}
+                                            idx={idx}
+                                            hosts={data.hosts}
+                                            loading={loading}
+                                            onAutoRevise={handleAutoRevise}
+                                            onCreateMissingRekap={handleCreateMissingRekap}
+                                            onDeleteRecord={handleDeleteRecord}
+                                        />
+                                      ))
+                                    : sortedVerificationResults.map((result, idx) => (
+                                        <VerificationRow
+                                            key={idx}
+                                            result={result}
+                                            loading={loading}
+                                            onAutoRevise={handleAutoRevise}
+                                            onDeleteRekap={handleDeleteRekap}
+                                        />
+                                      ))
+                                }
                             </tbody>
                         </table>
                     )}
@@ -947,13 +1232,13 @@ function AuditRow({ audit, idx, hosts, loading, onAutoRevise, onCreateMissingRek
             {/* Account Info */}
             <td className="p-4">
                 <div className="flex items-center gap-2.5">
-                    <div className="w-8 h-8 rounded-full bg-stone-150 dark:bg-stone-800 border-2 border-stone-900 dark:border-stone-700 flex items-center justify-center text-xs font-black shadow-sm group-hover:scale-105 transition-transform">
+                    <div className="w-8 h-8 rounded-full bg-stone-100 dark:bg-stone-800 border-2 border-stone-900 dark:border-stone-700 flex items-center justify-center text-xs font-black shadow-sm group-hover:scale-105 transition-transform">
                         {audit.platformData.username.charAt(0).toUpperCase()}
                     </div>
                     <div>
                         <span className="block font-black text-stone-900 dark:text-white text-xs">{audit.platformData.username}</span>
                         <span className="block text-[10px] text-stone-400 dark:text-stone-500 uppercase tracking-wider mt-0.5">
-                            {audit.matchedAccount ? `ID: ${audit.matchedAccount.id.substring(0, 4)}...` : 'Belum Ditautkan'}
+                            {audit.matchedAccount ? `ID: ${String(audit.matchedAccount.id).substring(0, 4)}...` : 'Belum Ditautkan'}
                         </span>
                     </div>
                 </div>
@@ -996,7 +1281,7 @@ function AuditRow({ audit, idx, hosts, loading, onAutoRevise, onCreateMissingRek
 
             {/* Audit Result Status */}
             <td className="p-4">
-                <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 border-2 border-stone-900 dark:border-stone-150 rounded-xl text-[10px] font-black uppercase tracking-wider shadow-[2px_2px_0px_#000] ${statusStyle.badgeClass}`}>
+                <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 border-2 border-stone-900 dark:border-stone-100 rounded-xl text-[10px] font-black uppercase tracking-wider shadow-[2px_2px_0px_#000] ${statusStyle.badgeClass}`}>
                     <statusStyle.Icon className="h-3.5 w-3.5" />
                     <span>{statusStyle.label}</span>
                 </span>
@@ -1022,7 +1307,7 @@ function AuditRow({ audit, idx, hosts, loading, onAutoRevise, onCreateMissingRek
                         <button
                             onClick={() => onAutoRevise(audit)}
                             disabled={loading}
-                            className="px-3 py-1.5 border-2 border-stone-900 dark:border-stone-850 bg-yellow-400 text-stone-900 font-extrabold text-[10px] rounded-xl shadow-[2px_2px_0px_#000] hover:translate-y-[1px] hover:shadow-[1px_1px_0px_#000] active:translate-y-[2px] active:shadow-[0px_0px_0px_#000] transition-all flex items-center gap-1 shrink-0"
+                            className="px-3 py-1.5 border-2 border-stone-900 dark:border-stone-800 bg-yellow-400 text-stone-900 font-extrabold text-[10px] rounded-xl shadow-[2px_2px_0px_#000] hover:translate-y-[1px] hover:shadow-[1px_1px_0px_#000] active:translate-y-[2px] active:shadow-[0px_0px_0px_#000] transition-all flex items-center gap-1 shrink-0"
                         >
                             <RefreshCw className="h-3.5 w-3.5" />
                             <span>Revisi Otomatis 🛠️</span>
@@ -1035,17 +1320,17 @@ function AuditRow({ audit, idx, hosts, loading, onAutoRevise, onCreateMissingRek
                             <select
                                 value={selectedHostId}
                                 onChange={(e) => setSelectedHostId(e.target.value)}
-                                className="px-2 py-1.5 text-[10px] font-bold bg-white dark:bg-stone-800 border-2 border-stone-900 dark:border-stone-700 rounded-xl focus:outline-none w-full max-w-[140px]"
+                                className="px-2 py-1.5 text-[10px] font-bold bg-white dark:bg-stone-800 dark:text-white border-2 border-stone-900 dark:border-stone-700 rounded-xl focus:outline-none w-full max-w-[140px]"
                             >
                                 {hosts.map(h => (
-                                    <option key={h.id} value={h.id}>{h.nama_host}</option>
+                                    <option key={h.id} value={h.id} className="dark:bg-stone-800 dark:text-white">{h.nama_host}</option>
                                 ))}
                             </select>
 
                             <button
                                 onClick={() => onCreateMissingRekap(audit, selectedHostId)}
                                 disabled={loading}
-                                className="px-3 py-1.5 border-2 border-stone-900 dark:border-stone-850 bg-gradient-to-r from-pink-500 to-cyan-500 text-white font-extrabold text-[10px] rounded-xl shadow-[2px_2px_0px_#000] hover:translate-y-[1px] hover:shadow-[1px_1px_0px_#000] active:translate-y-[2px] active:shadow-[0px_0px_0px_#000] transition-all flex items-center gap-1 shrink-0"
+                                className="px-3 py-1.5 border-2 border-stone-900 dark:border-stone-800 bg-gradient-to-r from-pink-500 to-cyan-500 text-white font-extrabold text-[10px] rounded-xl shadow-[2px_2px_0px_#000] hover:translate-y-[1px] hover:shadow-[1px_1px_0px_#000] active:translate-y-[2px] active:shadow-[0px_0px_0px_#000] transition-all flex items-center gap-1 shrink-0"
                             >
                                 <PlusCircle className="h-3.5 w-3.5" />
                                 <span>Buat Rekap 📝</span>
@@ -1071,6 +1356,152 @@ function AuditRow({ audit, idx, hosts, loading, onAutoRevise, onCreateMissingRek
                 </div>
             </td>
 
+        </tr>
+    );
+}
+
+// Sub-component for rendering each Host Verification row safely with action tools
+interface VerificationRowProps {
+    result: HostVerificationResult;
+    loading: boolean;
+    onAutoRevise: (audit: AuditResult) => void;
+    onDeleteRekap: (rekapId: string) => void;
+}
+
+function VerificationRow({ result, loading, onAutoRevise, onDeleteRekap }: VerificationRowProps) {
+    const { rekap, matchedAccount, matchedHost, matchedPlatform, status, differenceDetails } = result;
+    const formattedDate = new Date(rekap.tanggal_live).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
+    
+    // Status Badge mappings
+    let badgeLabel = 'Unknown';
+    let badgeClass = 'bg-stone-100 text-stone-700 dark:bg-stone-800 dark:text-stone-300';
+    let StatusIcon = HelpCircle;
+
+    if (status === 'verified') {
+        badgeLabel = 'Terverifikasi Cocok ✓';
+        badgeClass = 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300';
+        StatusIcon = CheckCircle;
+    } else if (status === 'mismatch') {
+        badgeLabel = 'Selisih Klaim ⚠️';
+        badgeClass = 'bg-amber-100 text-amber-800 dark:bg-amber-950/30 dark:text-amber-300';
+        StatusIcon = AlertTriangle;
+    } else if (status === 'ghost') {
+        badgeLabel = 'Klaim Lebih / Fiktif 🚨';
+        badgeClass = 'bg-red-100 text-red-800 dark:bg-red-950/40 dark:text-red-300';
+        StatusIcon = ShieldAlert;
+    } else if (status === 'unknown_account') {
+        badgeLabel = 'Akun Belum Ditaut 🔍';
+        badgeClass = 'bg-stone-100 text-stone-700 dark:bg-stone-800 dark:text-stone-300';
+        StatusIcon = HelpCircle;
+    }
+
+    return (
+        <tr className="hover:bg-cyan-500/5 dark:hover:bg-teal-400/5 transition-colors group">
+            
+            {/* Host Name & TikTok */}
+            <td className="p-4">
+                <div>
+                    <span className="block font-black text-stone-900 dark:text-white text-xs">{matchedHost?.nama_host || 'Unknown'}</span>
+                    <span className="block text-[10px] text-stone-400 dark:text-stone-500 uppercase tracking-wider mt-0.5">
+                        {matchedAccount ? `@${matchedAccount.username}` : 'Akun tak dikenal'}
+                    </span>
+                </div>
+            </td>
+
+            {/* Date & Time */}
+            <td className="p-4">
+                <span className="block font-extrabold text-stone-900 dark:text-stone-200 text-xs">{formattedDate}</span>
+                <span className="block text-[10px] text-stone-400 dark:text-stone-500 font-mono mt-0.5">
+                    {rekap.waktu_mulai || '--:--'} s/d {rekap.waktu_selesai || '--:--'}
+                </span>
+            </td>
+
+            {/* Host Claim Data */}
+            <td className="p-4 space-y-1">
+                <span className="block text-[11px] font-extrabold text-stone-900 dark:text-stone-200 flex items-center gap-1">
+                    📝 <span className="font-mono">{formatMinutes(rekap.durasi_menit)}</span>
+                </span>
+                <span className="block text-[11px] font-black text-pink-500 dark:text-cyan-400 flex items-center gap-1 font-mono">
+                    💎 {rekap.pendapatan.toLocaleString('id-ID')}
+                </span>
+            </td>
+
+            {/* Platform Real Data */}
+            <td className="p-4">
+                {matchedPlatform ? (
+                    <div className="space-y-1">
+                        <span className="block text-[11px] font-extrabold text-stone-900 dark:text-stone-200 flex items-center gap-1">
+                            🖥️ <span className="font-mono">{formatMinutes(matchedPlatform.durasi_menit)}</span> ({matchedPlatform.duration})
+                        </span>
+                        <span className="block text-[10px] text-stone-500 dark:text-stone-450 flex items-center gap-1 font-mono">
+                            💎 {matchedPlatform.diamonds.toLocaleString('id-ID')}
+                        </span>
+                    </div>
+                ) : (
+                    <span className="text-[10px] uppercase font-black text-red-500 dark:text-red-400 italic">Tidak ada sesi di platform</span>
+                )}
+            </td>
+
+            {/* Status */}
+            <td className="p-4">
+                <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 border-2 border-stone-900 dark:border-stone-100 rounded-xl text-[10px] font-black uppercase tracking-wider shadow-[2px_2px_0px_#000] ${badgeClass}`}>
+                    <StatusIcon className="h-3.5 w-3.5" />
+                    <span>{badgeLabel}</span>
+                </span>
+                {differenceDetails && (
+                    <span className="block text-[9px] font-black text-red-500 dark:text-red-400 mt-1 max-w-[200px] leading-relaxed">
+                        {differenceDetails}
+                    </span>
+                )}
+            </td>
+
+            {/* Action */}
+            <td className="p-4 text-center">
+                <div className="flex items-center justify-center gap-2">
+                    {status === 'verified' && (
+                        <span className="text-[10px] uppercase font-black text-emerald-500 dark:text-emerald-400 flex items-center gap-1">
+                            <CheckCircle className="h-4 w-4" />
+                            <span>Laporan Sah ✓</span>
+                        </span>
+                    )}
+
+                    {status === 'mismatch' && matchedPlatform && (
+                        <button
+                            onClick={() => {
+                                onAutoRevise({
+                                    platformData: matchedPlatform,
+                                    matchedAccount,
+                                    matchedHost,
+                                    matchedRekap: rekap,
+                                    status: 'diff_diamonds'
+                                });
+                            }}
+                            disabled={loading}
+                            className="px-3 py-1.5 border-2 border-stone-900 dark:border-stone-800 bg-yellow-400 text-stone-900 font-extrabold text-[10px] rounded-xl shadow-[2px_2px_0px_#000] hover:translate-y-[1px] hover:shadow-[1px_1px_0px_#000] active:translate-y-[2px] active:shadow-[0px_0px_0px_#000] transition-all flex items-center gap-1 shrink-0"
+                        >
+                            <RefreshCw className="h-3.5 w-3.5" />
+                            <span>Revisi Otomatis 🛠️</span>
+                        </button>
+                    )}
+
+                    {status === 'ghost' && (
+                        <button
+                            onClick={() => onDeleteRekap(rekap.id)}
+                            disabled={loading}
+                            className="px-3 py-1.5 border-2 border-stone-900 dark:border-stone-800 bg-red-500 text-white font-extrabold text-[10px] rounded-xl shadow-[2px_2px_0px_#000] hover:translate-y-[1px] hover:shadow-[1px_1px_0px_#000] active:translate-y-[2px] active:shadow-[0px_0px_0px_#000] transition-all flex items-center gap-1.5 shrink-0"
+                        >
+                            <Trash2 className="h-3.5 w-3.5" />
+                            <span>Hapus Rekap Fiktif 🚨</span>
+                        </button>
+                    )}
+
+                    {status === 'unknown_account' && (
+                        <span className="text-[10px] uppercase font-black text-stone-400 dark:text-stone-500 select-none italic">
+                            Belum Ditautkan
+                        </span>
+                    )}
+                </div>
+            </td>
         </tr>
     );
 }
