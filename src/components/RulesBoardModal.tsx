@@ -122,7 +122,7 @@ export default function RulesBoardModal({ isOpen, onClose }: RulesBoardModalProp
                             
                             {/* Top Title/Label Bubble */}
                             <div className="relative z-10 w-full mb-2">
-                                <span className="px-3 py-1 text-[9px] font-extrabold uppercase tracking-widest text-stone-900 dark:text-white bg-white dark:bg-stone-850 border-[2.5px] border-stone-900 dark:border-stone-100 rounded-xl shadow-[2.5px_2.5px_0px_0px_#ec4899] dark:shadow-[2.5px_2.5px_0px_0px_#06b6d4] inline-block -rotate-1">
+                                <span className="px-3 py-1 text-[9px] font-extrabold uppercase tracking-widest text-stone-900 dark:text-white bg-white dark:bg-stone-800 border-[2.5px] border-stone-900 dark:border-stone-100 rounded-xl shadow-[2.5px_2.5px_0px_0px_#ec4899] dark:shadow-[2.5px_2.5px_0px_0px_#06b6d4] inline-block -rotate-1">
                                     PT. Barisan Kreatif Media
                                 </span>
                                 <h2 className="mt-3.5 text-xl lg:text-2xl font-extrabold text-stone-900 dark:text-white leading-tight uppercase bangers-font tracking-wide">
@@ -139,12 +139,12 @@ export default function RulesBoardModal({ isOpen, onClose }: RulesBoardModalProp
                                 <div className="absolute -bottom-2.5 left-1/2 -translate-x-1/2 w-4 h-4 bg-white dark:bg-stone-800 border-r-[3px] border-b-[3px] border-stone-900 dark:border-stone-100 transform rotate-45"></div>
                             </div>
 
-                            {/* Big Portrait Mascot Image */}
-                            <div className="relative w-40 h-40 sm:w-48 sm:h-48 lg:w-56 lg:h-56 mt-2 flex items-center justify-center filter drop-shadow-[5px_5px_0px_rgba(0,0,0,0.15)] animate-float-slow">
+                            {/* Big Portrait Mascot Image - Styled as a Premium Comic Sticker/Card */}
+                            <div className="relative w-40 h-40 sm:w-48 sm:h-48 lg:w-56 lg:h-56 mt-2 flex items-center justify-center bg-white border-[3px] border-stone-900 rounded-2xl shadow-[4px_4px_0px_#000] dark:shadow-[4px_4px_0px_#fff] rotate-2 overflow-hidden animate-float-slow">
                                 <img 
                                     src={getMascotImage()} 
                                     alt="Unity Agency Mascot" 
-                                    className="w-full h-full object-contain mix-blend-multiply dark:mix-blend-normal"
+                                    className="w-full h-full object-cover"
                                 />
                             </div>
                             
@@ -209,17 +209,17 @@ export default function RulesBoardModal({ isOpen, onClose }: RulesBoardModalProp
                                                 </p>
 
                                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2">
-                                                    <div className="bg-stone-50 dark:bg-stone-850 p-4 border-[3px] border-stone-900 dark:border-stone-100 rounded-2xl shadow-[3px_3px_0px_#000] dark:shadow-[3px_3px_0px_#fff] transform rotate-1">
+                                                    <div className="bg-stone-50 dark:bg-stone-800 p-4 border-[3px] border-stone-900 dark:border-stone-100 rounded-2xl shadow-[3px_3px_0px_#000] dark:shadow-[3px_3px_0px_#fff] transform rotate-1">
                                                         <span className="block text-xl mb-1.5">⏰</span>
                                                         <span className="block text-[9px] uppercase font-black text-stone-400 dark:text-stone-500 tracking-wider">Jam Kerja</span>
                                                         <span className="text-sm font-extrabold text-stone-900 dark:text-white">6 Jam Live Stream</span>
                                                     </div>
-                                                    <div className="bg-stone-50 dark:bg-stone-850 p-4 border-[3px] border-stone-900 dark:border-stone-100 rounded-2xl shadow-[3px_3px_0px_#000] dark:shadow-[3px_3px_0px_#fff] transform -rotate-1">
+                                                    <div className="bg-stone-50 dark:bg-stone-800 p-4 border-[3px] border-stone-900 dark:border-stone-100 rounded-2xl shadow-[3px_3px_0px_#000] dark:shadow-[3px_3px_0px_#fff] transform -rotate-1">
                                                         <span className="block text-xl mb-1.5">📅</span>
                                                         <span className="block text-[9px] uppercase font-black text-stone-400 dark:text-stone-500 tracking-wider">Hari Kerja</span>
                                                         <span className="text-sm font-extrabold text-stone-900 dark:text-white">26 Hari / Bulan</span>
                                                     </div>
-                                                    <div className="bg-stone-50 dark:bg-stone-850 p-4 border-[3px] border-stone-900 dark:border-stone-100 rounded-2xl shadow-[3px_3px_0px_#000] dark:shadow-[3px_3px_0px_#fff] transform rotate-1">
+                                                    <div className="bg-stone-50 dark:bg-stone-800 p-4 border-[3px] border-stone-900 dark:border-stone-100 rounded-2xl shadow-[3px_3px_0px_#000] dark:shadow-[3px_3px_0px_#fff] transform rotate-1">
                                                         <span className="block text-xl mb-1.5">🏢</span>
                                                         <span className="block text-[9px] uppercase font-black text-stone-400 dark:text-stone-500 tracking-wider">Lokasi Kerja</span>
                                                         <span className="text-sm font-extrabold text-stone-900 dark:text-white">Kantor (WFO)</span>
@@ -252,7 +252,7 @@ export default function RulesBoardModal({ isOpen, onClose }: RulesBoardModalProp
                                                         "Dilarang menginformasikan hal-hal confidential terkait agency (alamat, informasi host, owner) dan hal personal lainnya tanpa ijin resmi.",
                                                         "Dilarang menjelek-jelekan agency di luar. Jika ada masalah wajib diselesaikan di internal lingkungan agency."
                                                     ].map((rule, idx) => (
-                                                        <div key={idx} className="p-3 bg-white dark:bg-stone-850 border-2 border-stone-900 dark:border-stone-800 rounded-xl flex items-start gap-2.5 shadow-[2px_2px_0px_#000]">
+                                                        <div key={idx} className="p-3 bg-white dark:bg-stone-800 border-2 border-stone-900 dark:border-stone-800 rounded-xl flex items-start gap-2.5 shadow-[2px_2px_0px_#000]">
                                                             <Check className="h-4.5 w-4.5 text-emerald-500 shrink-0 mt-0.5" />
                                                             <span className="text-xs font-extrabold text-stone-800 dark:text-stone-300 leading-relaxed">{rule}</span>
                                                         </div>
@@ -274,10 +274,8 @@ export default function RulesBoardModal({ isOpen, onClose }: RulesBoardModalProp
                                                             Ketentuan Konten Live Gaming
                                                         </h3>
                                                     </div>
-                                                </div>
-
-                                                <div className="space-y-3.5 pt-1">
-                                                    <div className="bg-stone-50 dark:bg-stone-850 p-4 border-[3px] border-stone-900 dark:border-stone-100 rounded-2xl shadow-[4px_4px_0px_#000] dark:shadow-[4px_4px_0px_#fff]">
+                                                                      <div className="space-y-3.5 pt-1">
+                                                    <div className="bg-stone-50 dark:bg-stone-800 p-4 border-[3px] border-stone-900 dark:border-stone-100 rounded-2xl shadow-[4px_4px_0px_#000] dark:shadow-[4px_4px_0px_#fff]">
                                                         <h4 className="text-xs font-black uppercase text-pink-650 dark:text-cyan-400 tracking-wider mb-2 flex items-center gap-1.5">🎮 Fokus Game Utama</h4>
                                                         <div className="flex flex-wrap gap-2">
                                                             {['Roblox', 'GTA V', 'Minecraft', 'Only Climb'].map((game) => (
@@ -286,14 +284,14 @@ export default function RulesBoardModal({ isOpen, onClose }: RulesBoardModalProp
                                                             <span className="px-3 py-1 text-xs font-bold text-stone-500 dark:text-stone-400 italic">dan game seru lainnya...</span>
                                                         </div>
                                                     </div>
-
-                                                    <div className="p-3.5 bg-gradient-to-r from-cyan-500/10 to-purple-500/10 border-2 border-stone-900 dark:border-stone-850 rounded-xl">
+ 
+                                                    <div className="p-3.5 bg-gradient-to-r from-cyan-500/10 to-purple-500/10 border-2 border-stone-900 dark:border-stone-800 rounded-xl">
                                                         <h5 className="text-[11px] font-black uppercase text-purple-750 dark:text-cyan-300 tracking-wider flex items-center gap-1">🎯 Tujuan Utama Siaran</h5>
                                                         <p className="text-xs font-bold text-stone-700 dark:text-stone-300 mt-1 leading-relaxed">
                                                             Menghibur viewers, membangun interaksi komunitas yang positif, serta **berfokus penuh pada pengumpulan diamond (berlian)** siaran secara optimal.
                                                         </p>
                                                     </div>
-                                                </div>
+                                                </div>                                  </div>
                                             </div>
                                         )}
 
@@ -324,7 +322,7 @@ export default function RulesBoardModal({ isOpen, onClose }: RulesBoardModalProp
                                                         "Terlambat datang di room live atau tidak mematuhi jadwal yang sudah diajukan.",
                                                         "Bermain HP pribadi atau melakukan Video Call pribadi dalam waktu lama saat sedang Live siaran."
                                                     ].map((item, idx) => (
-                                                        <div key={idx} className="flex items-start gap-2.5 p-2.5 bg-white dark:bg-stone-850 border-2 border-stone-900 dark:border-stone-800 rounded-xl shadow-[2.5px_2.5px_0px_#000]">
+                                                        <div key={idx} className="flex items-start gap-2.5 p-2.5 bg-white dark:bg-stone-800 border-2 border-stone-900 dark:border-stone-800 rounded-xl shadow-[2.5px_2.5px_0px_#000]">
                                                             <span className="w-5.5 h-5.5 shrink-0 rounded-full bg-amber-500 text-stone-900 font-extrabold text-xs flex items-center justify-center border border-stone-900">⚠️</span>
                                                             <span className="text-xs font-extrabold text-stone-800 dark:text-stone-300">{item}</span>
                                                         </div>
