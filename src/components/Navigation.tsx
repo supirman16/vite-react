@@ -1,6 +1,6 @@
 import { useContext } from 'react';
 import { AppContext, AppContextType } from '../App';
-import { LayoutDashboard, Star, FileText, User, DollarSign, Settings, Users, Ticket, BarChart3, Building2, LogOut, X, ShieldCheck, Megaphone, Award } from 'lucide-react';
+import { LayoutDashboard, Star, FileText, FileCheck, User, DollarSign, Settings, Users, Ticket, BarChart3, Building2, LogOut, X, ShieldCheck, Megaphone, Award } from 'lucide-react';
 
 export default function Navigation({ onClose }: { onClose?: () => void }) {
     const context = useContext(AppContext);
@@ -20,6 +20,7 @@ export default function Navigation({ onClose }: { onClose?: () => void }) {
         { id: 'leaderboard', label: 'Papan Peringkat', icon: Star, roles: ['host', 'superadmin'] },
         { id: 'analysis', label: 'Analisis Kinerja', icon: BarChart3, roles: ['host', 'superadmin'] },
         { id: 'rekap', label: 'Rekap Live', icon: FileText, roles: ['host', 'superadmin'] },
+        { id: 'audit', label: 'Audit Rekap Live', icon: FileCheck, roles: ['superadmin'] },
         { id: 'profile', label: 'Profil Saya', icon: User, roles: ['host'] },
         { id: 'salary', label: 'Gaji Saya', icon: DollarSign, roles: ['host'] },
         { id: 'payroll', label: 'Sistem Gaji', icon: DollarSign, roles: ['superadmin'] },

@@ -16,6 +16,7 @@ import SettingsPage from '../pages/SettingsPage';
 import QuoteBanner from './QuoteBanner';
 import AnnouncementsPage from '../pages/AnnouncementsPage';
 import AchievementsPage from '../pages/AchievementsPage'; // <-- Impor halaman baru
+import AuditPage from '../pages/AuditPage'; // Impor halaman audit baru
 import { motion, AnimatePresence } from 'framer-motion';
 
 export default function DashboardLayout() {
@@ -30,6 +31,7 @@ export default function DashboardLayout() {
             case 'leaderboard': return <LeaderboardPage />;
             case 'analysis': return <AnalysisPage />;
             case 'rekap': return <RekapPage />;
+            case 'audit': return <AuditPage />; // Tambah rute case audit
             case 'profile': return <ProfilePage />;
             case 'salary': return <MySalaryPage />;
             case 'payroll': return <PayrollPage />;
